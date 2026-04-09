@@ -1,0 +1,247 @@
+.sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 260px;
+  height: 100vh;
+  background: var(--bg-primary, #fff);
+  border-right: 1px solid var(--border-color, #e8e8ef);
+  display: flex;
+  flex-direction: column;
+  z-index: 100;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+.collapsed {
+  width: 76px;
+}
+
+.overlay {
+  display: none;
+}
+
+/* ===== Logo ===== */
+.logoArea {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 22px 18px 18px;
+  min-height: 68px;
+}
+
+.collapsed .logoArea {
+  justify-content: center;
+  padding: 22px 0 18px;
+}
+
+.logoMark {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  font-weight: 800;
+  color: #fff;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(var(--primary-color-rgb, 62, 115, 230), 0.3);
+}
+
+.logoTextWrap {
+  overflow: hidden;
+  transition: opacity 0.2s ease;
+}
+
+.logoText {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-primary, #1a1a2e);
+  white-space: nowrap;
+  letter-spacing: -0.3px;
+}
+
+.hidden {
+  opacity: 0;
+  width: 0;
+  overflow: hidden;
+  pointer-events: none;
+  position: absolute;
+}
+
+/* ===== Navigation ===== */
+.nav {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.nav::-webkit-scrollbar { width: 0; }
+
+.navLabel {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--text-muted, #a0a0ab);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: 12px 10px 8px;
+  white-space: nowrap;
+}
+
+/* ===== Nav Item ===== */
+.navItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 12px;
+  border-radius: 12px;
+  color: var(--text-secondary, #6c6d72);
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.15s ease;
+  position: relative;
+  white-space: nowrap;
+}
+
+.collapsed .navItem {
+  justify-content: center;
+  padding: 11px;
+}
+
+.navItem:hover {
+  background: var(--bg-tertiary, #eef0f6);
+  color: var(--text-primary, #1a1a2e);
+}
+
+.active {
+  background: rgba(var(--primary-color-rgb, 62, 115, 230), 0.1) !important;
+  color: var(--primary-color) !important;
+  font-weight: 600;
+}
+
+.active .navIcon {
+  color: var(--primary-color);
+}
+
+.navIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.navText {
+  white-space: nowrap;
+  transition: opacity 0.2s ease;
+}
+
+/* ===== Badge ===== */
+.badge {
+  margin-left: auto;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: 8px;
+  background: var(--primary-color);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 4px rgba(var(--primary-color-rgb, 62, 115, 230), 0.25);
+}
+
+.badgeDot {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--primary-color);
+  border: 2px solid var(--bg-primary, #fff);
+}
+
+/* ===== Bottom ===== */
+.bottom {
+  border-top: 1px solid var(--border-color, #e8e8ef);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.collapseBtn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 12px;
+  border-radius: 12px;
+  color: var(--text-muted, #a0a0ab);
+  font-size: 0.85rem;
+  font-weight: 500;
+  width: 100%;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.collapsed .collapseBtn {
+  justify-content: center;
+  padding: 11px;
+}
+
+.collapseBtn:hover {
+  background: var(--bg-tertiary, #eef0f6);
+  color: var(--text-secondary, #6c6d72);
+}
+
+/* ===== Mobile ===== */
+@media (max-width: 768px) {
+  .sidebar {
+    transform: translateX(-100%);
+    width: 280px;
+    box-shadow: 8px 0 32px rgba(0, 0, 0, 0.12);
+  }
+
+  .mobileOpen {
+    transform: translateX(0);
+    width: 280px;
+  }
+
+  .collapsed {
+    transform: translateX(-100%);
+    width: 280px;
+  }
+
+  .overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.35);
+    z-index: 99;
+    backdrop-filter: blur(3px);
+    animation: fadeIn 0.2s ease;
+  }
+
+  .hidden {
+    opacity: 1;
+    width: auto;
+    position: static;
+    pointer-events: auto;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}

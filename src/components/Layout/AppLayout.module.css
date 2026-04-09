@@ -1,0 +1,36 @@
+.layout {
+  display: flex;
+  min-height: 100vh;
+  width: 100%;
+  background: var(--bg-secondary, #f5f6fa);
+}
+
+.mainArea {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 100vh;
+  margin-left: 260px;
+  transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  min-width: 0; /* previne overflow */
+}
+
+.collapsed {
+  margin-left: 76px;
+}
+
+.content {
+  flex: 1;
+  padding: 28px 32px;
+}
+
+@media (max-width: 768px) {
+  .mainArea,
+  .collapsed {
+    margin-left: 0;
+  }
+
+  .content {
+    padding: 20px 16px;
+  }
+}

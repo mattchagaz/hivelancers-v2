@@ -1,0 +1,622 @@
+/* ===== Layout ===== */
+.page {
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  background: #fafafa;
+  transition: opacity 0.5s ease;
+}
+
+.fadeOut {
+  opacity: 0;
+}
+
+/* ===== Brand Side (esquerda) ===== */
+.brandSide {
+  position: relative;
+  width: 45%;
+  min-height: 100vh;
+  background: linear-gradient(160deg, #1a1a2e 0%, var(--primary-color) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 3rem;
+}
+
+.brandContent {
+  position: relative;
+  z-index: 2;
+  color: #fff;
+  max-width: 420px;
+  animation: fadeSlideUp 0.8s ease-out;
+}
+
+.logoMark {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #fff;
+  margin-bottom: 2rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.brandTitle {
+  font-size: 2.5rem;
+  font-weight: 800;
+  margin: 0 0 1rem;
+  letter-spacing: -0.5px;
+  line-height: 1.1;
+}
+
+.brandTagline {
+  font-size: 1.05rem;
+  line-height: 1.7;
+  color: rgba(255, 255, 255, 0.8);
+  margin: 0 0 2.5rem;
+}
+
+/* Features list */
+.features {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.featureItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 0.9rem 1rem;
+  background: rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(8px);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: background 0.2s;
+}
+
+.featureItem:hover {
+  background: rgba(255, 255, 255, 0.11);
+}
+
+.featureIcon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.featureTitle {
+  display: block;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 2px;
+}
+
+.featureDesc {
+  display: block;
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* Decorações */
+.brandDecor {
+  position: absolute;
+  width: 500px;
+  height: 500px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.03);
+  top: -150px;
+  right: -150px;
+  z-index: 1;
+}
+
+.brandDecor2 {
+  position: absolute;
+  width: 300px;
+  height: 300px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.04);
+  bottom: -80px;
+  left: -80px;
+  z-index: 1;
+}
+
+/* ===== Form Side (direita) ===== */
+.formSide {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  overflow-y: auto;
+}
+
+.formContainer {
+  width: 100%;
+  max-width: 460px;
+  animation: fadeSlideUp 0.6s ease-out 0.1s both;
+}
+
+/* ===== Stepper ===== */
+.stepper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  margin-bottom: 2rem;
+}
+
+.stepDot {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #e2e2ea;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #a0a0ab;
+  transition: all 0.35s ease;
+}
+
+.stepDot.active {
+  background: var(--primary-color);
+  color: #fff;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+}
+
+.stepLine {
+  width: 80px;
+  height: 2px;
+  background: #e2e2ea;
+  transition: background 0.35s ease;
+}
+
+.stepLine.active {
+  background: var(--primary-color);
+}
+
+/* ===== Form Header ===== */
+.formHeader {
+  margin-bottom: 1.75rem;
+}
+
+.formTitle {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #1a1a2e;
+  margin: 0 0 0.5rem;
+}
+
+.formSubtitle {
+  font-size: 0.95rem;
+  color: #6c6d72;
+  margin: 0;
+}
+
+/* ===== Form ===== */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.stepContent {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  animation: fadeIn 0.35s ease;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.inputGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #3a3a4a;
+  letter-spacing: 0.2px;
+}
+
+.inputWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.inputIcon {
+  position: absolute;
+  left: 14px;
+  font-size: 0.82rem;
+  color: #b0b0b8;
+  pointer-events: none;
+  transition: color 0.2s;
+}
+
+.inputWrapper:focus-within .inputIcon {
+  color: var(--primary-color);
+}
+
+.input {
+  width: 100%;
+  padding: 13px 14px 13px 42px;
+  border-radius: 12px;
+  border: 1.5px solid #e2e2ea;
+  background: #fff;
+  font-size: 0.9rem;
+  color: #1a1a2e;
+  transition: all 0.2s ease;
+  outline: none;
+}
+
+.input::placeholder {
+  color: #b0b0b8;
+  font-size: 0.85rem;
+}
+
+.input:hover {
+  border-color: #c8c8d4;
+}
+
+.input:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(var(--primary-color-rgb, 99, 102, 241), 0.1);
+}
+
+.inputSuccess {
+  border-color: #22c55e !important;
+}
+
+.inputSuccess:focus {
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.12);
+}
+
+.inputError {
+  border-color: #ef4444 !important;
+}
+
+.inputError:focus {
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.12);
+}
+
+.togglePassword {
+  position: absolute;
+  right: 12px;
+  background: none;
+  border: none;
+  color: #b0b0b8;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  font-size: 0.95rem;
+  transition: color 0.2s;
+}
+
+.togglePassword:hover {
+  color: #6c6d72;
+}
+
+.errorMsg {
+  font-size: 0.75rem;
+  color: #ef4444;
+  font-weight: 500;
+}
+
+.successMsg {
+  font-size: 0.75rem;
+  color: #22c55e;
+  font-weight: 500;
+}
+
+/* ===== Password Rules ===== */
+.passwordRules {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  padding: 12px 14px;
+  background: #f5f5f8;
+  border-radius: 10px;
+}
+
+.rule {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  transition: all 0.25s ease;
+}
+
+.ruleIcon {
+  font-size: 0.65rem;
+}
+
+.ruleValid {
+  color: #22c55e;
+}
+
+.ruleInvalid {
+  color: #b0b0b8;
+}
+
+/* ===== Buttons ===== */
+.submitBtn {
+  flex: 1;
+  padding: 14px;
+  border: none;
+  border-radius: 12px;
+  background: var(--primary-color);
+  color: #fff;
+  font-size: 0.92rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 50px;
+}
+
+.submitBtn:hover:not(:disabled) {
+  background: var(--secondary-color);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+.submitBtn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.submitBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.backBtn {
+  padding: 14px 20px;
+  border: 1.5px solid #e2e2ea;
+  border-radius: 12px;
+  background: #fff;
+  color: #3a3a4a;
+  font-size: 0.88rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+  height: 50px;
+}
+
+.backBtn:hover {
+  background: #f5f5f8;
+  border-color: #c8c8d4;
+}
+
+.btnRow {
+  display: flex;
+  gap: 12px;
+  margin-top: 0.25rem;
+}
+
+.btnIcon {
+  font-size: 0.75rem;
+}
+
+.spinner {
+  width: 20px;
+  height: 20px;
+  border: 2.5px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+/* ===== Divider ===== */
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.dividerLine {
+  flex: 1;
+  height: 1px;
+  background: #e2e2ea;
+}
+
+.dividerText {
+  font-size: 0.78rem;
+  color: #a0a0ab;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* ===== Social Button ===== */
+.socialBtn {
+  width: 100%;
+  padding: 13px;
+  border: 1.5px solid #e2e2ea;
+  border-radius: 12px;
+  background: #fff;
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: #3a3a4a;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  transition: all 0.2s ease;
+}
+
+.socialBtn:hover {
+  background: #f5f5f8;
+  border-color: #c8c8d4;
+}
+
+/* ===== Footer ===== */
+.footerText {
+  text-align: center;
+  margin-top: 1.5rem;
+  font-size: 0.88rem;
+  color: #6c6d72;
+}
+
+.footerLink {
+  color: var(--primary-color);
+  font-weight: 600;
+  text-decoration: none;
+  transition: opacity 0.2s;
+}
+
+.footerLink:hover {
+  text-decoration: underline;
+  opacity: 0.85;
+}
+
+.termsText {
+  text-align: center;
+  margin-top: 1.25rem;
+  font-size: 0.78rem;
+  color: #a0a0ab;
+  line-height: 1.6;
+}
+
+.termsLink {
+  color: var(--primary-color);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.termsLink:hover {
+  text-decoration: underline;
+}
+
+/* ===== Animations ===== */
+@keyframes fadeSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ===== Responsivo ===== */
+@media (max-width: 1024px) {
+  .brandSide {
+    width: 40%;
+    padding: 2rem;
+  }
+
+  .brandTitle {
+    font-size: 2rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .page {
+    flex-direction: column;
+  }
+
+  .brandSide {
+    width: 100%;
+    min-height: auto;
+    padding: 2rem 1.5rem;
+  }
+
+  .brandContent {
+    text-align: center;
+    max-width: 100%;
+  }
+
+  .logoMark {
+    margin: 0 auto 1.5rem;
+  }
+
+  .brandTitle {
+    font-size: 1.75rem;
+  }
+
+  .brandTagline {
+    margin-bottom: 1.5rem;
+    font-size: 0.95rem;
+  }
+
+  .features {
+    display: none;
+  }
+
+  .formSide {
+    padding: 2rem 1.5rem;
+  }
+
+  .formContainer {
+    max-width: 100%;
+  }
+
+  .formTitle {
+    font-size: 1.5rem;
+  }
+
+  .row {
+    grid-template-columns: 1fr;
+  }
+
+  .btnRow {
+    flex-direction: column-reverse;
+  }
+
+  .backBtn {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 400px) {
+  .brandSide {
+    padding: 1.5rem 1rem;
+  }
+
+  .formSide {
+    padding: 1.5rem 1rem;
+  }
+}

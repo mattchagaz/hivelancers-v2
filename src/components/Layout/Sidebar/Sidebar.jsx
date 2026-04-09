@@ -1,0 +1,171 @@
+import { NavLink } from 'react-router-dom';
+import styles from './Sidebar.module.css';
+
+function Sidebar({ userRole = 'freelancer', collapsed, mobileOpen, onToggle, onMobileClose }) {
+  const isFreelancer = userRole === 'freelancer';
+
+  const mainNav = isFreelancer
+    ? [
+        { label: 'Dashboard', path: '/dashboard', icon: 'dashboard' },
+        { label: 'Meus Serviços', path: '/services', icon: 'services' },
+        { label: 'Pedidos', path: '/orders', icon: 'orders', badge: 3 },
+        { label: 'Mensagens', path: '/messages', icon: 'messages', badge: 5 },
+        { label: 'Financeiro', path: '/finances', icon: 'finances' },
+        { label: 'Recompensas', path: '/rewards', icon: 'rewards' },
+      ]
+    : [
+        { label: 'Dashboard', path: '/dashboard', icon: 'dashboard' },
+        { label: 'Explorar', path: '/explore', icon: 'explore' },
+        { label: 'Meus Pedidos', path: '/orders', icon: 'cart', badge: 2 },
+        { label: 'Mensagens', path: '/messages', icon: 'messages', badge: 1 },
+        { label: 'Favoritos', path: '/favorites', icon: 'heart' },
+        { label: 'Recompensas', path: '/rewards', icon: 'rewards' },
+      ];
+
+  const icons = {
+    dashboard: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="3" width="7" height="9" rx="1.5" />
+        <rect x="14" y="3" width="7" height="5" rx="1.5" />
+        <rect x="14" y="12" width="7" height="9" rx="1.5" />
+        <rect x="3" y="16" width="7" height="5" rx="1.5" />
+      </svg>
+    ),
+    services: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 19l7-7 3 3-7 7-3-3z" />
+        <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z" />
+        <path d="M2 2l7.586 7.586" />
+        <circle cx="11" cy="11" r="2" />
+      </svg>
+    ),
+    orders: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+        <polyline points="14 2 14 8 20 8" />
+        <line x1="16" y1="13" x2="8" y2="13" />
+        <line x1="16" y1="17" x2="8" y2="17" />
+      </svg>
+    ),
+    messages: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+      </svg>
+    ),
+    finances: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+        <line x1="12" y1="1" x2="12" y2="23" />
+        <path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" />
+      </svg>
+    ),
+    rewards: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="8" r="7" />
+        <polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88" />
+      </svg>
+    ),
+    explore: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="11" cy="11" r="8" />
+        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+      </svg>
+    ),
+    cart: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" />
+        <path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6" />
+      </svg>
+    ),
+    heart: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" />
+      </svg>
+    ),
+    settings: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="3" />
+        <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" />
+      </svg>
+    ),
+  };
+
+  const sidebarClass = `${styles.sidebar} ${collapsed ? styles.collapsed : ''} ${mobileOpen ? styles.mobileOpen : ''}`;
+
+  return (
+    <>
+      {mobileOpen && <div className={styles.overlay} onClick={onMobileClose} />}
+
+      <aside className={sidebarClass}>
+        {/* Logo */}
+        <div className={styles.logoArea}>
+          <div className={styles.logoMark}>H</div>
+          <div className={`${styles.logoTextWrap} ${collapsed ? styles.hidden : ''}`}>
+            <span className={styles.logoText}>Hivelancers</span>
+          </div>
+        </div>
+
+        {/* Nav */}
+        <nav className={styles.nav}>
+          <span className={`${styles.navLabel} ${collapsed ? styles.hidden : ''}`}>Menu principal</span>
+          {mainNav.map((item) => (
+            <NavLink
+              key={item.path}
+              to={item.path}
+              className={({ isActive }) =>
+                `${styles.navItem} ${isActive ? styles.active : ''}`
+              }
+              title={collapsed ? item.label : undefined}
+              onClick={onMobileClose}
+            >
+              <span className={styles.navIcon}>{icons[item.icon]}</span>
+              <span className={`${styles.navText} ${collapsed ? styles.hidden : ''}`}>
+                {item.label}
+              </span>
+              {item.badge && !collapsed && (
+                <span className={styles.badge}>{item.badge}</span>
+              )}
+              {item.badge && collapsed && <span className={styles.badgeDot} />}
+            </NavLink>
+          ))}
+        </nav>
+
+        {/* Bottom */}
+        <div className={styles.bottom}>
+          <NavLink
+            to="/settings"
+            className={({ isActive }) =>
+              `${styles.navItem} ${isActive ? styles.active : ''}`
+            }
+            title={collapsed ? 'Configurações' : undefined}
+            onClick={onMobileClose}
+          >
+            <span className={styles.navIcon}>{icons.settings}</span>
+            <span className={`${styles.navText} ${collapsed ? styles.hidden : ''}`}>
+              Configurações
+            </span>
+          </NavLink>
+
+          <button className={styles.collapseBtn} onClick={onToggle}>
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              style={{ transform: collapsed ? 'rotate(180deg)' : 'none', transition: 'transform 0.3s ease' }}
+            >
+              <polyline points="11 17 6 12 11 7" />
+              <polyline points="18 17 13 12 18 7" />
+            </svg>
+            <span className={`${styles.navText} ${collapsed ? styles.hidden : ''}`}>Recolher</span>
+          </button>
+        </div>
+      </aside>
+    </>
+  );
+}
+
+export default Sidebar;
