@@ -1,0 +1,543 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  animation: fadeIn 0.35s ease;
+}
+
+.breadcrumbs {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+}
+
+.breadcrumbs a {
+  color: var(--text-secondary);
+  font-weight: 700;
+}
+
+.header,
+.card,
+.emptyState,
+.successState {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 22px;
+  box-shadow: 0 18px 56px rgba(15, 23, 42, 0.05);
+}
+
+.header {
+  padding: 26px;
+  background:
+    radial-gradient(circle at top right, rgba(var(--primary-color-rgb), 0.14), transparent 38%),
+    #ffffff;
+}
+
+.headerBadge,
+.successBadge,
+.checkoutLabel,
+.packageLabel,
+.successLabel {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  min-height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.headerBadge,
+.checkoutLabel {
+  background: rgba(var(--primary-color-rgb), 0.1);
+  color: var(--primary-color);
+}
+
+.title {
+  font-size: clamp(1.8rem, 3vw, 2.5rem);
+  line-height: 1.08;
+  letter-spacing: -0.04em;
+  color: var(--text-primary);
+  margin: 14px 0 10px;
+}
+
+.subtitle,
+.cardSub,
+.serviceInfo p,
+.timelineItem p,
+.tipText,
+.priceRow span,
+.packageFeature,
+.protectionItem,
+.addonTop p,
+.field,
+.emptyText,
+.successText {
+  color: var(--text-secondary);
+  line-height: 1.7;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) 360px;
+  gap: 20px;
+  align-items: start;
+}
+
+.mainColumn,
+.sidebar,
+.formGrid,
+.addonList,
+.timeline,
+.protectionList,
+.priceRows,
+.packageFeatures,
+.successGrid,
+.successActions {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.sidebar {
+  position: sticky;
+  top: 88px;
+}
+
+.card {
+  padding: 22px 24px;
+}
+
+.cardHead,
+.serviceSummary,
+.sellerChip,
+.packageBox,
+.addonTop,
+.timelineItem,
+.checkoutTop,
+.priceRow {
+  display: flex;
+}
+
+.cardHead {
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.cardTitle {
+  font-size: 1rem;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.serviceSummary {
+  gap: 18px;
+  align-items: stretch;
+  padding: 20px;
+  border-radius: 20px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-light);
+}
+
+.sellerChip {
+  align-items: center;
+  gap: 12px;
+  min-width: 200px;
+}
+
+.avatar,
+.timelineIndex,
+.protectionIcon,
+.emptyIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.avatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, var(--primary-color), #22c55e);
+  color: #fff;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.sellerChip strong,
+.serviceInfo h3,
+.packageBox strong,
+.addonTop h3,
+.timelineItem h3,
+.checkoutTop h2,
+.priceTotal strong,
+.successCard strong,
+.emptyTitle,
+.successTitle {
+  color: var(--text-primary);
+}
+
+.sellerChip span,
+.packageBox small {
+  display: block;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+
+.serviceInfo {
+  flex: 1;
+}
+
+.serviceInfo h3 {
+  font-size: 1.02rem;
+  line-height: 1.45;
+  margin-bottom: 8px;
+}
+
+.packageBox {
+  min-width: 180px;
+  border-radius: 18px;
+  padding: 16px;
+  background: linear-gradient(180deg, var(--bg-accent-soft), var(--bg-primary));
+  border: 1px solid rgba(var(--primary-color-rgb), 0.08);
+  flex-direction: column;
+  gap: 8px;
+}
+
+.packageLabel {
+  background: var(--info-bg);
+  color: var(--info-color);
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.input,
+.textarea {
+  width: 100%;
+  border-radius: 14px;
+  border: 1.5px solid var(--border-color);
+  background: var(--bg-primary);
+  padding: 13px 14px;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.input:focus,
+.textarea:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(var(--primary-color-rgb), 0.1);
+}
+
+.textarea {
+  resize: vertical;
+  min-height: 120px;
+}
+
+.addonCard {
+  width: 100%;
+  text-align: left;
+  padding: 18px;
+  border-radius: 18px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-primary);
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+.addonCard:hover {
+  transform: translateY(-2px);
+}
+
+.addonCardActive {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 4px rgba(var(--primary-color-rgb), 0.08);
+  background: var(--bg-accent-soft);
+}
+
+.addonTop {
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.addonTop strong {
+  flex-shrink: 0;
+}
+
+.addonState {
+  display: inline-block;
+  margin-top: 14px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--primary-color);
+}
+
+.timelineItem {
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.timelineIndex {
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  background: rgba(var(--primary-color-rgb), 0.12);
+  color: var(--primary-color);
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.checkoutCard {
+  background:
+    radial-gradient(circle at top right, rgba(var(--primary-color-rgb), 0.14), transparent 38%),
+    #ffffff;
+}
+
+.checkoutTop {
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.checkoutTop h2 {
+  margin-top: 8px;
+  font-size: 1.18rem;
+}
+
+.checkoutTop strong {
+  font-size: 1.75rem;
+  line-height: 1;
+}
+
+.priceRow {
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0 0 12px;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.priceRow strong {
+  color: var(--text-primary);
+}
+
+.priceTotal {
+  padding-top: 2px;
+  border-bottom: none;
+}
+
+.packageFeature {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 0.84rem;
+}
+
+.featureDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--primary-color);
+  margin-top: 8px;
+  flex-shrink: 0;
+}
+
+.primaryButton,
+.secondaryButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 48px;
+  border-radius: 14px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: transform 0.18s ease, opacity 0.18s ease;
+}
+
+.primaryButton {
+  background: linear-gradient(135deg, var(--primary-color), #4f8df5);
+  color: #fff;
+  box-shadow: 0 12px 28px rgba(var(--primary-color-rgb), 0.24);
+}
+
+.primaryButton:disabled {
+  opacity: 0.75;
+  cursor: wait;
+}
+
+.secondaryButton {
+  border: 1px solid var(--border-color);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+.primaryButton:hover,
+.secondaryButton:hover {
+  transform: translateY(-1px);
+  opacity: 1;
+}
+
+.protectionItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.protectionIcon {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: rgba(var(--primary-color-rgb), 0.1);
+  color: var(--primary-color);
+  flex-shrink: 0;
+}
+
+.tipText {
+  margin-top: 12px;
+}
+
+.emptyState,
+.successState {
+  min-height: 420px;
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.emptyIcon {
+  width: 78px;
+  height: 78px;
+  border-radius: 24px;
+  background: rgba(var(--primary-color-rgb), 0.1);
+  color: var(--primary-color);
+}
+
+.successState {
+  background:
+    radial-gradient(circle at top right, rgba(var(--primary-color-rgb), 0.14), transparent 36%),
+    var(--bg-primary);
+}
+
+.successBadge {
+  background: var(--success-bg);
+  color: var(--success-color);
+}
+
+.successTitle {
+  max-width: 760px;
+  font-size: clamp(1.8rem, 3vw, 2.6rem);
+  line-height: 1.08;
+  letter-spacing: -0.04em;
+}
+
+.successText {
+  max-width: 760px;
+}
+
+.successGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  width: 100%;
+  max-width: 960px;
+}
+
+.successCard {
+  padding: 18px;
+  border-radius: 18px;
+  border: 1px solid var(--border-light);
+  background: var(--bg-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.successLabel {
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+}
+
+.successActions {
+  flex-direction: row;
+  width: 100%;
+  max-width: 480px;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (max-width: 1180px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    position: static;
+  }
+}
+
+@media (max-width: 860px) {
+  .formGrid,
+  .successGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .serviceSummary,
+  .checkoutTop {
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 560px) {
+  .header,
+  .card,
+  .emptyState,
+  .successState {
+    padding: 18px;
+    border-radius: 18px;
+  }
+
+  .successActions {
+    flex-direction: column;
+  }
+
+  .addonTop,
+  .cardHead {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

@@ -5,7 +5,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #f8f8fb;
+  background: var(--bg-secondary);
   position: relative;
   overflow: hidden;
   padding: 2rem;
@@ -83,7 +83,7 @@
 .title {
   font-size: 2rem;
   font-weight: 800;
-  color: #1a1a2e;
+  color: var(--text-primary);
   margin: 0 0 0.75rem;
   letter-spacing: -0.5px;
   line-height: 1.2;
@@ -91,7 +91,7 @@
 
 .subtitle {
   font-size: 1rem;
-  color: #6c6d72;
+  color: var(--text-secondary);
   margin: 0;
   max-width: 520px;
   margin-left: auto;
@@ -109,8 +109,8 @@
 
 .card {
   position: relative;
-  background: #fff;
-  border: 2px solid #e8e8ef;
+  background: var(--bg-primary);
+  border: 2px solid var(--border-color);
   border-radius: 20px;
   padding: 2rem 1.75rem;
   cursor: pointer;
@@ -119,14 +119,14 @@
 }
 
 .card:hover {
-  border-color: #c8c8d8;
+  border-color: var(--text-muted);
   transform: translateY(-2px);
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06);
 }
 
 .cardSelected {
   border-color: var(--primary-color) !important;
-  background: linear-gradient(180deg, rgba(var(--primary-color-rgb, 99, 102, 241), 0.02) 0%, #fff 100%);
+  background: linear-gradient(180deg, rgba(var(--primary-color-rgb, 99, 102, 241), 0.02) 0%, var(--bg-primary) 100%);
   box-shadow: 0 8px 30px rgba(var(--primary-color-rgb, 99, 102, 241), 0.12);
   transform: translateY(-2px);
 }
@@ -139,7 +139,7 @@
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  border: 2px solid #d0d0da;
+  border: 2px solid var(--border-color);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -168,11 +168,11 @@
   width: 56px;
   height: 56px;
   border-radius: 16px;
-  background: #f0f0f5;
+  background: var(--bg-tertiary);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #6c6d72;
+  color: var(--text-secondary);
   margin-bottom: 1.25rem;
   transition: all 0.3s ease;
 }
@@ -190,20 +190,20 @@
 .cardTitle {
   font-size: 1.25rem;
   font-weight: 700;
-  color: #1a1a2e;
+  color: var(--text-primary);
   margin: 0 0 4px;
 }
 
 .cardSubtitle {
   font-size: 0.85rem;
-  color: #9090a0;
+  color: var(--text-muted);
   font-weight: 500;
   margin-bottom: 0.75rem;
 }
 
 .cardDescription {
   font-size: 0.88rem;
-  color: #6c6d72;
+  color: var(--text-secondary);
   line-height: 1.6;
   margin: 0 0 1.25rem;
 }
@@ -220,12 +220,12 @@
   align-items: center;
   gap: 10px;
   font-size: 0.82rem;
-  color: #505060;
+  color: var(--text-secondary);
   font-weight: 500;
 }
 
 .featureCheck {
-  color: #22c55e;
+  color: var(--success-color);
   flex-shrink: 0;
 }
 

@@ -76,7 +76,7 @@
 }
 
 .searchInput::placeholder { color: var(--text-muted, #b0b0b8); }
-.searchInput:hover { border-color: #d4d4de; }
+.searchInput:hover { border-color: var(--text-muted); }
 
 .searchInput:focus {
   border-color: var(--primary-color);
@@ -121,7 +121,7 @@
   transition: all 0.15s ease;
   background: var(--bg-primary);
 }
-.iconBtn:hover { background: var(--bg-tertiary, #eef0f6); border-color: #d4d4de; }
+.iconBtn:hover { background: var(--bg-tertiary, #eef0f6); border-color: var(--text-muted); }
 
 .notifDot {
   position: absolute;
@@ -151,7 +151,7 @@
   transition: all 0.15s ease;
   background: var(--bg-primary);
 }
-.userBtn:hover { background: var(--bg-tertiary, #eef0f6); border-color: #d4d4de; }
+.userBtn:hover { background: var(--bg-tertiary, #eef0f6); border-color: var(--text-muted); }
 
 .avatar {
   width: 34px;

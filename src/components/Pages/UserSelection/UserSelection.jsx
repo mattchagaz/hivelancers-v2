@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { setStoredUserRole } from '../../../utils/userRole';
 import styles from './UserSelection.module.css';
 
 function UserSelection() {
@@ -11,8 +12,7 @@ function UserSelection() {
     if (!selected) return;
     setIsLeaving(true);
 
-    // TODO: salvar o role do usuário no backend/context
-    // Ex: updateUserRole(selected);
+    setStoredUserRole(selected);
 
     setTimeout(() => {
       navigate('/welcome-user', { state: { role: selected } });

@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800&display=swap');
+
 /* ===== Reset & Base ===== */
 *,
 *::before,
@@ -99,12 +101,12 @@ input, textarea, select {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #d0d0da;
+  background: var(--border-color);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #b0b0b8;
+  background: var(--text-muted);
 }
 
 /* ===== Selection ===== */
@@ -112,6 +114,3 @@ input, textarea, select {
   background: rgba(var(--primary-color-rgb), 0.15);
   color: var(--text-primary);
 }
-
-/* ===== Google Font Import ===== */
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800&display=swap');

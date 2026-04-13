@@ -3,7 +3,7 @@
   min-height: 100vh;
   width: 100%;
   display: flex;
-  background: #fafafa;
+  background: var(--bg-secondary);
 }
 
 /* ===== Brand Side (esquerda) ===== */
@@ -139,13 +139,13 @@
 .formTitle {
   font-size: 1.75rem;
   font-weight: 700;
-  color: #1a1a2e;
+  color: var(--text-primary);
   margin: 0 0 0.5rem;
 }
 
 .formSubtitle {
   font-size: 0.95rem;
-  color: #6c6d72;
+  color: var(--text-secondary);
   margin: 0;
 }
 
@@ -165,7 +165,7 @@
 .label {
   font-size: 0.8rem;
   font-weight: 600;
-  color: #3a3a4a;
+  color: var(--text-primary);
   letter-spacing: 0.2px;
 }
 
@@ -198,7 +198,7 @@
   position: absolute;
   left: 14px;
   font-size: 0.85rem;
-  color: #b0b0b8;
+  color: var(--text-muted);
   pointer-events: none;
   transition: color 0.2s;
 }
@@ -211,21 +211,21 @@
   width: 100%;
   padding: 13px 14px 13px 42px;
   border-radius: 12px;
-  border: 1.5px solid #e2e2ea;
-  background: #fff;
+  border: 1.5px solid var(--border-color);
+  background: var(--bg-primary);
   font-size: 0.9rem;
-  color: #1a1a2e;
+  color: var(--text-primary);
   transition: all 0.2s ease;
   outline: none;
 }
 
 .input::placeholder {
-  color: #b0b0b8;
+  color: var(--text-muted);
   font-size: 0.85rem;
 }
 
 .input:hover {
-  border-color: #c8c8d4;
+  border-color: var(--text-muted);
 }
 
 .input:focus {
@@ -238,7 +238,7 @@
   right: 12px;
   background: none;
   border: none;
-  color: #b0b0b8;
+  color: var(--text-muted);
   cursor: pointer;
   padding: 4px;
   display: flex;
@@ -248,7 +248,7 @@
 }
 
 .togglePassword:hover {
-  color: #6c6d72;
+  color: var(--text-secondary);
 }
 
 /* ===== Botão Submit ===== */
@@ -304,12 +304,12 @@
 .dividerLine {
   flex: 1;
   height: 1px;
-  background: #e2e2ea;
+  background: var(--border-color);
 }
 
 .dividerText {
   font-size: 0.78rem;
-  color: #a0a0ab;
+  color: var(--text-muted);
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -319,12 +319,12 @@
 .socialBtn {
   width: 100%;
   padding: 13px;
-  border: 1.5px solid #e2e2ea;
+  border: 1.5px solid var(--border-color);
   border-radius: 12px;
-  background: #fff;
+  background: var(--bg-primary);
   font-size: 0.88rem;
   font-weight: 500;
-  color: #3a3a4a;
+  color: var(--text-primary);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -334,8 +334,8 @@
 }
 
 .socialBtn:hover {
-  background: #f5f5f8;
-  border-color: #c8c8d4;
+  background: var(--bg-tertiary);
+  border-color: var(--text-muted);
 }
 
 /* ===== Footer ===== */
@@ -343,7 +343,7 @@
   text-align: center;
   margin-top: 2rem;
   font-size: 0.88rem;
-  color: #6c6d72;
+  color: var(--text-secondary);
 }
 
 .footerLink {

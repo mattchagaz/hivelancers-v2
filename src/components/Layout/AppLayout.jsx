@@ -2,14 +2,14 @@ import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar/Sidebar';
 import TopBar from '../TopBar/TopBar';
+import { getStoredUserRole } from '../../utils/userRole';
 import styles from './AppLayout.module.css';
 
 function AppLayout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
-  // TODO: pegar do contexto de autenticação
-  const userRole = 'freelancer';
+  const userRole = getStoredUserRole();
   const userName = 'João Silva';
 
   const toggleSidebar = () => {

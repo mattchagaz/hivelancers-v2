@@ -7,6 +7,9 @@ import AppLayout from './components/Layout/AppLayout';
 import Dashboard from './components/Pages/Dashboard/Dashboard';
 import CreateService from './components/Pages/CreateService/CreateService';
 import ExploreServices from './components/Pages/ExploreServices/ExploreServices';
+import ServiceDetails from './components/Pages/ServiceDetails/ServiceDetails';
+import Checkout from './components/Pages/Checkout/Checkout';
+import Settings from './components/Pages/Settings/Settings';
 import './App.css';
 
 function App() {
@@ -28,9 +31,11 @@ function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/services/new" element={<CreateService />} />
           <Route path="/services" element={<ExploreServices />} />
+          <Route path="/services/:id" element={<ServiceDetails />} />
+          <Route path="/checkout/:id" element={<Checkout />} />
           <Route path="/explore" element={<ExploreServices />} />
+          <Route path="/settings" element={<Settings />} />
           {/* TODO: rotas futuras */}
-          {/* <Route path="/services/:id" element={<ServiceDetails />} /> */}
           {/* <Route path="/orders" element={<Orders />} /> */}
           {/* <Route path="/messages" element={<Messages />} /> */}
           {/* <Route path="/finances" element={<Finances />} /> */}

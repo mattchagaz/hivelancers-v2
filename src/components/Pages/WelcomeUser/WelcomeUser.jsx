@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { getStoredUserRole } from '../../../utils/userRole';
 import styles from './WelcomeUser.module.css';
 
 function WelcomeUser() {
@@ -7,7 +8,7 @@ function WelcomeUser() {
   const [isLeaving, setIsLeaving] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-  const role = location.state?.role || 'freelancer';
+  const role = location.state?.role || getStoredUserRole() || 'freelancer';
 
   const isFreelancer = role === 'freelancer';
 

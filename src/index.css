@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800&display=swap');
+
 /* ===== Reset & Base ===== */
 *,
 *::before,
@@ -28,11 +30,78 @@
   --bg-primary: #ffffff;
   --bg-secondary: #f5f6fa;
   --bg-tertiary: #eef0f6;
+  --bg-subtle: #fbfcfe;
+  --bg-accent-soft: #f7faff;
   --text-primary: #1a1a2e;
   --text-secondary: #6c6d72;
   --text-muted: #a0a0ab;
   --border-color: #e8e8ef;
   --border-light: #f0f0f5;
+  --shadow-rgb: 15, 23, 42;
+  --shadow-strength: 0.05;
+
+  /* Semânticas — estados e badges */
+  --info-bg: #eff6ff;
+  --info-color: #2563eb;
+  --info-strong: #1d4ed8;
+  --success-bg: #ecfdf5;
+  --success-color: #059669;
+  --success-strong: #047857;
+  --warning-bg: #fffbeb;
+  --warning-color: #d97706;
+  --warning-strong: #b45309;
+  --danger-bg: #fef2f2;
+  --danger-color: #dc2626;
+  --danger-strong: #b91c1c;
+  --purple-bg: #f5f3ff;
+  --purple-color: #7c3aed;
+  --purple-strong: #6d28d9;
+  --orange-bg: #fff7ed;
+  --orange-color: #ea580c;
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --bg-primary: #13151c;
+  --bg-secondary: #0a0c12;
+  --bg-tertiary: #1e212b;
+  --bg-subtle: #181b24;
+  --bg-accent-soft: #161a28;
+  --text-primary: #f1f2f5;
+  --text-secondary: #9ca3af;
+  --text-muted: #6b7280;
+  --border-color: #252833;
+  --border-light: #1e212b;
+  --shadow-rgb: 0, 0, 0;
+  --shadow-strength: 0.3;
+
+  --info-bg: rgba(59, 130, 246, 0.14);
+  --info-color: #60a5fa;
+  --info-strong: #93c5fd;
+  --success-bg: rgba(16, 185, 129, 0.14);
+  --success-color: #34d399;
+  --success-strong: #6ee7b7;
+  --warning-bg: rgba(245, 158, 11, 0.14);
+  --warning-color: #fbbf24;
+  --warning-strong: #fcd34d;
+  --danger-bg: rgba(239, 68, 68, 0.14);
+  --danger-color: #f87171;
+  --danger-strong: #fca5a5;
+  --purple-bg: rgba(167, 139, 250, 0.14);
+  --purple-color: #a78bfa;
+  --purple-strong: #c4b5fd;
+  --orange-bg: rgba(249, 115, 22, 0.14);
+  --orange-color: #fb923c;
+}
+
+[data-reduced-motion="true"] *,
+[data-reduced-motion="true"] *::before,
+[data-reduced-motion="true"] *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
 }
 
 html, body {
@@ -99,12 +168,12 @@ input, textarea, select {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #d0d0da;
+  background: var(--border-color);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #b0b0b8;
+  background: var(--text-muted);
 }
 
 /* ===== Selection ===== */
@@ -112,6 +181,3 @@ input, textarea, select {
   background: rgba(var(--primary-color-rgb), 0.15);
   color: var(--text-primary);
 }
-
-/* ===== Google Font Import ===== */
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800&display=swap');
