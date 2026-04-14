@@ -1,22 +1,34 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import { setStoredUserRole } from '../../../utils/userRole';
+import { toUserType } from '../../../utils/authFlow';
+import { updateUserType } from '../../../services/users';
+import { useAuth } from '../../../contexts/AuthContext';
 import styles from './UserSelection.module.css';
 
 function UserSelection() {
   const [selected, setSelected] = useState(null);
   const [isLeaving, setIsLeaving] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const navigate = useNavigate();
+  const { setUser } = useAuth();
 
-  const handleContinue = () => {
-    if (!selected) return;
-    setIsLeaving(true);
-
-    setStoredUserRole(selected);
-
-    setTimeout(() => {
-      navigate('/welcome-user', { state: { role: selected } });
-    }, 600);
+  const handleContinue = async () => {
+    if (!selected || isSaving) return;
+    setIsSaving(true);
+    try {
+      const updated = await updateUserType(toUserType(selected));
+      setUser(updated);
+      setStoredUserRole(selected);
+      setIsLeaving(true);
+      setTimeout(() => {
+        navigate('/welcome-user', { state: { role: selected } });
+      }, 600);
+    } catch (err) {
+      toast.error(err.message);
+      setIsSaving(false);
+    }
   };
 
   const roles = [
@@ -128,10 +140,10 @@ function UserSelection() {
         <div className={styles.actions}>
           <button
             className={styles.continueBtn}
-            disabled={!selected}
+            disabled={!selected || isSaving}
             onClick={handleContinue}
           >
-            Continuar
+            {isSaving ? 'Salvando...' : 'Continuar'}
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <line x1="5" y1="12" x2="19" y2="12" />
               <polyline points="12 5 19 12 12 19" />

@@ -588,14 +588,14 @@
   width: 32px;
   height: 32px;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.9);
+  background: var(--surface-floating);
   color: var(--text-primary);
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all 0.15s;
 }
-.imageBtn:hover { background: var(--bg-primary); transform: scale(1.1); }
+.imageBtn:hover { background: var(--surface-floating-hover); transform: scale(1.1); }
 .imageBtnDanger:hover { background: var(--danger-bg); color: var(--danger-color); }
 
 /* ===== FAQ ===== */

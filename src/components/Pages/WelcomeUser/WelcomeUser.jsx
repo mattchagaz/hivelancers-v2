@@ -1,14 +1,18 @@
 import { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { getStoredUserRole } from '../../../utils/userRole';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
+import { useAuth } from '../../../contexts/AuthContext';
+import { completeOnboarding } from '../../../services/users';
+import { toRoleSlug } from '../../../utils/authFlow';
 import styles from './WelcomeUser.module.css';
 
 function WelcomeUser() {
   const [currentStep, setCurrentStep] = useState(0);
   const [isLeaving, setIsLeaving] = useState(false);
+  const [isFinishing, setIsFinishing] = useState(false);
   const navigate = useNavigate();
-  const location = useLocation();
-  const role = location.state?.role || getStoredUserRole() || 'freelancer';
+  const { user, setUser } = useAuth();
+  const role = toRoleSlug(user?.userType) || 'freelancer';
 
   const isFreelancer = role === 'freelancer';
 
@@ -108,13 +112,23 @@ function WelcomeUser() {
   const isLast = currentStep === steps.length - 1;
   const isFirst = currentStep === 0;
 
+  const finishOnboarding = async () => {
+    if (isFinishing) return;
+    setIsFinishing(true);
+    try {
+      const updated = await completeOnboarding();
+      setUser(updated);
+      setIsLeaving(true);
+      setTimeout(() => navigate('/dashboard'), 500);
+    } catch (err) {
+      toast.error(err.message);
+      setIsFinishing(false);
+    }
+  };
+
   const handleNext = () => {
     if (isLast) {
-      setIsLeaving(true);
-      setTimeout(() => {
-        // TODO: marcar onboarding como completo no backend
-        navigate('/dashboard');
-      }, 500);
+      finishOnboarding();
     } else {
       setCurrentStep((prev) => prev + 1);
     }
@@ -125,10 +139,7 @@ function WelcomeUser() {
   };
 
   const handleSkip = () => {
-    setIsLeaving(true);
-    setTimeout(() => {
-      navigate('/dashboard');
-    }, 500);
+    finishOnboarding();
   };
 
   /* Ícones visuais por step */

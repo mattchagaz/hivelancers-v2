@@ -33,7 +33,7 @@
   padding: 26px;
   background:
     radial-gradient(circle at top right, rgba(var(--primary-color-rgb), 0.14), transparent 38%),
-    #ffffff;
+    var(--surface-gradient);
 }
 
 .headerBadge,
@@ -316,7 +316,7 @@
 .checkoutCard {
   background:
     radial-gradient(circle at top right, rgba(var(--primary-color-rgb), 0.14), transparent 38%),
-    #ffffff;
+    var(--surface-gradient);
 }
 
 .checkoutTop {

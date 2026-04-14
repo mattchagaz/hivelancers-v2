@@ -39,6 +39,10 @@
   --border-light: #f0f0f5;
   --shadow-rgb: 15, 23, 42;
   --shadow-strength: 0.05;
+  --overlay-soft: rgba(15, 23, 42, 0.04);
+  --surface-floating: rgba(255, 255, 255, 0.92);
+  --surface-floating-hover: #ffffff;
+  --surface-gradient: linear-gradient(180deg, #ffffff, #fdfdff);
 
   /* Semânticas — estados e badges */
   --info-bg: #eff6ff;
@@ -75,6 +79,10 @@
   --border-light: #1e212b;
   --shadow-rgb: 0, 0, 0;
   --shadow-strength: 0.3;
+  --overlay-soft: rgba(255, 255, 255, 0.08);
+  --surface-floating: rgba(24, 27, 36, 0.92);
+  --surface-floating-hover: #232735;
+  --surface-gradient: linear-gradient(180deg, var(--bg-primary), var(--bg-subtle));
 
   --info-bg: rgba(59, 130, 246, 0.14);
   --info-color: #60a5fa;
@@ -116,6 +124,7 @@ body {
   background: var(--bg-secondary);
   color: var(--text-primary);
   min-width: 320px;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 #root {

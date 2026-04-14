@@ -1,6 +1,9 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import LoginP from './components/Auth/Login/Login';
 import SignupP from './components/Auth/Signup/Signup';
+import VerifyOtp from './components/Auth/VerifyOtp/VerifyOtp';
+import ForgetPassword from './components/Auth/ForgetPassword/ForgetPassword';
+import { ProtectedRoute, PublicOnlyRoute } from './components/Auth/ProtectedRoute';
 import UserSelection from './components/Pages/UserSelection/UserSelection';
 import WelcomeUser from './components/Pages/WelcomeUser/Welcomeuser';
 import AppLayout from './components/Layout/AppLayout';
@@ -18,31 +21,31 @@ function App() {
       <Routes>
         <Route path="/" element={<Navigate to="/login" replace />} />
 
-        {/* Auth */}
-        <Route path="/login" element={<LoginP />} />
-        <Route path="/signup" element={<SignupP />} />
+        {/* Auth — públicas (redirecionam se já estiver logado) */}
+        <Route element={<PublicOnlyRoute />}>
+          <Route path="/login" element={<LoginP />} />
+          <Route path="/signup" element={<SignupP />} />
+          <Route path="/forget-password" element={<ForgetPassword />} />
+        </Route>
 
-        {/* Onboarding */}
-        <Route path="/user-selection" element={<UserSelection />} />
-        <Route path="/welcome-user" element={<WelcomeUser />} />
+        {/* OTP — acessível mesmo sem sessão (fluxo de pós-cadastro) */}
+        <Route path="/verify-otp" element={<VerifyOtp />} />
 
-        {/* App principal */}
-        <Route element={<AppLayout />}>
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/services/new" element={<CreateService />} />
-          <Route path="/services" element={<ExploreServices />} />
-          <Route path="/services/:id" element={<ServiceDetails />} />
-          <Route path="/checkout/:id" element={<Checkout />} />
-          <Route path="/explore" element={<ExploreServices />} />
-          <Route path="/settings" element={<Settings />} />
-          {/* TODO: rotas futuras */}
-          {/* <Route path="/orders" element={<Orders />} /> */}
-          {/* <Route path="/messages" element={<Messages />} /> */}
-          {/* <Route path="/finances" element={<Finances />} /> */}
-          {/* <Route path="/rewards" element={<Rewards />} /> */}
-          {/* <Route path="/settings" element={<Settings />} /> */}
-          {/* <Route path="/profile" element={<Profile />} /> */}
-          {/* <Route path="/favorites" element={<Favorites />} /> */}
+        {/* Onboarding — exige login */}
+        <Route element={<ProtectedRoute />}>
+          <Route path="/user-selection" element={<UserSelection />} />
+          <Route path="/welcome-user" element={<WelcomeUser />} />
+
+          {/* App principal */}
+          <Route element={<AppLayout />}>
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/services/new" element={<CreateService />} />
+            <Route path="/services" element={<ExploreServices />} />
+            <Route path="/services/:id" element={<ServiceDetails />} />
+            <Route path="/checkout/:id" element={<Checkout />} />
+            <Route path="/explore" element={<ExploreServices />} />
+            <Route path="/settings" element={<Settings />} />
+          </Route>
         </Route>
 
         <Route path="*" element={<Navigate to="/login" replace />} />

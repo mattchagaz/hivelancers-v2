@@ -14,7 +14,7 @@ import {
   FaArrowLeft,
 } from 'react-icons/fa';
 import { Link, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import { registerUser } from '../../../services/auth';
 
 function SignupP() {
   const [step, setStep] = useState(1);
@@ -128,19 +128,24 @@ function SignupP() {
     if (!validateStep2()) return;
 
     setIsLoading(true);
-
-    // TODO: substituir pelo POST real para a API quando o backend estiver pronto
-    // try {
-    //   await axios.post('https://hivelancers-newapi.onrender.com/api/auth/register', formData);
-    // } catch (error) { ... }
-
-    // Mock: simula criação de conta e redireciona para seleção de perfil
-    setTimeout(() => {
-      setIsLoading(false);
-      toast.success('Conta criada com sucesso!');
+    try {
+      await registerUser({
+        firstName: formData.firstName.trim(),
+        lastName: formData.lastName.trim(),
+        phone: formData.phone,
+        email: formData.email.trim().toLowerCase(),
+        password: formData.password,
+      });
+      toast.success('Conta criada! Enviamos um código para seu e-mail.');
       setIsFadingOut(true);
-      setTimeout(() => navigate('/user-selection'), 800);
-    }, 1200);
+      setTimeout(() => {
+        navigate(`/verify-otp?email=${encodeURIComponent(formData.email.trim().toLowerCase())}`);
+      }, 600);
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const allPasswordValid = Object.values(passwordRules).every(Boolean);

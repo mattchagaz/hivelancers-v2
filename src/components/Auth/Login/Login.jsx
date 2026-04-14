@@ -3,7 +3,9 @@ import { toast, Toaster } from 'sonner';
 import styles from './Login.module.css';
 import { Link, useNavigate } from 'react-router-dom';
 import { FaEnvelope, FaLock, FaEye, FaEyeSlash } from 'react-icons/fa';
-// import { useAuth } from '../../../services/AuthContext';
+import { useAuth } from '../../../contexts/AuthContext';
+import { resendOtp } from '../../../services/auth';
+import { nextRouteAfterAuth } from '../../../utils/authFlow';
 
 function Login() {
   const [email, setEmail] = useState('');
@@ -11,7 +13,7 @@ function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
-  // const { login } = useAuth();
+  const { login } = useAuth();
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -23,28 +25,20 @@ function Login() {
 
     setIsLoading(true);
     try {
-      const response = await fetch('https://hivelancers-newapi.onrender.com/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        // login(data.user);
-        toast.success('Login realizado com sucesso!');
-
-        if (data.isFirstLogin) {
-          navigate('/user-selection');
-        } else {
-          navigate('/welcome-user');
-        }
+      const data = await login({ email: email.trim().toLowerCase(), password });
+      toast.success('Login realizado com sucesso!');
+      navigate(nextRouteAfterAuth(data.user));
+    } catch (err) {
+      if (err.code === 'EMAIL_NOT_VERIFIED') {
+        const normalized = email.trim().toLowerCase();
+        toast.message('E-mail ainda não verificado. Enviamos um novo código...');
+        try { await resendOtp(normalized); } catch { /* ignore */ }
+        setTimeout(() => {
+          navigate(`/verify-otp?email=${encodeURIComponent(normalized)}`);
+        }, 800);
       } else {
-        toast.error(data.message || 'Credenciais inválidas.');
+        toast.error(err.message);
       }
-    } catch {
-      toast.error('Erro de conexão. Tente novamente.');
     } finally {
       setIsLoading(false);
     }

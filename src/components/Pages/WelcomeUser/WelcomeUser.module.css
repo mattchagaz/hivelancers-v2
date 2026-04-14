@@ -45,7 +45,7 @@
 
 .skipBtn:hover {
   color: var(--text-secondary);
-  background: rgba(0, 0, 0, 0.04);
+  background: var(--overlay-soft);
 }
 
 /* ===== Container ===== */

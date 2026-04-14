@@ -1,7 +1,23 @@
-import { useState } from 'react';
-import { getStoredUserRole } from '../../../utils/userRole';
+import { useEffect, useMemo, useState } from 'react';
+import { toast } from 'sonner';
+import { useAuth } from '../../../contexts/AuthContext';
 import { useSettings } from '../../../contexts/SettingsContext';
+import { updateProfile as apiUpdateProfile, updateUserType } from '../../../services/users';
+import { toRoleSlug, toUserType } from '../../../utils/authFlow';
+import { formatPhoneBR } from '../../../utils/formatters';
 import styles from './Settings.module.css';
+
+const profileFromUser = (user) => ({
+  firstName: user?.firstName || '',
+  lastName: user?.lastName || '',
+  email: user?.email || '',
+  phone: formatPhoneBR(user?.phone || ''),
+  username: user?.username || '',
+  headline: user?.headline || '',
+  bio: user?.bio || '',
+  location: user?.location || '',
+  website: user?.website || '',
+});
 
 const TABS = [
   { id: 'profile', label: 'Perfil', icon: 'user' },
@@ -15,15 +31,50 @@ const TABS = [
 ];
 
 function Settings() {
-  const userRole = getStoredUserRole();
+  const { user, setUser } = useAuth();
+  const userRole = toRoleSlug(user?.userType) || 'freelancer';
   const isFreelancer = userRole === 'freelancer';
 
   const { settings, updateField, toggleField, updateSection } = useSettings();
-  const { profile, notifications, appearance, privacy, language } = settings;
+  const { notifications, appearance, privacy, language } = settings;
 
   const [activeTab, setActiveTab] = useState('profile');
 
-  const updateProfile = (field, value) => updateField('profile', field, value);
+  const [profile, setProfile] = useState(() => profileFromUser(user));
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const serverProfile = useMemo(() => profileFromUser(user), [user]);
+
+  useEffect(() => {
+    setProfile(serverProfile);
+  }, [serverProfile]);
+
+  const profileDirty = useMemo(
+    () => Object.keys(serverProfile).some((k) => (profile[k] || '') !== (serverProfile[k] || '')),
+    [profile, serverProfile]
+  );
+
+  const updateProfile = (field, value) => setProfile((prev) => ({ ...prev, [field]: value }));
+  const resetProfile = () => setProfile(serverProfile);
+
+  const saveProfile = async (fields) => {
+    if (isSavingProfile) return;
+    const payload = fields.reduce((acc, f) => {
+      const val = profile[f];
+      if (f === 'email') return acc; // email não é editável aqui
+      acc[f] = typeof val === 'string' ? val.trim() : val;
+      return acc;
+    }, {});
+    setIsSavingProfile(true);
+    try {
+      const updated = await apiUpdateProfile(payload);
+      setUser(updated);
+      toast.success('Perfil atualizado.');
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
   const toggleNotification = (field) => toggleField('notifications', field);
   const togglePrivacy = (field) => toggleField('privacy', field);
   const setNotifications = (updater) =>
@@ -63,11 +114,11 @@ function Settings() {
         <div className={styles.heroSide}>
           <div className={styles.profileCard}>
             <div className={styles.avatar}>
-              {profile.name.split(' ').map((part) => part[0]).slice(0, 2).join('')}
+              {`${profile.firstName} ${profile.lastName}`.trim().split(' ').map((part) => part[0]).filter(Boolean).slice(0, 2).join('').toUpperCase() || 'U'}
             </div>
             <div className={styles.profileInfo}>
-              <strong>{profile.name}</strong>
-              <span>@{profile.username}</span>
+              <strong>{`${profile.firstName} ${profile.lastName}`.trim() || 'Usuário'}</strong>
+              <span>{profile.username ? `@${profile.username}` : profile.email}</span>
               <div className={styles.roleTag}>
                 {isFreelancer ? 'Freelancer' : 'Cliente'}
               </div>
@@ -107,9 +158,27 @@ function Settings() {
 
         <div className={styles.content}>
           {activeTab === 'profile' && (
-            <ProfilePanel profile={profile} updateProfile={updateProfile} isFreelancer={isFreelancer} />
+            <ProfilePanel
+              profile={profile}
+              updateProfile={updateProfile}
+              isFreelancer={isFreelancer}
+              isSaving={isSavingProfile}
+              dirty={profileDirty}
+              onSave={() => saveProfile(['firstName', 'lastName', 'username', 'headline', 'location', 'bio', 'website'])}
+              onCancel={resetProfile}
+            />
           )}
-          {activeTab === 'account' && <AccountPanel profile={profile} updateProfile={updateProfile} />}
+          {activeTab === 'account' && (
+            <AccountPanel
+              profile={profile}
+              updateProfile={updateProfile}
+              userRole={userRole}
+              isSaving={isSavingProfile}
+              dirty={profileDirty}
+              onSave={() => saveProfile(['phone'])}
+              onCancel={resetProfile}
+            />
+          )}
           {activeTab === 'notifications' && (
             <NotificationsPanel notifications={notifications} toggleNotification={toggleNotification} setNotifications={setNotifications} />
           )}
@@ -172,7 +241,7 @@ function ToggleRow({ title, description, checked, onChange }) {
   );
 }
 
-function ProfilePanel({ profile, updateProfile, isFreelancer }) {
+function ProfilePanel({ profile, updateProfile, isFreelancer, isSaving, dirty, onSave, onCancel }) {
   return (
     <section className={styles.card}>
       <SectionHeader
@@ -181,23 +250,33 @@ function ProfilePanel({ profile, updateProfile, isFreelancer }) {
       />
 
       <div className={styles.formGrid}>
-        <Field label="Nome completo">
+        <Field label="Nome">
           <input
             type="text"
             className={styles.input}
-            value={profile.name}
-            onChange={(e) => updateProfile('name', e.target.value)}
+            value={profile.firstName}
+            onChange={(e) => updateProfile('firstName', e.target.value)}
           />
         </Field>
 
-        <Field label="Nome de usuário" hint="Aparece na URL do seu perfil público.">
+        <Field label="Sobrenome">
+          <input
+            type="text"
+            className={styles.input}
+            value={profile.lastName}
+            onChange={(e) => updateProfile('lastName', e.target.value)}
+          />
+        </Field>
+
+        <Field label="Nome de usuário" hint="Aparece na URL do seu perfil público. Apenas letras, números, . e _">
           <div className={styles.inputWithPrefix}>
             <span className={styles.inputPrefix}>hivelancers.com/</span>
             <input
               type="text"
               className={styles.input}
               value={profile.username}
-              onChange={(e) => updateProfile('username', e.target.value)}
+              placeholder="seu-usuario"
+              onChange={(e) => updateProfile('username', e.target.value.toLowerCase())}
             />
           </div>
         </Field>
@@ -220,7 +299,7 @@ function ProfilePanel({ profile, updateProfile, isFreelancer }) {
           />
         </Field>
 
-        <Field label="Bio" hint={`${profile.bio.length}/280 caracteres`}>
+        <Field label="Bio" hint={`${(profile.bio || '').length}/280 caracteres`}>
           <textarea
             className={`${styles.input} ${styles.textarea}`}
             value={profile.bio}
@@ -235,6 +314,7 @@ function ProfilePanel({ profile, updateProfile, isFreelancer }) {
             type="url"
             className={styles.input}
             value={profile.website}
+            placeholder="https://..."
             onChange={(e) => updateProfile('website', e.target.value)}
           />
         </Field>
@@ -256,24 +336,76 @@ function ProfilePanel({ profile, updateProfile, isFreelancer }) {
         </>
       )}
 
-      <FormActions />
+      <FormActions onSave={onSave} onCancel={onCancel} isSaving={isSaving} disabled={!dirty} />
     </section>
   );
 }
 
-function AccountPanel({ profile, updateProfile }) {
+function AccountTypeCard({ userRole }) {
+  const { setUser } = useAuth();
+  const [selected, setSelected] = useState(userRole);
+  const [isSaving, setIsSaving] = useState(false);
+  const dirty = selected !== userRole;
+
+  const save = async () => {
+    if (!dirty || isSaving) return;
+    setIsSaving(true);
+    try {
+      const updated = await updateUserType(toUserType(selected));
+      setUser(updated);
+      toast.success('Tipo de conta atualizado.');
+    } catch (err) {
+      toast.error(err.message);
+      setSelected(userRole);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <section className={styles.card}>
+      <SectionHeader title="Tipo de conta" subtitle="Escolha como você utiliza a Hivelancers. Você pode alternar quando quiser." />
+      <div className={styles.formGrid}>
+        <Field label="Perfil atual">
+          <select
+            className={styles.input}
+            value={selected}
+            onChange={(e) => setSelected(e.target.value)}
+          >
+            <option value="freelancer">Freelancer — ofereço serviços</option>
+            <option value="client">Cliente — contrato serviços</option>
+          </select>
+        </Field>
+      </div>
+      <div className={styles.formActions}>
+        <button
+          type="button"
+          className={styles.btnPrimary}
+          onClick={save}
+          disabled={!dirty || isSaving}
+        >
+          {isSaving ? 'Salvando...' : 'Salvar alteração'}
+        </button>
+      </div>
+    </section>
+  );
+}
+
+function AccountPanel({ profile, updateProfile, userRole, isSaving, dirty, onSave, onCancel }) {
   return (
     <>
+      <AccountTypeCard userRole={userRole} />
       <section className={styles.card}>
         <SectionHeader title="Conta e login" subtitle="Email, telefone e credenciais da sua conta." />
 
         <div className={styles.formGrid}>
-          <Field label="Email principal" hint="Usado para notificações e recuperação de conta.">
+          <Field label="Email principal" hint="Para alterar o email, entre em contato com o suporte.">
             <input
               type="email"
               className={styles.input}
               value={profile.email}
-              onChange={(e) => updateProfile('email', e.target.value)}
+              disabled
+              readOnly
             />
           </Field>
 
@@ -282,12 +414,14 @@ function AccountPanel({ profile, updateProfile }) {
               type="tel"
               className={styles.input}
               value={profile.phone}
-              onChange={(e) => updateProfile('phone', e.target.value)}
+              placeholder="(11) 99999-9999"
+              maxLength={16}
+              onChange={(e) => updateProfile('phone', formatPhoneBR(e.target.value))}
             />
           </Field>
         </div>
 
-        <FormActions />
+        <FormActions onSave={onSave} onCancel={onCancel} isSaving={isSaving} disabled={!dirty} />
       </section>
 
       <section className={styles.card}>
@@ -305,7 +439,10 @@ function AccountPanel({ profile, updateProfile }) {
           </Field>
         </div>
 
-        <FormActions primaryLabel="Atualizar senha" />
+        <FormActions
+          primaryLabel="Atualizar senha"
+          onSave={() => toast.message('Em breve você poderá alterar a senha por aqui.')}
+        />
       </section>
 
       <section className={styles.card}>
@@ -799,7 +936,7 @@ function LanguagePanel({ language, setLanguage }) {
         </Field>
       </div>
 
-      <FormActions />
+      <FormActions onSave={() => toast.success('Preferências salvas.')} />
     </section>
   );
 }
@@ -841,11 +978,20 @@ function DangerPanel() {
   );
 }
 
-function FormActions({ primaryLabel = 'Salvar alterações' }) {
+function FormActions({ primaryLabel = 'Salvar alterações', onSave, onCancel, isSaving = false, disabled = false }) {
   return (
     <div className={styles.formActions}>
-      <button type="button" className={styles.btnGhost}>Cancelar</button>
-      <button type="button" className={styles.btnPrimary}>{primaryLabel}</button>
+      <button type="button" className={styles.btnGhost} onClick={onCancel} disabled={isSaving || disabled}>
+        Cancelar
+      </button>
+      <button
+        type="button"
+        className={styles.btnPrimary}
+        onClick={onSave}
+        disabled={isSaving || disabled}
+      >
+        {isSaving ? 'Salvando...' : primaryLabel}
+      </button>
     </div>
   );
 }

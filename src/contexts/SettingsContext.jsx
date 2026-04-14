@@ -1,18 +1,9 @@
-import { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
 
 const STORAGE_KEY = 'hivelancers:settings';
 
 const DEFAULT_SETTINGS = {
-  profile: {
-    name: 'João Silva',
-    username: 'joaosilva',
-    headline: 'Designer de marcas e identidade visual',
-    bio: 'Há 6 anos ajudando marcas a nascerem fortes e consistentes. Foco em branding, logo e sistemas visuais.',
-    email: 'joao.silva@email.com',
-    phone: '+55 11 98765-4321',
-    location: 'São Paulo, SP',
-    website: 'https://joaosilva.design',
-  },
   notifications: {
     orderUpdates: true,
     messages: true,
@@ -60,7 +51,6 @@ function loadSettings() {
     if (!stored) return DEFAULT_SETTINGS;
     const parsed = JSON.parse(stored);
     return {
-      profile: { ...DEFAULT_SETTINGS.profile, ...(parsed.profile || {}) },
       notifications: { ...DEFAULT_SETTINGS.notifications, ...(parsed.notifications || {}) },
       appearance: { ...DEFAULT_SETTINGS.appearance, ...(parsed.appearance || {}) },
       privacy: { ...DEFAULT_SETTINGS.privacy, ...(parsed.privacy || {}) },
@@ -75,9 +65,16 @@ const SettingsContext = createContext(null);
 
 export function SettingsProvider({ children }) {
   const [settings, setSettings] = useState(loadSettings);
+  const initialSettings = useRef(settings);
+  const toastTimer = useRef(null);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+    if (settings === initialSettings.current) return;
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => {
+      toast.success('Preferências salvas.', { id: 'settings-saved', duration: 1500 });
+    }, 400);
   }, [settings]);
 
   useEffect(() => {

@@ -1,16 +1,19 @@
 import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
+import { Toaster } from 'sonner';
 import Sidebar from './Sidebar/Sidebar';
 import TopBar from '../TopBar/TopBar';
-import { getStoredUserRole } from '../../utils/userRole';
+import { useAuth } from '../../contexts/AuthContext';
+import { toRoleSlug } from '../../utils/authFlow';
 import styles from './AppLayout.module.css';
 
 function AppLayout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const { user } = useAuth();
 
-  const userRole = getStoredUserRole();
-  const userName = 'João Silva';
+  const userRole = toRoleSlug(user?.userType) || 'freelancer';
+  const userName = user ? `${user.firstName} ${user.lastName}`.trim() : '';
 
   const toggleSidebar = () => {
     if (window.innerWidth <= 768) {
@@ -42,6 +45,8 @@ function AppLayout() {
           <Outlet />
         </main>
       </div>
+
+      <Toaster position="top-center" richColors />
     </div>
   );
 }

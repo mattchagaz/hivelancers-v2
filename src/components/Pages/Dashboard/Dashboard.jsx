@@ -1,11 +1,11 @@
 import { Link } from 'react-router-dom';
 import { CATEGORIES, SERVICE_GRADIENTS, SERVICES } from '../../../data/services';
-import { getStoredUserRole } from '../../../utils/userRole';
+import { useAuth } from '../../../contexts/AuthContext';
 import styles from './Dashboard.module.css';
 
 function Dashboard() {
-  const userRole = getStoredUserRole();
-  const isFreelancer = userRole === 'freelancer';
+  const { user } = useAuth();
+  const isFreelancer = user?.userType !== 'CLIENT';
 
   return isFreelancer ? <FreelancerDashboard /> : <ClientDashboard />;
 }

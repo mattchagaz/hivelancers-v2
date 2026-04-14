@@ -1,8 +1,23 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
+import { useAuth } from '../../contexts/AuthContext';
 import styles from './TopBar.module.css';
 
-function TopBar({ userName = 'João', userRole = 'freelancer', onMenuToggle }) {
+function TopBar({ userName = '', userRole = 'freelancer', onMenuToggle }) {
   const [searchFocused, setSearchFocused] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef(null);
+  const navigate = useNavigate();
+  const { logout } = useAuth();
+
+  useEffect(() => {
+    const onClick = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false);
+    };
+    document.addEventListener('mousedown', onClick);
+    return () => document.removeEventListener('mousedown', onClick);
+  }, []);
 
   const getGreeting = () => {
     const h = new Date().getHours();
@@ -11,7 +26,19 @@ function TopBar({ userName = 'João', userRole = 'freelancer', onMenuToggle }) {
     return 'Boa noite';
   };
 
-  const initials = userName.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase();
+  const displayName = userName || 'Usuário';
+  const initials = displayName.split(' ').map((n) => n[0]).filter(Boolean).join('').slice(0, 2).toUpperCase();
+  const firstName = displayName.split(' ')[0];
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      toast.success('Sessão encerrada.');
+      navigate('/login', { replace: true });
+    } catch {
+      navigate('/login', { replace: true });
+    }
+  };
 
   return (
     <header className={styles.bar}>
@@ -25,7 +52,7 @@ function TopBar({ userName = 'João', userRole = 'freelancer', onMenuToggle }) {
 
       <div className={styles.greeting}>
         <h1 className={styles.greetText}>
-          {getGreeting()}, <span className={styles.greetName}>{userName.split(' ')[0]}</span>
+          {getGreeting()}, <span className={styles.greetName}>{firstName}</span>
         </h1>
         <p className={styles.greetSub}>
           {userRole === 'freelancer' ? 'Painel do Freelancer' : 'Painel do Cliente'}
@@ -58,18 +85,40 @@ function TopBar({ userName = 'João', userRole = 'freelancer', onMenuToggle }) {
 
         <div className={styles.sep} />
 
-        <button className={styles.userBtn}>
-          <div className={styles.avatar}>{initials}</div>
-          <div className={styles.userInfo}>
-            <span className={styles.userName}>{userName}</span>
-            <span className={styles.userRole}>
-              {userRole === 'freelancer' ? 'Freelancer' : 'Cliente'}
-            </span>
-          </div>
-          <svg className={styles.chevron} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-            <polyline points="6 9 12 15 18 9" />
-          </svg>
-        </button>
+        <div className={styles.userMenuWrap} ref={menuRef}>
+          <button className={styles.userBtn} onClick={() => setMenuOpen((v) => !v)}>
+            <div className={styles.avatar}>{initials || 'U'}</div>
+            <div className={styles.userInfo}>
+              <span className={styles.userName}>{displayName}</span>
+              <span className={styles.userRole}>
+                {userRole === 'freelancer' ? 'Freelancer' : 'Cliente'}
+              </span>
+            </div>
+            <svg className={styles.chevron} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </button>
+
+          {menuOpen && (
+            <div className={styles.userMenu}>
+              <Link to="/settings" className={styles.menuItem} onClick={() => setMenuOpen(false)}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="3" />
+                  <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09a1.65 1.65 0 00-1-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09a1.65 1.65 0 001.51-1 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" />
+                </svg>
+                Configurações
+              </Link>
+              <button className={styles.menuItemDanger} onClick={handleLogout}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
+                  <polyline points="16 17 21 12 16 7" />
+                  <line x1="21" y1="12" x2="9" y2="12" />
+                </svg>
+                Sair
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </header>
   );
