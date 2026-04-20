@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast, Toaster } from 'sonner';
 import { getPublicService, getMyService } from '../../../services/services';
+import { startConversation } from '../../../services/messages';
 import { useAuth } from '../../../contexts/AuthContext';
 import styles from './ServiceDetails.module.css';
 
@@ -35,6 +36,7 @@ function ServiceDetails() {
   const [isFavorite, setIsFavorite] = useState(false);
   const [activeImageIdx, setActiveImageIdx] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [contactingOwner, setContactingOwner] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -129,8 +131,18 @@ function ServiceDetails() {
     navigate(`/checkout/${service.id}?plan=${selectedPlan.id}`);
   };
 
-  const handleContact = () => {
-    toast.success(`Uma conversa com ${sellerName} será iniciada em breve.`);
+  const handleContact = async () => {
+    if (contactingOwner) return;
+    setContactingOwner(true);
+    try {
+      const data = await startConversation(service.ownerId, `Olá! Tenho interesse no serviço "${service.title}".`);
+      const chatId = data.conversation?.id || data.id;
+      navigate(`/messages?chat=${chatId}`);
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setContactingOwner(false);
+    }
   };
 
   const handleFavorite = () => {
@@ -343,8 +355,8 @@ function ServiceDetails() {
                 <button type="button" className={styles.primaryButton} onClick={handleOrder}>
                   Contratar agora
                 </button>
-                <button type="button" className={styles.secondaryButton} onClick={handleContact}>
-                  Falar com {sellerName}
+                <button type="button" className={styles.secondaryButton} onClick={handleContact} disabled={contactingOwner}>
+                  {contactingOwner ? 'Iniciando conversa...' : `Falar com ${sellerName}`}
                 </button>
               </>
             )}
