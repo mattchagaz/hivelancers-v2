@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
-import { Toaster } from 'sonner';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { toast, Toaster } from 'sonner';
+import { useAuth } from '../../../contexts/AuthContext';
 import { getPublicProfile } from '../../../services/users';
+import { startConversation } from '../../../services/messages';
 import styles from './UserProfile.module.css';
 
 const formatPrice = (cents) =>
@@ -33,9 +35,25 @@ const formatLastSeen = (iso) => {
 
 function UserProfile() {
   const { handle } = useParams();
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [startingChat, setStartingChat] = useState(false);
+
+  const handleStartChat = async () => {
+    if (!profile?.id || startingChat) return;
+    setStartingChat(true);
+    try {
+      const data = await startConversation(profile.id, 'Olá!');
+      navigate(`/messages?chat=${data.conversation?.id || data.id}`);
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setStartingChat(false);
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -118,6 +136,19 @@ function UserProfile() {
             <a href={profile.website} target="_blank" rel="noopener noreferrer" className={styles.website}>
               {profile.website.replace(/^https?:\/\//, '')}
             </a>
+          )}
+
+          {user && profile.id !== user.id && (
+            <button
+              className={styles.messageBtn}
+              onClick={handleStartChat}
+              disabled={startingChat}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+              </svg>
+              {startingChat ? 'Iniciando...' : 'Enviar mensagem'}
+            </button>
           )}
         </div>
       </section>

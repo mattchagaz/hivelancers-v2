@@ -13,6 +13,8 @@ import ExploreServices from './components/Pages/ExploreServices/ExploreServices'
 import ServiceDetails from './components/Pages/ServiceDetails/ServiceDetails';
 import Checkout from './components/Pages/Checkout/Checkout';
 import Settings from './components/Pages/Settings/Settings';
+import UserProfile from './components/Pages/UserProfile/UserProfile';
+import Messages from './components/Pages/Messages/Messages';
 import './App.css';
 
 function App() {
@@ -45,6 +47,8 @@ function App() {
             <Route path="/services/:id" element={<ServiceDetails />} />
             <Route path="/checkout/:id" element={<Checkout />} />
             <Route path="/explore" element={<ExploreServices />} />
+            <Route path="/messages" element={<Messages />} />
+            <Route path="/profile/:handle" element={<UserProfile />} />
             <Route path="/settings" element={<Settings />} />
           </Route>
         </Route>
