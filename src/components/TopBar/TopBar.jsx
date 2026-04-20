@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { useAuth } from '../../contexts/AuthContext';
 import styles from './TopBar.module.css';
 
-function TopBar({ userName = '', userRole = 'freelancer', onMenuToggle }) {
+function TopBar({ userName = '', userRole = 'freelancer', avatarUrl = '', onMenuToggle }) {
   const [searchFocused, setSearchFocused] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
@@ -87,7 +87,17 @@ function TopBar({ userName = '', userRole = 'freelancer', onMenuToggle }) {
 
         <div className={styles.userMenuWrap} ref={menuRef}>
           <button className={styles.userBtn} onClick={() => setMenuOpen((v) => !v)}>
-            <div className={styles.avatar}>{initials || 'U'}</div>
+            <div className={styles.avatar}>
+              {avatarUrl ? (
+                <img
+                  src={avatarUrl}
+                  alt=""
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }}
+                />
+              ) : (
+                initials || 'U'
+              )}
+            </div>
             <div className={styles.userInfo}>
               <span className={styles.userName}>{displayName}</span>
               <span className={styles.userRole}>

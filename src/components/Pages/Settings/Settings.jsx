@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useSettings } from '../../../contexts/SettingsContext';
 import { updateProfile as apiUpdateProfile, updateUserType } from '../../../services/users';
+import { uploadImageToCloudinary } from '../../../services/cloudinary';
+import CityAutocomplete from '../../CityAutocomplete/CityAutocomplete';
 import { toRoleSlug, toUserType } from '../../../utils/authFlow';
 import { formatPhoneBR } from '../../../utils/formatters';
 import styles from './Settings.module.css';
@@ -17,6 +19,7 @@ const profileFromUser = (user) => ({
   bio: user?.bio || '',
   location: user?.location || '',
   website: user?.website || '',
+  avatarUrl: user?.avatarUrl || '',
 });
 
 const TABS = [
@@ -42,6 +45,8 @@ function Settings() {
 
   const [profile, setProfile] = useState(() => profileFromUser(user));
   const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const avatarInputRef = useRef(null);
   const serverProfile = useMemo(() => profileFromUser(user), [user]);
 
   useEffect(() => {
@@ -55,6 +60,39 @@ function Settings() {
 
   const updateProfile = (field, value) => setProfile((prev) => ({ ...prev, [field]: value }));
   const resetProfile = () => setProfile(serverProfile);
+
+  const handleAvatarFile = async (file) => {
+    if (!file || isUploadingAvatar) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('Selecione uma imagem válida.');
+      return;
+    }
+    setIsUploadingAvatar(true);
+    try {
+      const { url } = await uploadImageToCloudinary(file);
+      const updated = await apiUpdateProfile({ avatarUrl: url });
+      setUser(updated);
+      toast.success('Foto atualizada.');
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  };
+
+  const handleAvatarRemove = async () => {
+    if (isUploadingAvatar || !profile.avatarUrl) return;
+    setIsUploadingAvatar(true);
+    try {
+      const updated = await apiUpdateProfile({ avatarUrl: '' });
+      setUser(updated);
+      toast.success('Foto removida.');
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  };
 
   const saveProfile = async (fields) => {
     if (isSavingProfile) return;
@@ -114,7 +152,15 @@ function Settings() {
         <div className={styles.heroSide}>
           <div className={styles.profileCard}>
             <div className={styles.avatar}>
-              {`${profile.firstName} ${profile.lastName}`.trim().split(' ').map((part) => part[0]).filter(Boolean).slice(0, 2).join('').toUpperCase() || 'U'}
+              {profile.avatarUrl ? (
+                <img
+                  src={profile.avatarUrl}
+                  alt=""
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }}
+                />
+              ) : (
+                `${profile.firstName} ${profile.lastName}`.trim().split(' ').map((part) => part[0]).filter(Boolean).slice(0, 2).join('').toUpperCase() || 'U'
+              )}
             </div>
             <div className={styles.profileInfo}>
               <strong>{`${profile.firstName} ${profile.lastName}`.trim() || 'Usuário'}</strong>
@@ -123,7 +169,36 @@ function Settings() {
                 {isFreelancer ? 'Freelancer' : 'Cliente'}
               </div>
             </div>
-            <button className={styles.avatarBtn}>Trocar foto</button>
+            <input
+              ref={avatarInputRef}
+              type="file"
+              accept="image/*"
+              style={{ display: 'none' }}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleAvatarFile(file);
+                e.target.value = '';
+              }}
+            />
+            <button
+              type="button"
+              className={styles.avatarBtn}
+              onClick={() => avatarInputRef.current?.click()}
+              disabled={isUploadingAvatar}
+            >
+              {isUploadingAvatar ? 'Enviando...' : (profile.avatarUrl ? 'Trocar foto' : 'Adicionar foto')}
+            </button>
+            {profile.avatarUrl && (
+              <button
+                type="button"
+                className={styles.avatarBtn}
+                onClick={handleAvatarRemove}
+                disabled={isUploadingAvatar}
+                style={{ marginTop: 8 }}
+              >
+                Remover foto
+              </button>
+            )}
           </div>
         </div>
       </section>
@@ -290,12 +365,12 @@ function ProfilePanel({ profile, updateProfile, isFreelancer, isSaving, dirty, o
           />
         </Field>
 
-        <Field label="Localização">
-          <input
-            type="text"
-            className={styles.input}
+        <Field label="Localização" hint="Comece a digitar para selecionar sua cidade.">
+          <CityAutocomplete
             value={profile.location}
-            onChange={(e) => updateProfile('location', e.target.value)}
+            onChange={(v) => updateProfile('location', v)}
+            placeholder="Ex: Porto Alegre"
+            inputClassName={styles.input}
           />
         </Field>
 

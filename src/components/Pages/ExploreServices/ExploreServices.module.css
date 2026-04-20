@@ -715,3 +715,36 @@
   .grid { grid-template-columns: 1fr; }
   .catChip { padding: 7px 14px; font-size: 0.78rem; }
 }
+
+/* ===== Pagination ===== */
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  padding: 24px 0;
+  margin-top: 16px;
+}
+.pageBtn {
+  padding: 8px 16px;
+  border: 1px solid var(--border-color, #e5e7eb);
+  background: #fff;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary, #111827);
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.pageBtn:hover:not(:disabled) {
+  border-color: var(--primary-color, #f59e0b);
+  color: var(--primary-color, #f59e0b);
+}
+.pageBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.pageInfo {
+  font-size: 14px;
+  color: var(--text-secondary, #6b7280);
+}

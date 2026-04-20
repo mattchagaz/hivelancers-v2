@@ -39,6 +39,7 @@ function AppLayout() {
         <TopBar
           userName={userName}
           userRole={userRole}
+          avatarUrl={user?.avatarUrl}
           onMenuToggle={toggleSidebar}
         />
         <main className={styles.content}>

@@ -39,3 +39,12 @@ export const completeOnboarding = async () => {
     throw new Error(extractMessage(error, 'Não foi possível concluir o onboarding.'));
   }
 };
+
+export const getPublicProfile = async (handle) => {
+  try {
+    const { data } = await api.get(`/users/${handle}`);
+    return data.user;
+  } catch (error) {
+    throw new Error(extractMessage(error, 'Perfil não encontrado.'));
+  }
+};

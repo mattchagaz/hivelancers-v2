@@ -1,24 +1,29 @@
-import { useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useRef, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { toast, Toaster } from 'sonner';
 import styles from './CreateService.module.css';
+import { listCategories, createService, getMyService, updateService, archiveService } from '../../../services/services';
+import { uploadImageToCloudinary } from '../../../services/cloudinary';
 
-const CATEGORIES = [
-  { id: 'design', label: 'Design & Criativo', icon: '🎨', subs: ['Logo', 'UI/UX', 'Ilustração', 'Edição de imagem', 'Branding', 'Outro'] },
-  { id: 'dev', label: 'Desenvolvimento', icon: '💻', subs: ['Website', 'App Mobile', 'Landing Page', 'E-commerce', 'API/Backend', 'Outro'] },
-  { id: 'video', label: 'Vídeo & Animação', icon: '🎬', subs: ['Edição', 'Motion Graphics', 'Animação 2D', 'Animação 3D', 'Intro/Outro', 'Outro'] },
-  { id: 'writing', label: 'Redação & Tradução', icon: '✍️', subs: ['Copywriting', 'Blog/Artigos', 'Tradução', 'Revisão', 'Roteiro', 'Outro'] },
-  { id: 'marketing', label: 'Marketing Digital', icon: '📈', subs: ['Social Media', 'SEO', 'Ads (Google/Meta)', 'E-mail Marketing', 'Estratégia', 'Outro'] },
-  { id: 'audio', label: 'Áudio & Música', icon: '🎵', subs: ['Locução', 'Produção Musical', 'Podcast', 'Mixagem', 'Jingle', 'Outro'] },
-];
+const TIER_BY_INDEX = ['BASIC', 'STANDARD', 'PREMIUM'];
+const TIER_NAME = { BASIC: 'Básico', STANDARD: 'Padrão', PREMIUM: 'Premium' };
 
-const EMPTY_PLAN = { name: '', price: '', delivery: '', revisions: '', features: [''] };
+const featuresFromDescription = (desc = '') =>
+  desc
+    .split('\n')
+    .map((line) => line.replace(/^•\s*/, '').trim())
+    .filter(Boolean);
 
 function CreateService() {
   const navigate = useNavigate();
+  const { id: editId } = useParams();
+  const isEditMode = Boolean(editId);
   const fileInputRef = useRef(null);
   const [step, setStep] = useState(0);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [isLoading, setIsLoading] = useState(isEditMode);
+  const [isArchiving, setIsArchiving] = useState(false);
+  const [existingStatus, setExistingStatus] = useState(null);
 
   // Step 0 — Info básica
   const [title, setTitle] = useState('');
@@ -39,9 +44,66 @@ function CreateService() {
   // Step 2 — Portfólio
   const [images, setImages] = useState([]);
   const [dragActive, setDragActive] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   // Step 3 — FAQ
   const [faqs, setFaqs] = useState([{ question: '', answer: '' }]);
+
+  const [categories, setCategories] = useState([]);
+  const [loadingCats, setLoadingCats] = useState(true);
+
+  useEffect(() => {
+    listCategories()
+      .then(setCategories)
+      .catch((err) => toast.error(err.message))
+      .finally(() => setLoadingCats(false));
+  }, []);
+
+  useEffect(() => {
+    if (!isEditMode) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const svc = await getMyService(editId);
+        if (cancelled) return;
+        setTitle(svc.title || '');
+        setDescription(svc.description || '');
+        setCategory(svc.categoryId || '');
+        setExistingStatus(svc.status || 'DRAFT');
+
+        const loadedPlans = [...plans];
+        const loadedActive = [false, false, false];
+        (svc.plans || []).forEach((p) => {
+          const idx = TIER_BY_INDEX.indexOf(p.tier);
+          if (idx === -1) return;
+          loadedActive[idx] = true;
+          const feats = featuresFromDescription(p.description);
+          loadedPlans[idx] = {
+            name: p.title || TIER_NAME[p.tier],
+            price: p.priceCents != null ? (p.priceCents / 100).toString() : '',
+            delivery: p.deliveryDays?.toString() || '',
+            revisions: p.revisions?.toString() || '',
+            features: feats.length > 0 ? feats : [''],
+          };
+        });
+        setPlans(loadedPlans);
+        setActivePlans(loadedActive);
+
+        const loadedImgs = (svc.images || []).map((img) => ({
+          url: img.url,
+          preview: img.url,
+          name: '',
+        }));
+        setImages(loadedImgs);
+      } catch (err) {
+        toast.error(err.message);
+        navigate('/dashboard');
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [isEditMode, editId]);
 
   const steps = [
     { label: 'Informações', desc: 'Título, descrição e categoria' },
@@ -50,7 +112,7 @@ function CreateService() {
     { label: 'Revisão', desc: 'Confirme e publique' },
   ];
 
-  const selectedCat = CATEGORIES.find((c) => c.id === category);
+  const selectedCat = categories.find((c) => c.id === category);
 
   // ===== Tag handlers =====
   const addTag = (e) => {
@@ -98,19 +160,27 @@ function CreateService() {
   };
 
   // ===== Image handlers =====
-  const handleFiles = (files) => {
-    const newImages = Array.from(files)
+  const handleFiles = async (files) => {
+    const remaining = 6 - images.length;
+    const picked = Array.from(files)
       .filter((f) => f.type.startsWith('image/'))
-      .slice(0, 6 - images.length);
-    const readers = newImages.map(
-      (file) =>
-        new Promise((resolve) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve({ file, preview: reader.result, name: file.name });
-          reader.readAsDataURL(file);
+      .slice(0, remaining);
+    if (picked.length === 0) return;
+
+    setUploading(true);
+    try {
+      const uploaded = await Promise.all(
+        picked.map(async (file) => {
+          const { url } = await uploadImageToCloudinary(file);
+          return { url, preview: url, name: file.name };
         })
-    );
-    Promise.all(readers).then((results) => setImages((prev) => [...prev, ...results].slice(0, 6)));
+      );
+      setImages((prev) => [...prev, ...uploaded].slice(0, 6));
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleDrop = (e) => {
@@ -157,7 +227,7 @@ function CreateService() {
       return true;
     }
     if (s === 2) {
-      if (images.length === 0) { toast.error('Adicione pelo menos uma imagem ao portfólio.'); return false; }
+      if (uploading) { toast.error('Aguarde o upload das imagens terminar.'); return false; }
       return true;
     }
     return true;
@@ -168,14 +238,83 @@ function CreateService() {
   };
   const goBack = () => setStep(step - 1);
 
-  const handlePublish = () => {
+  const handlePublish = async () => {
     setIsPublishing(true);
-    // TODO: POST para API
-    setTimeout(() => {
+    try {
+      const planPayload = plans
+        .map((p, i) => ({ p, i }))
+        .filter(({ i }) => activePlans[i])
+        .map(({ p, i }) => {
+          const feats = p.features.map((f) => f.trim()).filter(Boolean);
+          const description = feats.length > 0 ? feats.map((f) => `• ${f}`).join('\n') : p.name;
+          return {
+            tier: TIER_BY_INDEX[i],
+            title: p.name.trim() || TIER_BY_INDEX[i],
+            description,
+            priceCents: Math.round(Number(p.price) * 100),
+            deliveryDays: Number(p.delivery),
+            revisions: p.revisions === '' ? 1 : Number(p.revisions),
+          };
+        });
+
+      const basePayload = {
+        title: title.trim(),
+        description: description.trim(),
+        categoryId: category,
+        plans: planPayload,
+        images: images.map((img) => ({ url: img.url })),
+      };
+
+      if (isEditMode) {
+        await updateService(editId, basePayload);
+        toast.success('Serviço atualizado com sucesso!');
+        setTimeout(() => navigate(`/services/${editId}`), 800);
+      } else {
+        await createService({ ...basePayload, status: 'PUBLISHED' });
+        toast.success('Serviço publicado com sucesso!');
+        setTimeout(() => navigate('/dashboard'), 1000);
+      }
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
       setIsPublishing(false);
-      toast.success('Serviço publicado com sucesso!');
-      setTimeout(() => navigate('/services'), 1200);
-    }, 1800);
+    }
+  };
+
+  const doArchive = async () => {
+    setIsArchiving(true);
+    try {
+      await archiveService(editId);
+      toast.success('Serviço arquivado.');
+      setTimeout(() => navigate('/dashboard'), 600);
+    } catch (err) {
+      toast.error(err.message);
+      setIsArchiving(false);
+    }
+  };
+
+  const handleArchive = () => {
+    if (!isEditMode || isArchiving) return;
+    toast('Arquivar este serviço?', {
+      description: 'Ele deixará de aparecer na listagem pública. Você pode republicar depois.',
+      duration: 8000,
+      action: { label: 'Arquivar', onClick: doArchive },
+      cancel: { label: 'Cancelar', onClick: () => {} },
+    });
+  };
+
+  const handleRepublish = async () => {
+    if (!isEditMode || isArchiving) return;
+    setIsArchiving(true);
+    try {
+      const svc = await updateService(editId, { status: 'PUBLISHED' });
+      setExistingStatus(svc.status || 'PUBLISHED');
+      toast.success('Serviço republicado.');
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setIsArchiving(false);
+    }
   };
 
   // ===== Character counter helper =====
@@ -185,14 +324,52 @@ function CreateService() {
     </span>
   );
 
+  if (isLoading) {
+    return (
+      <div className={styles.page}>
+        <div className={styles.header}>
+          <div>
+            <h1 className={styles.pageTitle}>Carregando serviço...</h1>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={styles.page}>
       {/* ===== Header ===== */}
       <div className={styles.header}>
         <div>
-          <h1 className={styles.pageTitle}>Criar novo serviço</h1>
-          <p className={styles.pageSub}>Preencha as informações para publicar seu serviço na plataforma.</p>
+          <h1 className={styles.pageTitle}>{isEditMode ? 'Editar serviço' : 'Criar novo serviço'}</h1>
+          <p className={styles.pageSub}>
+            {isEditMode
+              ? 'Atualize as informações do seu serviço. As alterações ficam visíveis imediatamente.'
+              : 'Preencha as informações para publicar seu serviço na plataforma.'}
+          </p>
         </div>
+        {isEditMode && existingStatus !== 'ARCHIVED' && (
+          <button
+            type="button"
+            className={styles.backBtn}
+            onClick={handleArchive}
+            disabled={isArchiving}
+            style={{ color: '#b91c1c', borderColor: '#fecaca' }}
+          >
+            {isArchiving ? 'Arquivando...' : 'Arquivar serviço'}
+          </button>
+        )}
+        {isEditMode && existingStatus === 'ARCHIVED' && (
+          <button
+            type="button"
+            className={styles.backBtn}
+            onClick={handleRepublish}
+            disabled={isArchiving}
+            style={{ color: '#047857', borderColor: '#a7f3d0' }}
+          >
+            {isArchiving ? 'Republicando...' : 'Republicar serviço'}
+          </button>
+        )}
       </div>
 
       {/* ===== Stepper ===== */}
@@ -256,36 +433,19 @@ function CreateService() {
               <h2 className={styles.sectionTitle}>Categoria</h2>
 
               <div className={styles.catGrid}>
-                {CATEGORIES.map((cat) => (
+                {loadingCats && <span className={styles.hint}>Carregando...</span>}
+                {categories.map((cat) => (
                   <button
                     key={cat.id}
                     type="button"
                     className={`${styles.catCard} ${category === cat.id ? styles.catActive : ''}`}
                     onClick={() => { setCategory(cat.id); setSubCategory(''); }}
                   >
-                    <span className={styles.catIcon}>{cat.icon}</span>
-                    <span className={styles.catLabel}>{cat.label}</span>
+                    <span className={styles.catIcon}>{cat.icon || '📦'}</span>
+                    <span className={styles.catLabel}>{cat.name}</span>
                   </button>
                 ))}
               </div>
-
-              {selectedCat && (
-                <div className={styles.field} style={{ marginTop: '16px' }}>
-                  <label className={styles.label}>Subcategoria</label>
-                  <div className={styles.subCatGrid}>
-                    {selectedCat.subs.map((sub) => (
-                      <button
-                        key={sub}
-                        type="button"
-                        className={`${styles.subCatChip} ${subCategory === sub ? styles.subCatActive : ''}`}
-                        onClick={() => setSubCategory(sub)}
-                      >
-                        {sub}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
             </section>
 
             <section className={styles.section}>
@@ -450,7 +610,9 @@ function CreateService() {
                     <line x1="12" y1="3" x2="12" y2="15" />
                   </svg>
                 </div>
-                <span className={styles.dropTitle}>Arraste imagens aqui ou clique para selecionar</span>
+                <span className={styles.dropTitle}>
+                  {uploading ? 'Enviando imagens...' : 'Arraste imagens aqui ou clique para selecionar'}
+                </span>
                 <span className={styles.dropSub}>PNG, JPG ou WEBP — máximo 6 imagens</span>
               </div>
 
@@ -528,7 +690,7 @@ function CreateService() {
                 <div className={styles.previewBody}>
                   <div className={styles.previewMeta}>
                     <span className={styles.previewCat}>
-                      {selectedCat?.icon} {selectedCat?.label}
+                      {selectedCat?.icon || '📦'} {selectedCat?.name}
                       {subCategory && ` — ${subCategory}`}
                     </span>
                   </div>
@@ -632,7 +794,7 @@ function CreateService() {
                   <span className={styles.spinner} />
                 ) : (
                   <>
-                    Publicar serviço
+                    {isEditMode ? 'Salvar alterações' : 'Publicar serviço'}
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12" /></svg>
                   </>
                 )}

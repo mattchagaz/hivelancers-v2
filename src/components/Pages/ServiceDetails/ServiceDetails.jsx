@@ -1,57 +1,101 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast, Toaster } from 'sonner';
-import {
-  CATEGORIES,
-  SERVICE_GRADIENTS,
-  getRelatedServices,
-  getServiceById,
-} from '../../../data/services';
+import { getPublicService, getMyService } from '../../../services/services';
+import { useAuth } from '../../../contexts/AuthContext';
 import styles from './ServiceDetails.module.css';
 
-const formatPrice = (value) =>
+const formatPrice = (cents) =>
   new Intl.NumberFormat('pt-BR', {
     style: 'currency',
     currency: 'BRL',
-    maximumFractionDigits: 0,
-  }).format(value);
+  }).format((cents || 0) / 100);
 
-const averageReviewLabel = {
-  5: 'Excelente',
-  4: 'Muito bom',
-  3: 'Bom',
-  2: 'Regular',
-  1: 'Baixo',
+const TIER_LABEL = {
+  BASIC: 'Básico',
+  STANDARD: 'Padrão',
+  PREMIUM: 'Premium',
+};
+
+const STATUS_LABEL = {
+  DRAFT: 'Rascunho',
+  PUBLISHED: 'Publicado',
+  ARCHIVED: 'Arquivado',
 };
 
 function ServiceDetails() {
   const navigate = useNavigate();
   const { id } = useParams();
-  const service = getServiceById(id);
-  const relatedServices = useMemo(
-    () => (service ? getRelatedServices(service, 3) : []),
-    [service]
-  );
-  const categoryLabel =
-    CATEGORIES.find((item) => item.id === service?.category)?.label || 'Serviços';
+  const { user } = useAuth();
 
-  const [selectedPackageId, setSelectedPackageId] = useState('');
-  const [activeGalleryIndex, setActiveGalleryIndex] = useState(0);
-  const [expandedFaq, setExpandedFaq] = useState(0);
+  const [service, setService] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
+  const [selectedPlanId, setSelectedPlanId] = useState('');
   const [isFavorite, setIsFavorite] = useState(false);
+  const [activeImageIdx, setActiveImageIdx] = useState(0);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
 
   useEffect(() => {
-    if (!service) return;
+    let cancelled = false;
+    setLoading(true);
+    setNotFound(false);
 
-    const defaultPackage =
-      service.packages.find((item) => item.popular)?.id || service.packages[0]?.id || '';
+    const fetchService = async () => {
+      try {
+        const data = await getPublicService(id);
+        if (!cancelled) setService(data);
+      } catch {
+        try {
+          const data = await getMyService(id);
+          if (!cancelled) setService(data);
+        } catch {
+          if (!cancelled) setNotFound(true);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
 
-    setSelectedPackageId(defaultPackage);
-    setActiveGalleryIndex(0);
-    setExpandedFaq(0);
+    fetchService();
+    return () => { cancelled = true; };
+  }, [id]);
+
+  useEffect(() => {
+    if (service?.plans?.length) {
+      setSelectedPlanId(service.plans[0].id);
+    }
   }, [service]);
 
-  if (!service) {
+  useEffect(() => {
+    if (!lightboxOpen) return;
+    const images = service?.images || [];
+    const handleKey = (e) => {
+      if (e.key === 'Escape') setLightboxOpen(false);
+      if (e.key === 'ArrowRight' && images.length > 1) {
+        setActiveImageIdx((i) => (i + 1) % images.length);
+      }
+      if (e.key === 'ArrowLeft' && images.length > 1) {
+        setActiveImageIdx((i) => (i - 1 + images.length) % images.length);
+      }
+    };
+    window.addEventListener('keydown', handleKey);
+    document.body.style.overflow = 'hidden';
+    return () => {
+      window.removeEventListener('keydown', handleKey);
+      document.body.style.overflow = '';
+    };
+  }, [lightboxOpen, service]);
+
+  if (loading) {
+    return (
+      <div className={styles.emptyState}>
+        <h1 className={styles.emptyTitle}>Carregando...</h1>
+      </div>
+    );
+  }
+
+  if (notFound || !service) {
     return (
       <div className={styles.emptyState}>
         <div className={styles.emptyIcon}>
@@ -60,446 +104,197 @@ function ServiceDetails() {
             <line x1="21" y1="21" x2="16.65" y2="16.65" />
           </svg>
         </div>
-        <h1 className={styles.emptyTitle}>Servico nao encontrado</h1>
+        <h1 className={styles.emptyTitle}>Serviço não encontrado</h1>
         <p className={styles.emptyText}>
-          O link pode estar desatualizado ou este servico ainda nao foi publicado.
+          O link pode estar desatualizado ou este serviço ainda não foi publicado.
         </p>
-        <Link to="/services" className={styles.emptyButton}>
-          Voltar para explorar servicos
+        <Link to="/explore" className={styles.emptyButton}>
+          Voltar para explorar serviços
         </Link>
       </div>
     );
   }
 
-  const selectedPackage =
-    service.packages.find((item) => item.id === selectedPackageId) || service.packages[0];
-  const activeGallery =
-    service.gallery[activeGalleryIndex] || service.gallery[0];
+  const selectedPlan =
+    service.plans.find((p) => p.id === selectedPlanId) || service.plans[0];
+  const sellerName = `${service.owner?.firstName || ''} ${service.owner?.lastName || ''}`.trim() || 'Vendedor';
+  const sellerInitial = (sellerName[0] || '?').toUpperCase();
+  const isOwner = user?.id === service.ownerId;
 
-  const summaryStats = [
-    { label: 'Prazo inicial', value: `${service.delivery} ${service.delivery === 1 ? 'dia' : 'dias'}` },
-    { label: 'Revisoes inclusas', value: `${selectedPackage.revisions}` },
-    { label: 'Pedidos na fila', value: `${service.queue}` },
-    { label: 'Nivel do vendedor', value: service.seller.level },
-  ];
-
-  const trustItems = [
-    'Pagamento protegido ate a aprovacao',
-    'Mensagens e arquivos centralizados no pedido',
-    'Revisoes previstas no pacote escolhido',
-  ];
-
-  const handleFavorite = () => {
-    setIsFavorite((prev) => !prev);
-    toast.success(
-      !isFavorite ? 'Servico salvo nos favoritos.' : 'Servico removido dos favoritos.'
-    );
+  const handleOrder = () => {
+    if (isOwner) {
+      toast.info('Este é o seu próprio serviço.');
+      return;
+    }
+    navigate(`/checkout/${service.id}?plan=${selectedPlan.id}`);
   };
 
   const handleContact = () => {
-    toast.success(`Uma conversa com ${service.seller.name} sera iniciada em breve.`);
+    toast.success(`Uma conversa com ${sellerName} será iniciada em breve.`);
   };
 
-  const handleOrder = () => {
-    navigate(`/checkout/${service.id}?package=${selectedPackage.id}`);
+  const handleFavorite = () => {
+    setIsFavorite((prev) => !prev);
+    toast.success(!isFavorite ? 'Serviço salvo nos favoritos.' : 'Serviço removido dos favoritos.');
   };
 
   const handleShare = () => {
-    toast.success('Link do servico copiado para compartilhamento.');
+    navigator.clipboard?.writeText(window.location.href);
+    toast.success('Link do serviço copiado.');
   };
+
+  const planFeatures = (plan) =>
+    (plan.description || '')
+      .split('\n')
+      .map((line) => line.replace(/^•\s*/, '').trim())
+      .filter(Boolean);
 
   return (
     <div className={styles.page}>
       <div className={styles.breadcrumbs}>
         <Link to="/dashboard">Dashboard</Link>
         <span>/</span>
-        <Link to="/services">Servicos</Link>
+        <Link to="/explore">Serviços</Link>
         <span>/</span>
-        <span>{categoryLabel}</span>
+        <span>{service.category?.name}</span>
       </div>
 
       <section className={styles.hero}>
         <div className={styles.heroContent}>
           <div className={styles.badges}>
-            <span className={styles.badgePrimary}>{categoryLabel}</span>
-            {service.featured && <span className={styles.badgeSoft}>Destaque</span>}
-            {service.bestseller && <span className={styles.badgeSoft}>Mais pedido</span>}
+            <span className={styles.badgePrimary}>
+              {service.category?.icon} {service.category?.name}
+            </span>
+            {service.status !== 'PUBLISHED' && (
+              <span className={styles.badgeSoft}>{STATUS_LABEL[service.status]}</span>
+            )}
           </div>
 
           <h1 className={styles.title}>{service.title}</h1>
-          <p className={styles.summary}>{service.summary}</p>
+          <p className={styles.summary}>{service.description}</p>
 
           <div className={styles.metaRow}>
-            <div className={styles.ratingPill}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="#f59e0b" stroke="none">
-                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-              </svg>
-              <strong>{service.rating.toFixed(1)}</strong>
-              <span>({service.reviews} avaliacoes)</span>
-            </div>
+            <span>{service.plans.length} {service.plans.length === 1 ? 'pacote' : 'pacotes'}</span>
             <span className={styles.metaDivider} />
-            <span>{service.seller.responseTime}</span>
-            <span className={styles.metaDivider} />
-            <span>Membro desde {service.seller.memberSince}</span>
-          </div>
-
-          <div className={styles.tagList}>
-            {service.tags.map((tag) => (
-              <span key={tag} className={styles.tag}>
-                #{tag}
-              </span>
-            ))}
-          </div>
-
-          <div className={styles.heroStats}>
-            {summaryStats.map((item) => (
-              <div key={item.label} className={styles.heroStat}>
-                <span className={styles.heroStatLabel}>{item.label}</span>
-                <strong className={styles.heroStatValue}>{item.value}</strong>
-              </div>
-            ))}
+            <span>A partir de {formatPrice(service.plans[0]?.priceCents)}</span>
           </div>
         </div>
 
         <aside className={styles.heroSeller}>
           <div className={styles.sellerHeader}>
-            <div className={styles.sellerAvatar}>{service.seller.avatar}</div>
+            <div className={styles.sellerAvatar}>{sellerInitial}</div>
             <div>
-              <h2 className={styles.sellerName}>{service.seller.name}</h2>
-              <p className={styles.sellerHeadline}>{service.seller.headline}</p>
+              <h2 className={styles.sellerName}>{sellerName}</h2>
+              {service.owner?.headline && (
+                <p className={styles.sellerHeadline}>{service.owner.headline}</p>
+              )}
             </div>
           </div>
-
-          <div className={styles.sellerMeta}>
-            <span>{service.seller.city}</span>
-            <span>{service.seller.lastDelivery}</span>
-          </div>
-
-          <div className={styles.sellerStats}>
-            {service.seller.stats.map((item) => (
-              <div key={item.label} className={styles.sellerStat}>
-                <strong>{item.value}</strong>
-                <span>{item.label}</span>
-              </div>
-            ))}
-          </div>
+          {service.owner?.username && (
+            <div className={styles.sellerMeta}>
+              <span>@{service.owner.username}</span>
+            </div>
+          )}
         </aside>
       </section>
 
       <div className={styles.mainGrid}>
         <div className={styles.content}>
-          <section className={styles.card}>
-            <div className={styles.sectionHeader}>
-              <div>
-                <h2 className={styles.sectionTitle}>Portfolio e apresentacao</h2>
-                <p className={styles.sectionText}>
-                  Uma visao do estilo de entrega, linguagem visual e nivel de acabamento deste servico.
-                </p>
-              </div>
-            </div>
-
-            <div
-              className={styles.galleryStage}
-              style={{ background: activeGallery.background }}
-            >
-              <div className={styles.galleryOverlay} />
-              <span className={styles.galleryLabel}>{activeGallery.label}</span>
-              <div className={styles.galleryText}>
-                <h3>{activeGallery.title}</h3>
-                <p>{activeGallery.subtitle}</p>
-              </div>
-            </div>
-
-            <div className={styles.galleryThumbs}>
-              {service.gallery.map((item, index) => (
-                <button
-                  key={item.label}
-                  type="button"
-                  className={`${styles.galleryThumb} ${index === activeGalleryIndex ? styles.galleryThumbActive : ''}`}
-                  onClick={() => setActiveGalleryIndex(index)}
-                  style={{ background: item.background }}
-                >
-                  <span>{item.label}</span>
-                </button>
-              ))}
-            </div>
-          </section>
-
-          <section className={styles.card}>
-            <div className={styles.sectionHeader}>
-              <div>
-                <h2 className={styles.sectionTitle}>Sobre este servico</h2>
-                <p className={styles.sectionText}>
-                  O que esta sendo entregue, como o trabalho acontece e onde este servico gera mais valor.
-                </p>
-              </div>
-            </div>
-
-            <div className={styles.overview}>
-              {service.overview.map((paragraph) => (
-                <p key={paragraph}>{paragraph}</p>
-              ))}
-            </div>
-
-            <div className={styles.infoGrid}>
-              <div className={styles.infoPanel}>
-                <h3>Destaques</h3>
-                <div className={styles.bulletList}>
-                  {service.highlights.map((item) => (
-                    <div key={item} className={styles.bulletItem}>
-                      <span className={styles.bulletIcon}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
-                          <polyline points="20 6 9 17 4 12" />
-                        </svg>
-                      </span>
-                      <span>{item}</span>
-                    </div>
-                  ))}
+          {service.images?.length > 0 && (
+            <section className={styles.card}>
+              <div className={styles.sectionHeader}>
+                <div>
+                  <h2 className={styles.sectionTitle}>Portfólio</h2>
                 </div>
               </div>
-
-              <div className={styles.infoPanel}>
-                <h3>O que voce recebe</h3>
-                <div className={styles.bulletList}>
-                  {service.deliverables.map((item) => (
-                    <div key={item} className={styles.bulletItem}>
-                      <span className={styles.bulletDot} />
-                      <span>{item}</span>
-                    </div>
+              <div
+                className={styles.galleryStage}
+                style={{
+                  background: `url(${service.images[activeImageIdx]?.url}) center/cover`,
+                  minHeight: 360,
+                  cursor: 'zoom-in',
+                }}
+                onClick={() => setLightboxOpen(true)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === 'Enter') setLightboxOpen(true); }}
+              />
+              {service.images.length > 1 && (
+                <div className={styles.galleryThumbs}>
+                  {service.images.map((img, i) => (
+                    <button
+                      key={img.id}
+                      type="button"
+                      className={`${styles.galleryThumb} ${i === activeImageIdx ? styles.galleryThumbActive : ''}`}
+                      onClick={() => setActiveImageIdx(i)}
+                      style={{ background: `url(${img.url}) center/cover` }}
+                    />
                   ))}
                 </div>
-              </div>
-            </div>
-          </section>
+              )}
+            </section>
+          )}
 
           <section className={styles.card}>
             <div className={styles.sectionHeader}>
               <div>
-                <h2 className={styles.sectionTitle}>Pacotes disponiveis</h2>
+                <h2 className={styles.sectionTitle}>Pacotes disponíveis</h2>
                 <p className={styles.sectionText}>
-                  Compare escopo, prazo e profundidade de entrega para escolher o plano ideal.
+                  Compare escopo, prazo e entrega para escolher o plano ideal.
                 </p>
               </div>
             </div>
 
             <div className={styles.packageGrid}>
-              {service.packages.map((pkg) => (
-                <button
-                  key={pkg.id}
-                  type="button"
-                  className={`${styles.packageCard} ${pkg.id === selectedPackageId ? styles.packageCardActive : ''}`}
-                  onClick={() => setSelectedPackageId(pkg.id)}
-                >
-                  <div className={styles.packageTop}>
-                    <div>
-                      <div className={styles.packageNameRow}>
-                        <h3>{pkg.name}</h3>
-                        {pkg.popular && <span className={styles.packageBadge}>Mais escolhido</span>}
-                      </div>
-                      <p>{pkg.description}</p>
-                    </div>
-                    <strong>{formatPrice(pkg.price)}</strong>
-                  </div>
-
-                  <div className={styles.packageMeta}>
-                    <span>{pkg.delivery} {pkg.delivery === 1 ? 'dia' : 'dias'}</span>
-                    <span>{pkg.revisions} revisoes</span>
-                  </div>
-
-                  <div className={styles.packageFeatures}>
-                    {pkg.features.map((item) => (
-                      <div key={item} className={styles.packageFeature}>
-                        <span className={styles.packageFeatureDot} />
-                        <span>{item}</span>
-                      </div>
-                    ))}
-                  </div>
-                </button>
-              ))}
-            </div>
-          </section>
-
-          <section className={styles.card}>
-            <div className={styles.sectionHeader}>
-              <div>
-                <h2 className={styles.sectionTitle}>Como o projeto acontece</h2>
-                <p className={styles.sectionText}>
-                  Uma visao simples do fluxo de trabalho para alinhar expectativa, tempo e pontos de contato.
-                </p>
-              </div>
-            </div>
-
-            <div className={styles.timeline}>
-              {service.process.map((step, index) => (
-                <div key={step.title} className={styles.timelineItem}>
-                  <div className={styles.timelineIndex}>{index + 1}</div>
-                  <div className={styles.timelineBody}>
-                    <h3>{step.title}</h3>
-                    <p>{step.text}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <section className={styles.card}>
-            <div className={styles.sectionHeader}>
-              <div>
-                <h2 className={styles.sectionTitle}>Sobre {service.seller.name}</h2>
-                <p className={styles.sectionText}>
-                  Contexto profissional, especialidades e o que diferencia a entrega deste vendedor.
-                </p>
-              </div>
-            </div>
-
-            <div className={styles.sellerPanel}>
-              <div className={styles.sellerCardHeader}>
-                <div className={styles.sellerAvatarLarge}>{service.seller.avatar}</div>
-                <div>
-                  <h3>{service.seller.name}</h3>
-                  <p>{service.seller.headline}</p>
-                </div>
-              </div>
-
-              <p className={styles.sellerBio}>{service.seller.bio}</p>
-
-              <div className={styles.skillList}>
-                {service.seller.skills.map((skill) => (
-                  <span key={skill} className={styles.skillChip}>
-                    {skill}
-                  </span>
-                ))}
-              </div>
-            </div>
-          </section>
-
-          <section className={styles.card}>
-            <div className={styles.sectionHeader}>
-              <div>
-                <h2 className={styles.sectionTitle}>Perguntas frequentes</h2>
-                <p className={styles.sectionText}>
-                  Respostas para as principais duvidas antes de iniciar o pedido.
-                </p>
-              </div>
-            </div>
-
-            <div className={styles.faqList}>
-              {service.faq.map((item, index) => (
-                <div
-                  key={item.question}
-                  className={`${styles.faqItem} ${expandedFaq === index ? styles.faqItemOpen : ''}`}
-                >
+              {service.plans.map((plan) => {
+                const features = planFeatures(plan);
+                return (
                   <button
+                    key={plan.id}
                     type="button"
-                    className={styles.faqQuestion}
-                    onClick={() => setExpandedFaq(expandedFaq === index ? -1 : index)}
+                    className={`${styles.packageCard} ${plan.id === selectedPlanId ? styles.packageCardActive : ''}`}
+                    onClick={() => setSelectedPlanId(plan.id)}
                   >
-                    <span>{item.question}</span>
-                    <span className={styles.faqIcon}>{expandedFaq === index ? '−' : '+'}</span>
-                  </button>
-                  <div className={styles.faqAnswer}>
-                    <p>{item.answer}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <section className={styles.card}>
-            <div className={styles.sectionHeader}>
-              <div>
-                <h2 className={styles.sectionTitle}>Avaliacoes</h2>
-                <p className={styles.sectionText}>
-                  Feedback recente de clientes e distribuicao geral das notas.
-                </p>
-              </div>
-            </div>
-
-            <div className={styles.reviewSummary}>
-              <div className={styles.reviewScore}>
-                <strong>{service.rating.toFixed(1)}</strong>
-                <span>{averageReviewLabel[Math.round(service.rating)]}</span>
-                <small>{service.reviews} avaliacoes verificadas</small>
-              </div>
-
-              <div className={styles.reviewBars}>
-                {service.reviewBreakdown.map((item) => (
-                  <div key={item.stars} className={styles.reviewBarRow}>
-                    <span>{item.stars} estrelas</span>
-                    <div className={styles.reviewBarTrack}>
-                      <div
-                        className={styles.reviewBarFill}
-                        style={{ width: `${item.percent}%` }}
-                      />
-                    </div>
-                    <strong>{item.percent}%</strong>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className={styles.reviewList}>
-              {service.reviewsList.map((review) => (
-                <div key={`${review.author}-${review.date}`} className={styles.reviewCard}>
-                  <div className={styles.reviewHead}>
-                    <div className={styles.reviewAuthor}>
-                      <div className={styles.reviewAvatar}>{review.avatar}</div>
+                    <div className={styles.packageTop}>
                       <div>
-                        <h3>{review.author}</h3>
-                        <span>{review.plan}</span>
+                        <div className={styles.packageNameRow}>
+                          <h3>{plan.title}</h3>
+                          <span className={styles.packageBadge}>{TIER_LABEL[plan.tier]}</span>
+                        </div>
                       </div>
+                      <strong>{formatPrice(plan.priceCents)}</strong>
                     </div>
-                    <div className={styles.reviewMeta}>
-                      <div className={styles.reviewStars}>
-                        {Array.from({ length: 5 }).map((_, index) => (
-                          <svg
-                            key={index}
-                            width="14"
-                            height="14"
-                            viewBox="0 0 24 24"
-                            fill={index < review.rating ? '#f59e0b' : '#e5e7eb'}
-                            stroke="none"
-                          >
-                            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                          </svg>
+
+                    <div className={styles.packageMeta}>
+                      <span>{plan.deliveryDays} {plan.deliveryDays === 1 ? 'dia' : 'dias'}</span>
+                      <span>{plan.revisions} revisões</span>
+                    </div>
+
+                    {features.length > 0 && (
+                      <div className={styles.packageFeatures}>
+                        {features.map((item) => (
+                          <div key={item} className={styles.packageFeature}>
+                            <span className={styles.packageFeatureDot} />
+                            <span>{item}</span>
+                          </div>
                         ))}
                       </div>
-                      <span>{review.date}</span>
-                    </div>
-                  </div>
-                  <p>{review.text}</p>
-                </div>
-              ))}
+                    )}
+                  </button>
+                );
+              })}
             </div>
           </section>
 
           <section className={styles.card}>
             <div className={styles.sectionHeader}>
               <div>
-                <h2 className={styles.sectionTitle}>Servicos relacionados</h2>
-                <p className={styles.sectionText}>
-                  Outras opcoes na mesma categoria para comparar estilo, escopo e faixa de investimento.
-                </p>
+                <h2 className={styles.sectionTitle}>Sobre este serviço</h2>
               </div>
             </div>
-
-            <div className={styles.relatedGrid}>
-              {relatedServices.map((item, index) => (
-                <Link key={item.id} to={`/services/${item.id}`} className={styles.relatedCard}>
-                  <div
-                    className={styles.relatedPreview}
-                    style={{ background: SERVICE_GRADIENTS[(item.id + index) % SERVICE_GRADIENTS.length] }}
-                  />
-                  <div className={styles.relatedBody}>
-                    <span className={styles.relatedSeller}>{item.seller.name}</span>
-                    <h3>{item.title}</h3>
-                    <div className={styles.relatedMeta}>
-                      <span>{item.rating.toFixed(1)}</span>
-                      <span>{item.delivery} dias</span>
-                    </div>
-                    <strong>{formatPrice(item.price)}</strong>
-                  </div>
-                </Link>
+            <div className={styles.overview}>
+              {service.description.split('\n').filter(Boolean).map((paragraph, i) => (
+                <p key={i}>{paragraph}</p>
               ))}
             </div>
           </section>
@@ -510,42 +305,49 @@ function ServiceDetails() {
             <div className={styles.checkoutTop}>
               <div>
                 <span className={styles.checkoutLabel}>Pacote selecionado</span>
-                <h2>{selectedPackage.name}</h2>
+                <h2>{selectedPlan.title}</h2>
               </div>
-              <strong>{formatPrice(selectedPackage.price)}</strong>
+              <strong>{formatPrice(selectedPlan.priceCents)}</strong>
             </div>
-
-            <p className={styles.checkoutText}>{selectedPackage.description}</p>
 
             <div className={styles.checkoutMeta}>
               <div className={styles.checkoutMetaItem}>
                 <span>Entrega</span>
-                <strong>{selectedPackage.delivery} {selectedPackage.delivery === 1 ? 'dia' : 'dias'}</strong>
+                <strong>{selectedPlan.deliveryDays} {selectedPlan.deliveryDays === 1 ? 'dia' : 'dias'}</strong>
               </div>
               <div className={styles.checkoutMetaItem}>
-                <span>Revisoes</span>
-                <strong>{selectedPackage.revisions}</strong>
+                <span>Revisões</span>
+                <strong>{selectedPlan.revisions}</strong>
               </div>
             </div>
 
-            <div className={styles.checkoutFeatures}>
-              {selectedPackage.features.map((item) => (
-                <div key={item} className={styles.checkoutFeature}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
-                  <span>{item}</span>
-                </div>
-              ))}
-            </div>
+            {planFeatures(selectedPlan).length > 0 && (
+              <div className={styles.checkoutFeatures}>
+                {planFeatures(selectedPlan).map((item) => (
+                  <div key={item} className={styles.checkoutFeature}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                    <span>{item}</span>
+                  </div>
+                ))}
+              </div>
+            )}
 
-            <button type="button" className={styles.primaryButton} onClick={handleOrder}>
-              Contratar agora
-            </button>
-
-            <button type="button" className={styles.secondaryButton} onClick={handleContact}>
-              Falar com {service.seller.name}
-            </button>
+            {isOwner ? (
+              <Link to={`/services/${service.id}/edit`} className={styles.primaryButton}>
+                Editar serviço
+              </Link>
+            ) : (
+              <>
+                <button type="button" className={styles.primaryButton} onClick={handleOrder}>
+                  Contratar agora
+                </button>
+                <button type="button" className={styles.secondaryButton} onClick={handleContact}>
+                  Falar com {sellerName}
+                </button>
+              </>
+            )}
 
             <div className={styles.inlineActions}>
               <button type="button" className={styles.inlineButton} onClick={handleFavorite}>
@@ -556,46 +358,66 @@ function ServiceDetails() {
               </button>
             </div>
           </div>
-
-          <div className={styles.card}>
-            <h2 className={styles.sidebarTitle}>Compra com mais seguranca</h2>
-            <div className={styles.trustList}>
-              {trustItems.map((item) => (
-                <div key={item} className={styles.trustItem}>
-                  <span className={styles.trustIcon}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-                    </svg>
-                  </span>
-                  <span>{item}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className={styles.card}>
-            <h2 className={styles.sidebarTitle}>Resumo rapido</h2>
-            <div className={styles.quickFacts}>
-              <div className={styles.quickFact}>
-                <span>A partir de</span>
-                <strong>{formatPrice(service.price)}</strong>
-              </div>
-              <div className={styles.quickFact}>
-                <span>Nivel do vendedor</span>
-                <strong>{service.seller.level}</strong>
-              </div>
-              <div className={styles.quickFact}>
-                <span>Resposta media</span>
-                <strong>{service.seller.responseTime}</strong>
-              </div>
-              <div className={styles.quickFact}>
-                <span>Categoria</span>
-                <strong>{categoryLabel}</strong>
-              </div>
-            </div>
-          </div>
         </aside>
       </div>
+
+      {lightboxOpen && service.images?.length > 0 && (
+        <div
+          className={styles.lightbox}
+          onClick={() => setLightboxOpen(false)}
+          role="dialog"
+          aria-modal="true"
+        >
+          <button
+            type="button"
+            className={styles.lightboxClose}
+            onClick={(e) => { e.stopPropagation(); setLightboxOpen(false); }}
+            aria-label="Fechar"
+          >
+            ×
+          </button>
+
+          {service.images.length > 1 && (
+            <button
+              type="button"
+              className={`${styles.lightboxNav} ${styles.lightboxPrev}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                setActiveImageIdx((i) => (i - 1 + service.images.length) % service.images.length);
+              }}
+              aria-label="Anterior"
+            >
+              ‹
+            </button>
+          )}
+
+          <img
+            src={service.images[activeImageIdx]?.url}
+            alt=""
+            className={styles.lightboxImg}
+            onClick={(e) => e.stopPropagation()}
+          />
+
+          {service.images.length > 1 && (
+            <>
+              <button
+                type="button"
+                className={`${styles.lightboxNav} ${styles.lightboxNext}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setActiveImageIdx((i) => (i + 1) % service.images.length);
+                }}
+                aria-label="Próxima"
+              >
+                ›
+              </button>
+              <div className={styles.lightboxCounter}>
+                {activeImageIdx + 1} / {service.images.length}
+              </div>
+            </>
+          )}
+        </div>
+      )}
 
       <Toaster position="top-center" richColors />
     </div>

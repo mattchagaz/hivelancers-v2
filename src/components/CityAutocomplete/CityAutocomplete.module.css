@@ -1,0 +1,35 @@
+.wrap {
+  position: relative;
+  width: 100%;
+}
+
+.dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 260px;
+  overflow-y: auto;
+  background: var(--bg-primary, #fff);
+  border: 1px solid var(--border-color, #e8e8ef);
+  border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12);
+  padding: 4px;
+  margin: 0;
+  list-style: none;
+  z-index: 50;
+}
+
+.item {
+  padding: 9px 12px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  color: var(--text-primary, #1a1a2e);
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.itemActive,
+.item:hover {
+  background: var(--bg-secondary, #f5f6fa);
+}

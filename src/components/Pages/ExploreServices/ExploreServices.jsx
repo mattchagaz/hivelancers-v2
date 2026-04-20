@@ -1,24 +1,36 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Toaster } from 'sonner';
-import {
-  CATEGORIES,
-  SERVICE_GRADIENTS,
-  SERVICES,
-  SORT_OPTIONS,
-} from '../../../data/services';
+import { toast, Toaster } from 'sonner';
+import { SERVICE_GRADIENTS } from '../../../data/services';
+import { listCategories, listPublicServices } from '../../../services/services';
 import styles from './ExploreServices.module.css';
 
+const formatPrice = (cents) =>
+  new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+  }).format((cents || 0) / 100);
+
 function ExploreServices() {
+  const [categories, setCategories] = useState([]);
+  const [services, setServices] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [loading, setLoading] = useState(true);
+
   const [search, setSearch] = useState('');
-  const [activeCategory, setActiveCategory] = useState('all');
-  const [sortBy, setSortBy] = useState('relevant');
-  const [priceRange, setPriceRange] = useState([0, 2000]);
-  const [minRating, setMinRating] = useState(0);
-  const [deliveryMax, setDeliveryMax] = useState(30);
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [activeCategorySlug, setActiveCategorySlug] = useState('all');
+  const [priceRange, setPriceRange] = useState([0, 10000]);
+  const [debouncedPrice, setDebouncedPrice] = useState([0, 10000]);
+  const [deliveryMax, setDeliveryMax] = useState(0);
+  const [sort, setSort] = useState('newest');
+  const [page, setPage] = useState(1);
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState('grid');
   const [favorites, setFavorites] = useState([]);
+
+  const pageSize = 12;
 
   const toggleFavorite = (id) => {
     setFavorites((prev) =>
@@ -26,88 +38,95 @@ function ExploreServices() {
     );
   };
 
-  const filtered = useMemo(() => {
-    let result = [...SERVICES];
+  useEffect(() => {
+    listCategories()
+      .then(setCategories)
+      .catch((err) => toast.error(err.message));
+  }, []);
 
-    if (search.trim()) {
-      const query = search.toLowerCase();
-      result = result.filter(
-        (service) =>
-          service.title.toLowerCase().includes(query) ||
-          service.tags.some((tag) => tag.toLowerCase().includes(query)) ||
-          service.seller.name.toLowerCase().includes(query)
-      );
-    }
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search.trim()), 350);
+    return () => clearTimeout(t);
+  }, [search]);
 
-    if (activeCategory !== 'all') {
-      result = result.filter((service) => service.category === activeCategory);
-    }
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedPrice(priceRange), 400);
+    return () => clearTimeout(t);
+  }, [priceRange]);
 
-    result = result.filter(
-      (service) =>
-        service.price >= priceRange[0] &&
-        service.price <= priceRange[1] &&
-        service.delivery <= deliveryMax &&
-        service.rating >= minRating
-    );
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, activeCategorySlug, debouncedPrice, deliveryMax, sort]);
 
-    switch (sortBy) {
-      case 'rating':
-        result.sort((a, b) => b.rating - a.rating);
-        break;
-      case 'price_asc':
-        result.sort((a, b) => a.price - b.price);
-        break;
-      case 'price_desc':
-        result.sort((a, b) => b.price - a.price);
-        break;
-      case 'newest':
-        result.sort((a, b) => b.id - a.id);
-        break;
-      default:
-        result.sort((a, b) => b.reviews - a.reviews);
-    }
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
 
-    return result;
-  }, [search, activeCategory, sortBy, priceRange, minRating, deliveryMax]);
+    const params = { page, pageSize, sort };
+    if (debouncedSearch) params.q = debouncedSearch;
+    if (activeCategorySlug !== 'all') params.category = activeCategorySlug;
+    if (debouncedPrice[0] > 0) params.minPrice = debouncedPrice[0] * 100;
+    if (debouncedPrice[1] < 10000) params.maxPrice = debouncedPrice[1] * 100;
+    if (deliveryMax > 0) params.deliveryMax = deliveryMax;
+
+    listPublicServices(params)
+      .then((data) => {
+        if (cancelled) return;
+        setServices(data.items);
+        setTotal(data.total);
+        setTotalPages(data.totalPages);
+      })
+      .catch((err) => {
+        if (!cancelled) toast.error(err.message);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [page, debouncedSearch, activeCategorySlug, debouncedPrice, deliveryMax, sort]);
 
   const clearFilters = () => {
     setSearch('');
-    setActiveCategory('all');
-    setSortBy('relevant');
-    setPriceRange([0, 2000]);
-    setMinRating(0);
-    setDeliveryMax(30);
+    setActiveCategorySlug('all');
+    setPriceRange([0, 10000]);
+    setDeliveryMax(0);
+    setSort('newest');
   };
 
   const hasActiveFilters =
-    activeCategory !== 'all' ||
-    minRating > 0 ||
-    deliveryMax < 30 ||
+    activeCategorySlug !== 'all' ||
     priceRange[0] > 0 ||
-    priceRange[1] < 2000;
+    priceRange[1] < 10000 ||
+    deliveryMax > 0 ||
+    sort !== 'newest';
+
+  const categoryChips = useMemo(
+    () => [{ id: 'all', slug: 'all', name: 'Todas', icon: '🌐' }, ...categories],
+    [categories]
+  );
 
   return (
     <div className={styles.page}>
       <div className={styles.header}>
         <div className={styles.headerText}>
-          <h1 className={styles.title}>Explorar servicos</h1>
+          <h1 className={styles.title}>Explorar serviços</h1>
           <p className={styles.subtitle}>
-            Descubra profissionais incriveis para seu proximo projeto.
+            Descubra profissionais incríveis para seu próximo projeto.
           </p>
         </div>
       </div>
 
       <div className={styles.catBar}>
         <div className={styles.catScroll}>
-          {CATEGORIES.map((cat) => (
+          {categoryChips.map((cat) => (
             <button
               key={cat.id}
-              className={`${styles.catChip} ${activeCategory === cat.id ? styles.catChipActive : ''}`}
-              onClick={() => setActiveCategory(cat.id)}
+              className={`${styles.catChip} ${activeCategorySlug === cat.slug ? styles.catChipActive : ''}`}
+              onClick={() => setActiveCategorySlug(cat.slug)}
             >
-              <span className={styles.catIcon}>{cat.icon}</span>
-              <span>{cat.label}</span>
+              <span className={styles.catIcon}>{cat.icon || '📦'}</span>
+              <span>{cat.name}</span>
             </button>
           ))}
         </div>
@@ -122,7 +141,7 @@ function ExploreServices() {
           <input
             className={styles.searchInput}
             type="text"
-            placeholder="Buscar por servico, habilidade ou freelancer..."
+            placeholder="Buscar por título ou descrição..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -147,12 +166,14 @@ function ExploreServices() {
             {hasActiveFilters && <span className={styles.filterDot} />}
           </button>
 
-          <select className={styles.sortSelect} value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
-            {SORT_OPTIONS.map((option) => (
-              <option key={option.id} value={option.id}>
-                {option.label}
-              </option>
-            ))}
+          <select
+            className={styles.sortSelect}
+            value={sort}
+            onChange={(e) => setSort(e.target.value)}
+          >
+            <option value="newest">Mais recentes</option>
+            <option value="price_asc">Menor preço</option>
+            <option value="price_desc">Maior preço</option>
           </select>
 
           <div className={styles.viewToggle}>
@@ -198,15 +219,19 @@ function ExploreServices() {
           </div>
 
           <div className={styles.filterGroup}>
-            <label className={styles.filterLabel}>Faixa de preco</label>
+            <label className={styles.filterLabel}>Faixa de preço (R$)</label>
             <div className={styles.priceInputs}>
               <div className={styles.priceField}>
                 <span className={styles.pricePrefix}>R$</span>
                 <input
                   className={styles.priceInputNum}
                   type="number"
-                  value={priceRange[0]}
-                  onChange={(e) => setPriceRange([Number(e.target.value), priceRange[1]])}
+                  min="0"
+                  value={priceRange[0] === 0 ? '' : priceRange[0]}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setPriceRange([v === '' ? 0 : Number(v), priceRange[1]]);
+                  }}
                   placeholder="Min"
                 />
               </div>
@@ -216,8 +241,12 @@ function ExploreServices() {
                 <input
                   className={styles.priceInputNum}
                   type="number"
-                  value={priceRange[1]}
-                  onChange={(e) => setPriceRange([priceRange[0], Number(e.target.value)])}
+                  min="0"
+                  value={priceRange[1] === 10000 ? '' : priceRange[1]}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setPriceRange([priceRange[0], v === '' ? 10000 : Number(v)]);
+                  }}
                   placeholder="Max"
                 />
               </div>
@@ -225,38 +254,14 @@ function ExploreServices() {
           </div>
 
           <div className={styles.filterGroup}>
-            <label className={styles.filterLabel}>Avaliacao minima</label>
-            <div className={styles.ratingBtns}>
-              {[0, 4, 4.5, 4.8].map((rating) => (
-                <button
-                  key={rating}
-                  className={`${styles.ratingBtn} ${minRating === rating ? styles.ratingBtnActive : ''}`}
-                  onClick={() => setMinRating(rating)}
-                >
-                  {rating === 0 ? (
-                    'Todas'
-                  ) : (
-                    <>
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="#f59e0b" stroke="none">
-                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                      </svg>
-                      {rating}+
-                    </>
-                  )}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className={styles.filterGroup}>
-            <label className={styles.filterLabel}>Prazo maximo de entrega</label>
+            <label className={styles.filterLabel}>Prazo máximo de entrega</label>
             <div className={styles.deliveryBtns}>
               {[
+                { value: 0, label: 'Qualquer' },
                 { value: 1, label: '24h' },
                 { value: 3, label: '3 dias' },
                 { value: 7, label: '7 dias' },
                 { value: 14, label: '14 dias' },
-                { value: 30, label: 'Qualquer' },
               ].map((item) => (
                 <button
                   key={item.value}
@@ -270,7 +275,7 @@ function ExploreServices() {
           </div>
 
           <button className={styles.filtersClose} onClick={() => setShowFilters(false)}>
-            Aplicar filtros ({filtered.length} resultados)
+            Aplicar ({total} resultados)
           </button>
         </aside>
 
@@ -279,7 +284,7 @@ function ExploreServices() {
         <div className={styles.content}>
           <div className={styles.resultsBar}>
             <span className={styles.resultsCount}>
-              {filtered.length} {filtered.length === 1 ? 'servico encontrado' : 'servicos encontrados'}
+              {loading ? 'Buscando...' : `${total} ${total === 1 ? 'serviço encontrado' : 'serviços encontrados'}`}
             </span>
             {hasActiveFilters && (
               <button className={styles.clearInline} onClick={clearFilters}>
@@ -288,81 +293,7 @@ function ExploreServices() {
             )}
           </div>
 
-          {filtered.length > 0 ? (
-            <div className={viewMode === 'grid' ? styles.grid : styles.list}>
-              {filtered.map((service, index) => (
-                <Link
-                  to={`/services/${service.id}`}
-                  key={service.id}
-                  className={viewMode === 'grid' ? styles.card : styles.listCard}
-                  style={{ animationDelay: `${index * 0.04}s` }}
-                >
-                  <div
-                    className={viewMode === 'grid' ? styles.cardImg : styles.listCardImg}
-                    style={{
-                      background: service.image || SERVICE_GRADIENTS[index % SERVICE_GRADIENTS.length],
-                    }}
-                  >
-                    {service.featured && <span className={styles.featuredBadge}>Destaque</span>}
-                    <button
-                      className={`${styles.favBtn} ${favorites.includes(service.id) ? styles.favBtnActive : ''}`}
-                      onClick={(event) => {
-                        event.preventDefault();
-                        event.stopPropagation();
-                        toggleFavorite(service.id);
-                      }}
-                    >
-                      <svg
-                        width="16"
-                        height="16"
-                        viewBox="0 0 24 24"
-                        fill={favorites.includes(service.id) ? '#ef4444' : 'none'}
-                        stroke={favorites.includes(service.id) ? '#ef4444' : '#fff'}
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                      >
-                        <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" />
-                      </svg>
-                    </button>
-                  </div>
-
-                  <div className={viewMode === 'grid' ? styles.cardBody : styles.listCardBody}>
-                    <div className={styles.sellerRow}>
-                      <div className={styles.sellerAvatar}>{service.seller.avatar}</div>
-                      <div className={styles.sellerInfo}>
-                        <span className={styles.sellerName}>{service.seller.name}</span>
-                        <span className={styles.sellerLevel}>{service.seller.level}</span>
-                      </div>
-                    </div>
-
-                    <h3 className={styles.cardTitle}>{service.title}</h3>
-
-                    <div className={styles.ratingRow}>
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="#f59e0b" stroke="none">
-                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                      </svg>
-                      <span className={styles.ratingVal}>{service.rating}</span>
-                      <span className={styles.ratingCount}>({service.reviews})</span>
-                    </div>
-
-                    <div className={styles.cardFooter}>
-                      <span className={styles.deliveryTag}>
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                          <circle cx="12" cy="12" r="10" />
-                          <polyline points="12 6 12 12 16 14" />
-                        </svg>
-                        {service.delivery} {service.delivery === 1 ? 'dia' : 'dias'}
-                      </span>
-                      <div className={styles.priceArea}>
-                        <span className={styles.priceLabel}>a partir de</span>
-                        <span className={styles.priceVal}>R$ {service.price}</span>
-                      </div>
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          ) : (
+          {!loading && services.length === 0 ? (
             <div className={styles.empty}>
               <div className={styles.emptyIcon}>
                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round">
@@ -370,12 +301,119 @@ function ExploreServices() {
                   <line x1="21" y1="21" x2="16.65" y2="16.65" />
                 </svg>
               </div>
-              <h3 className={styles.emptyTitle}>Nenhum servico encontrado</h3>
+              <h3 className={styles.emptyTitle}>Nenhum serviço encontrado</h3>
               <p className={styles.emptySub}>Tente ajustar os filtros ou buscar por outro termo.</p>
-              <button className={styles.emptyBtn} onClick={clearFilters}>
-                Limpar filtros
-              </button>
+              {hasActiveFilters && (
+                <button className={styles.emptyBtn} onClick={clearFilters}>
+                  Limpar filtros
+                </button>
+              )}
             </div>
+          ) : (
+            <>
+              <div className={viewMode === 'grid' ? styles.grid : styles.list}>
+                {services.map((service, index) => {
+                  const minPrice = service.plans?.[0]?.priceCents;
+                  const minDelivery = service.plans?.reduce(
+                    (acc, p) => (p.deliveryDays < acc ? p.deliveryDays : acc),
+                    service.plans[0]?.deliveryDays || 0
+                  );
+                  const sellerName = `${service.owner?.firstName || ''} ${service.owner?.lastName || ''}`.trim() || 'Vendedor';
+                  const sellerInitial = (sellerName[0] || '?').toUpperCase();
+
+                  return (
+                    <Link
+                      to={`/services/${service.id}`}
+                      key={service.id}
+                      className={viewMode === 'grid' ? styles.card : styles.listCard}
+                      style={{ animationDelay: `${index * 0.04}s` }}
+                    >
+                      <div
+                        className={viewMode === 'grid' ? styles.cardImg : styles.listCardImg}
+                        style={{
+                          background: service.coverUrl
+                            ? `url(${service.coverUrl}) center/cover`
+                            : SERVICE_GRADIENTS[index % SERVICE_GRADIENTS.length],
+                        }}
+                      >
+                        <button
+                          className={`${styles.favBtn} ${favorites.includes(service.id) ? styles.favBtnActive : ''}`}
+                          onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            toggleFavorite(service.id);
+                          }}
+                        >
+                          <svg
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill={favorites.includes(service.id) ? '#ef4444' : 'none'}
+                            stroke={favorites.includes(service.id) ? '#ef4444' : '#fff'}
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                          >
+                            <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" />
+                          </svg>
+                        </button>
+                      </div>
+
+                      <div className={viewMode === 'grid' ? styles.cardBody : styles.listCardBody}>
+                        <div className={styles.sellerRow}>
+                          <div className={styles.sellerAvatar}>{sellerInitial}</div>
+                          <div className={styles.sellerInfo}>
+                            <span className={styles.sellerName}>{sellerName}</span>
+                            {service.owner?.headline && (
+                              <span className={styles.sellerLevel}>{service.owner.headline}</span>
+                            )}
+                          </div>
+                        </div>
+
+                        <h3 className={styles.cardTitle}>{service.title}</h3>
+
+                        <div className={styles.cardFooter}>
+                          {minDelivery !== undefined && (
+                            <span className={styles.deliveryTag}>
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                                <circle cx="12" cy="12" r="10" />
+                                <polyline points="12 6 12 12 16 14" />
+                              </svg>
+                              {minDelivery} {minDelivery === 1 ? 'dia' : 'dias'}
+                            </span>
+                          )}
+                          <div className={styles.priceArea}>
+                            <span className={styles.priceLabel}>a partir de</span>
+                            <span className={styles.priceVal}>{formatPrice(minPrice)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+
+              {totalPages > 1 && (
+                <div className={styles.pagination}>
+                  <button
+                    className={styles.pageBtn}
+                    disabled={page <= 1}
+                    onClick={() => setPage(page - 1)}
+                  >
+                    ← Anterior
+                  </button>
+                  <span className={styles.pageInfo}>
+                    Página {page} de {totalPages}
+                  </span>
+                  <button
+                    className={styles.pageBtn}
+                    disabled={page >= totalPages}
+                    onClick={() => setPage(page + 1)}
+                  >
+                    Próxima →
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

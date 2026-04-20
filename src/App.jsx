@@ -41,6 +41,7 @@ function App() {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/services/new" element={<CreateService />} />
             <Route path="/services" element={<ExploreServices />} />
+            <Route path="/services/:id/edit" element={<CreateService />} />
             <Route path="/services/:id" element={<ServiceDetails />} />
             <Route path="/checkout/:id" element={<Checkout />} />
             <Route path="/explore" element={<ExploreServices />} />

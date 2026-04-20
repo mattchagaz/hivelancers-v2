@@ -1,7 +1,19 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { toast } from 'sonner';
 import { CATEGORIES, SERVICE_GRADIENTS, SERVICES } from '../../../data/services';
 import { useAuth } from '../../../contexts/AuthContext';
+import { listMyServices } from '../../../services/services';
 import styles from './Dashboard.module.css';
+
+const STATUS_LABEL = {
+  DRAFT: 'Rascunho',
+  PUBLISHED: 'Publicado',
+  ARCHIVED: 'Arquivado',
+};
+
+const formatPriceBRL = (cents) =>
+  (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
 function Dashboard() {
   const { user } = useAuth();
@@ -11,6 +23,16 @@ function Dashboard() {
 }
 
 function FreelancerDashboard() {
+  const [myServices, setMyServices] = useState([]);
+  const [loadingServices, setLoadingServices] = useState(true);
+
+  useEffect(() => {
+    listMyServices()
+      .then(setMyServices)
+      .catch((err) => toast.error(err.message))
+      .finally(() => setLoadingServices(false));
+  }, []);
+
   const stats = [
     { label: 'Ganhos do mes', value: 'R$ 3.240', change: '+12%', positive: true, color: 'green' },
     { label: 'Pedidos ativos', value: '7', change: '+2 novos', positive: true, color: 'blue' },
@@ -157,6 +179,16 @@ function FreelancerDashboard() {
 
       <div className={styles.grid}>
         <div className={styles.mainColumn}>
+          <section className={styles.card} style={{ animationDelay: '0.1s' }}>
+            <SectionHeader
+              title="Meus serviços"
+              subtitle="Os serviços que você publicou na plataforma."
+              actionLabel="Criar novo"
+              actionTo="/services/new"
+            />
+            <MyServicesList services={myServices} loading={loadingServices} />
+          </section>
+
           <section className={styles.card} style={{ animationDelay: '0.12s' }}>
             <SectionHeader
               title="Pedidos recentes"
@@ -528,6 +560,55 @@ function SectionHeader({ title, subtitle, actionLabel, actionTo }) {
           {actionLabel}
         </Link>
       )}
+    </div>
+  );
+}
+
+function MyServicesList({ services, loading }) {
+  if (loading) {
+    return <div className={styles.myServicesEmpty}>Carregando...</div>;
+  }
+  if (services.length === 0) {
+    return (
+      <div className={styles.myServicesEmpty}>
+        <p>Você ainda não publicou nenhum serviço.</p>
+        <Link to="/services/new" className={styles.actionPrimary}>
+          Criar meu primeiro serviço
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className={styles.myServicesGrid}>
+      {services.map((service) => {
+        const minPrice = service.plans?.[0]?.priceCents;
+        return (
+          <Link
+            key={service.id}
+            to={`/services/${service.id}`}
+            className={styles.myServiceCard}
+          >
+            <div className={styles.myServiceHead}>
+              <span className={styles.myServiceCat}>
+                {service.category?.icon || '📦'} {service.category?.name}
+              </span>
+              <span
+                className={`${styles.myServiceStatus} ${styles[`status_${service.status}`]}`}
+              >
+                {STATUS_LABEL[service.status] || service.status}
+              </span>
+            </div>
+            <h3 className={styles.myServiceTitle}>{service.title}</h3>
+            <div className={styles.myServiceMeta}>
+              <span>{service.plans?.length || 0} plano(s)</span>
+              {minPrice !== undefined && (
+                <strong>a partir de {formatPriceBRL(minPrice)}</strong>
+              )}
+            </div>
+          </Link>
+        );
+      })}
     </div>
   );
 }
