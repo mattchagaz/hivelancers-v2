@@ -330,7 +330,18 @@ function Messages() {
     if (!user?.id) return undefined;
 
     const socket = connectSocket();
-    const handleConnect = () => setSocketConnected(true);
+    const handleConnect = () => {
+      setSocketConnected(true);
+      // Re-fetch messages and conversations on reconnect
+      if (activeIdRef.current) {
+        getMessages(activeIdRef.current)
+          .then((data) => setMessages(getMessageList(data)))
+          .catch(() => {});
+      }
+      listConversations()
+        .then((data) => setConversations(data || []))
+        .catch(() => {});
+    };
     const handleDisconnect = () => setSocketConnected(false);
 
     socket.on('connect', handleConnect);
