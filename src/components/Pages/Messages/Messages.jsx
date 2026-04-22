@@ -17,7 +17,6 @@ import {
 } from '../../../services/socket';
 import styles from './Messages.module.css';
 
-const RECONCILE_INTERVAL = 4000;
 const TYPING_STOP_DELAY = 1200;
 const TYPING_STALE_DELAY = 3500;
 
@@ -38,15 +37,6 @@ const normalizeConversationPayload = (payload) =>
 
 const getMessageList = (data) =>
   data?.messages || data?.data?.messages || (Array.isArray(data) ? data : []);
-
-const messagesChanged = (current, next) => {
-  if (current.length !== next.length) return true;
-  const currentLast = current[current.length - 1];
-  const nextLast = next[next.length - 1];
-  return toId(currentLast?.id) !== toId(nextLast?.id) ||
-    currentLast?.content !== nextLast?.content ||
-    currentLast?.createdAt !== nextLast?.createdAt;
-};
 
 const getPayloadConversationId = (payload, message) =>
   payload?.conversationId ||
@@ -130,13 +120,11 @@ function Messages() {
 
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
-  const pollRef = useRef(null);
   const activeIdRef = useRef(activeId);
   const userIdRef = useRef(user?.id);
   const typingRef = useRef(false);
   const typingTimeoutRef = useRef(null);
   const typingStaleTimeoutRef = useRef(null);
-  const skipPollUntilRef = useRef(0);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -472,38 +460,6 @@ function Messages() {
     return () => { cancelled = true; };
   }, [activeId, scrollToBottom, stopTyping]);
 
-  // Reconcile with REST while the backend websocket contract is still evolving.
-  useEffect(() => {
-    if (!activeId) return undefined;
-
-    pollRef.current = setInterval(() => {
-      if (Date.now() < skipPollUntilRef.current) return;
-
-      getMessages(activeId)
-        .then((data) => {
-          if (Date.now() < skipPollUntilRef.current) return;
-          setMessages((prev) => {
-            const newMsgs = getMessageList(data);
-            if (messagesChanged(prev, newMsgs) && newMsgs.length >= prev.length) {
-              setTimeout(scrollToBottom, 100);
-              return newMsgs;
-            }
-            return prev;
-          });
-        })
-        .catch(() => {});
-
-      listConversations()
-        .then((data) => {
-          if (Date.now() < skipPollUntilRef.current) return;
-          setConversations(data);
-        })
-        .catch(() => {});
-    }, RECONCILE_INTERVAL);
-
-    return () => clearInterval(pollRef.current);
-  }, [activeId, scrollToBottom]);
-
   const selectConversation = (id) => {
     stopTyping(activeIdRef.current);
     setSearchParams({ chat: id });
@@ -530,7 +486,6 @@ function Messages() {
 
     stopTyping(activeId);
     setSending(true);
-    skipPollUntilRef.current = Date.now() + 5000;
     try {
       const msg = await sendMessage(activeId, { content: trimmed });
       if (msg?.id || msg?.content) {
