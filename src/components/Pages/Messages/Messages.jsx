@@ -136,6 +136,7 @@ function Messages() {
   const typingRef = useRef(false);
   const typingTimeoutRef = useRef(null);
   const typingStaleTimeoutRef = useRef(null);
+  const skipPollUntilRef = useRef(0);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -476,11 +477,14 @@ function Messages() {
     if (!activeId) return undefined;
 
     pollRef.current = setInterval(() => {
+      if (Date.now() < skipPollUntilRef.current) return;
+
       getMessages(activeId)
         .then((data) => {
+          if (Date.now() < skipPollUntilRef.current) return;
           setMessages((prev) => {
             const newMsgs = getMessageList(data);
-            if (messagesChanged(prev, newMsgs)) {
+            if (messagesChanged(prev, newMsgs) && newMsgs.length >= prev.length) {
               setTimeout(scrollToBottom, 100);
               return newMsgs;
             }
@@ -490,7 +494,10 @@ function Messages() {
         .catch(() => {});
 
       listConversations()
-        .then(setConversations)
+        .then((data) => {
+          if (Date.now() < skipPollUntilRef.current) return;
+          setConversations(data);
+        })
         .catch(() => {});
     }, RECONCILE_INTERVAL);
 
@@ -523,6 +530,7 @@ function Messages() {
 
     stopTyping(activeId);
     setSending(true);
+    skipPollUntilRef.current = Date.now() + 5000;
     try {
       const msg = await sendMessage(activeId, { content: trimmed });
       if (msg?.id || msg?.content) {
