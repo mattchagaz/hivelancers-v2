@@ -1,35 +1,78 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { toast, Toaster } from 'sonner';
-import { getServiceById } from '../../../data/services';
+import { getMyService, getPublicService } from '../../../services/services';
 import styles from './Checkout.module.css';
 
-const formatPrice = (value) =>
+const formatPrice = (cents) =>
   new Intl.NumberFormat('pt-BR', {
     style: 'currency',
     currency: 'BRL',
-    maximumFractionDigits: 0,
-  }).format(value);
+  }).format((cents || 0) / 100);
+
+const getPlanFeatures = (plan) =>
+  (plan?.description || '')
+    .split('\n')
+    .map((line) => line.replace(/^•\s*/, '').trim())
+    .filter(Boolean);
+
+const getSellerName = (service) =>
+  `${service?.owner?.firstName || ''} ${service?.owner?.lastName || ''}`.trim() || 'freelancer';
+
+const getSellerInitials = (name) =>
+  name
+    .split(' ')
+    .map((part) => part[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join('')
+    .toUpperCase() || 'F';
 
 function Checkout() {
   const navigate = useNavigate();
   const { id } = useParams();
   const [searchParams] = useSearchParams();
-  const service = getServiceById(id);
+  const [service, setService] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
 
-  const selectedPackage = useMemo(() => {
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setNotFound(false);
+
+    const loadService = async () => {
+      try {
+        const data = await getPublicService(id);
+        if (!cancelled) setService(data);
+      } catch {
+        try {
+          const data = await getMyService(id);
+          if (!cancelled) setService(data);
+        } catch {
+          if (!cancelled) setNotFound(true);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    loadService();
+    return () => { cancelled = true; };
+  }, [id]);
+
+  const selectedPlan = useMemo(() => {
     if (!service) return null;
-    const packageId = searchParams.get('package');
+    const planId = searchParams.get('plan') || searchParams.get('package');
+    const plans = service.plans || [];
     return (
-      service.packages.find((item) => item.id === packageId) ||
-      service.packages.find((item) => item.popular) ||
-      service.packages[0]
+      plans.find((item) => item.id === planId) ||
+      plans[0] ||
+      null
     );
   }, [service, searchParams]);
 
-  const [orderTitle, setOrderTitle] = useState(
-    service ? `Pedido para ${service.title}` : ''
-  );
+  const [orderTitle, setOrderTitle] = useState('');
   const [briefing, setBriefing] = useState('');
   const [deliveryNote, setDeliveryNote] = useState('');
   const [attachments, setAttachments] = useState('');
@@ -37,7 +80,21 @@ function Checkout() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderComplete, setOrderComplete] = useState(false);
 
-  if (!service || !selectedPackage) {
+  useEffect(() => {
+    if (service?.title) {
+      setOrderTitle((current) => current || `Pedido para ${service.title}`);
+    }
+  }, [service]);
+
+  if (loading) {
+    return (
+      <div className={styles.emptyState}>
+        <h1 className={styles.emptyTitle}>Carregando checkout...</h1>
+      </div>
+    );
+  }
+
+  if (notFound || !service || !selectedPlan) {
     return (
       <div className={styles.emptyState}>
         <div className={styles.emptyIcon}>
@@ -46,67 +103,71 @@ function Checkout() {
             <line x1="21" y1="21" x2="16.65" y2="16.65" />
           </svg>
         </div>
-        <h1 className={styles.emptyTitle}>Pedido nao encontrado</h1>
+        <h1 className={styles.emptyTitle}>Checkout não encontrado</h1>
         <p className={styles.emptyText}>
-          Nao foi possivel carregar este checkout. Volte para o servico e tente novamente.
+          Não foi possível carregar este checkout. Volte para o serviço e tente novamente.
         </p>
-        <Link to="/services" className={styles.primaryButton}>
-          Voltar para servicos
+        <Link to="/explore" className={styles.primaryButton}>
+          Voltar para serviços
         </Link>
       </div>
     );
   }
 
+  const sellerName = getSellerName(service);
+  const sellerInitials = getSellerInitials(sellerName);
+  const selectedPlanFeatures = getPlanFeatures(selectedPlan);
+
   const addons = [
     {
       id: 'priority',
-      label: 'Fila prioritario',
+      label: 'Fila prioritária',
       description: 'Seu pedido entra com prioridade no cronograma do freelancer.',
-      price: Math.max(40, Math.round(selectedPackage.price * 0.18)),
+      priceCents: Math.max(4000, Math.round(selectedPlan.priceCents * 0.18)),
     },
     {
       id: 'extended_support',
-      label: 'Suporte pos-entrega',
-      description: 'Acompanhamento por 7 dias apos a entrega final.',
-      price: Math.max(30, Math.round(selectedPackage.price * 0.12)),
+      label: 'Suporte pós-entrega',
+      description: 'Acompanhamento por 7 dias após a entrega final.',
+      priceCents: Math.max(3000, Math.round(selectedPlan.priceCents * 0.12)),
     },
     {
       id: 'express_revision',
-      label: 'Revisao expressa',
-      description: 'Ajustes priorizados em ate 24 horas depois do primeiro envio.',
-      price: Math.max(25, Math.round(selectedPackage.price * 0.1)),
+      label: 'Revisão expressa',
+      description: 'Ajustes priorizados em até 24 horas depois do primeiro envio.',
+      priceCents: Math.max(2500, Math.round(selectedPlan.priceCents * 0.1)),
     },
   ];
 
   const selectedExtrasTotal = addons
     .filter((addon) => selectedAddons.includes(addon.id))
-    .reduce((acc, item) => acc + item.price, 0);
-  const platformFee = Math.max(12, Math.round(selectedPackage.price * 0.09));
-  const total = selectedPackage.price + selectedExtrasTotal + platformFee;
+    .reduce((acc, item) => acc + item.priceCents, 0);
+  const platformFee = Math.max(1200, Math.round(selectedPlan.priceCents * 0.09));
+  const total = selectedPlan.priceCents + selectedExtrasTotal + platformFee;
 
   const orderSteps = [
     {
       title: 'Briefing alinhado',
-      text: 'Voce descreve objetivo, referencias e o que espera receber.',
+      text: 'Você descreve objetivo, referências e o que espera receber.',
     },
     {
-      title: 'Execucao do servico',
-      text: `${service.seller.name} inicia a producao dentro do prazo combinado.`,
+      title: 'Execução do serviço',
+      text: `${sellerName} inicia a produção dentro do prazo combinado.`,
     },
     {
-      title: 'Entrega e revisoes',
-      text: `Voce recebe a primeira entrega e pode usar as ${selectedPackage.revisions} revisoes inclusas.`,
+      title: 'Entrega e revisões',
+      text: `Você recebe a primeira entrega e pode usar as ${selectedPlan.revisions} revisões inclusas.`,
     },
     {
-      title: 'Aprovacao e liberacao',
-      text: 'O pagamento fica protegido ate sua aprovacao final.',
+      title: 'Aprovação e liberação',
+      text: 'O pagamento fica protegido até sua aprovação final.',
     },
   ];
 
   const protections = [
-    'Pagamento protegido via escrow ate a aprovacao',
-    'Todo o historico do pedido fica salvo na plataforma',
-    'Arquivos, mensagens e revisoes centralizados em um unico fluxo',
+    'Pagamento protegido via escrow até a aprovação',
+    'Todo o histórico do pedido fica salvo na plataforma',
+    'Arquivos, mensagens e revisões centralizados em um único fluxo',
   ];
 
   const toggleAddon = (addonId) => {
@@ -136,14 +197,14 @@ function Checkout() {
     return (
       <div className={styles.successState}>
         <div className={styles.successBadge}>Pedido criado</div>
-        <h1 className={styles.successTitle}>Seu projeto ja entrou no fluxo da Hivelancers.</h1>
+        <h1 className={styles.successTitle}>Seu projeto já entrou no fluxo da Hivelancers.</h1>
         <p className={styles.successText}>
-          O pedido foi registrado com pagamento protegido e briefing salvo. O proximo passo e o freelancer confirmar o inicio do trabalho e alinhar detalhes finos com voce.
+          O pedido foi registrado com pagamento protegido e briefing salvo. O próximo passo é o freelancer confirmar o início do trabalho e alinhar detalhes finos com você.
         </p>
 
         <div className={styles.successGrid}>
           <div className={styles.successCard}>
-            <span className={styles.successLabel}>Numero do pedido</span>
+            <span className={styles.successLabel}>Número do pedido</span>
             <strong>#HL-{service.id}48</strong>
           </div>
           <div className={styles.successCard}>
@@ -151,8 +212,8 @@ function Checkout() {
             <strong>+40 XP como cliente ativo</strong>
           </div>
           <div className={styles.successCard}>
-            <span className={styles.successLabel}>Proximo passo</span>
-            <strong>Aguardando confirmacao do freelancer</strong>
+            <span className={styles.successLabel}>Próximo passo</span>
+            <strong>Aguardando confirmação do freelancer</strong>
           </div>
         </div>
 
@@ -161,7 +222,7 @@ function Checkout() {
             Ir para dashboard
           </button>
           <Link to={`/services/${service.id}`} className={styles.secondaryButton}>
-            Voltar ao servico
+            Voltar ao serviço
           </Link>
         </div>
 
@@ -175,7 +236,7 @@ function Checkout() {
       <div className={styles.breadcrumbs}>
         <Link to="/dashboard">Dashboard</Link>
         <span>/</span>
-        <Link to={`/services/${service.id}`}>Servico</Link>
+        <Link to={`/services/${service.id}`}>Serviço</Link>
         <span>/</span>
         <span>Checkout</span>
       </div>
@@ -185,7 +246,7 @@ function Checkout() {
           <div className={styles.headerBadge}>Fluxo de pedido protegido</div>
           <h1 className={styles.title}>Finalizar pedido</h1>
           <p className={styles.subtitle}>
-            Monte o briefing, escolha extras e confirme o escopo antes de iniciar o projeto com {service.seller.name}.
+            Monte o briefing, escolha extras e confirme o escopo antes de iniciar o projeto com {sellerName}.
           </p>
         </div>
       </section>
@@ -195,32 +256,38 @@ function Checkout() {
           <section className={styles.card}>
             <div className={styles.cardHead}>
               <div>
-                <h2 className={styles.cardTitle}>Resumo do servico</h2>
+                <h2 className={styles.cardTitle}>Resumo do serviço</h2>
                 <p className={styles.cardSub}>
-                  O pedido sera criado com base no pacote selecionado na pagina de detalhes.
+                  O pedido será criado com base no pacote selecionado na página de detalhes.
                 </p>
               </div>
             </div>
 
             <div className={styles.serviceSummary}>
               <div className={styles.sellerChip}>
-                <div className={styles.avatar}>{service.seller.avatar}</div>
+                <div className={styles.avatar}>
+                  {service.owner?.avatarUrl ? (
+                    <img src={service.owner.avatarUrl} alt="" className={styles.avatarImg} />
+                  ) : (
+                    sellerInitials
+                  )}
+                </div>
                 <div>
-                  <strong>{service.seller.name}</strong>
-                  <span>{service.seller.level}</span>
+                  <strong>{sellerName}</strong>
+                  <span>{service.owner?.headline || service.owner?.username || 'Freelancer'}</span>
                 </div>
               </div>
 
               <div className={styles.serviceInfo}>
                 <h3>{service.title}</h3>
-                <p>{service.summary}</p>
+                <p>{service.description}</p>
               </div>
 
               <div className={styles.packageBox}>
                 <span className={styles.packageLabel}>Pacote</span>
-                <strong>{selectedPackage.name}</strong>
+                <strong>{selectedPlan.title}</strong>
                 <small>
-                  {selectedPackage.delivery} {selectedPackage.delivery === 1 ? 'dia' : 'dias'} · {selectedPackage.revisions} revisoes
+                  {selectedPlan.deliveryDays} {selectedPlan.deliveryDays === 1 ? 'dia' : 'dias'} · {selectedPlan.revisions} revisões
                 </small>
               </div>
             </div>
@@ -231,14 +298,14 @@ function Checkout() {
               <div>
                 <h2 className={styles.cardTitle}>Detalhes do pedido</h2>
                 <p className={styles.cardSub}>
-                  Quanto mais contexto voce der aqui, maior a chance de uma entrega certa ja no primeiro envio.
+                  Quanto mais contexto você der aqui, maior a chance de uma entrega certa já no primeiro envio.
                 </p>
               </div>
             </div>
 
             <div className={styles.formGrid}>
               <label className={styles.field}>
-                <span className={styles.label}>Titulo interno do pedido</span>
+                <span className={styles.label}>Título interno do pedido</span>
                 <input
                   className={styles.input}
                   type="text"
@@ -255,7 +322,7 @@ function Checkout() {
                   type="text"
                   value={deliveryNote}
                   onChange={(e) => setDeliveryNote(e.target.value)}
-                  placeholder="Ex: preciso da primeira versao ate sexta"
+                  placeholder="Ex: preciso da primeira versão até sexta"
                 />
               </label>
             </div>
@@ -267,18 +334,18 @@ function Checkout() {
                 rows={7}
                 value={briefing}
                 onChange={(e) => setBriefing(e.target.value)}
-                placeholder="Descreva objetivo, publico, referencias, ton de voz, entregaveis esperados e qualquer detalhe que ajude o freelancer a produzir melhor."
+                placeholder="Descreva objetivo, público, referências, tom de voz, entregáveis esperados e qualquer detalhe que ajude o freelancer a produzir melhor."
               />
             </label>
 
             <label className={styles.field}>
-              <span className={styles.label}>Links, arquivos e referencias</span>
+              <span className={styles.label}>Links, arquivos e referências</span>
               <textarea
                 className={styles.textarea}
                 rows={4}
                 value={attachments}
                 onChange={(e) => setAttachments(e.target.value)}
-                placeholder="Cole links de drive, figma, pinterest, site atual, exemplos visuais ou notas adicionais."
+                placeholder="Cole links de drive, Figma, Pinterest, site atual, exemplos visuais ou notas adicionais."
               />
             </label>
           </section>
@@ -309,7 +376,7 @@ function Checkout() {
                         <h3>{addon.label}</h3>
                         <p>{addon.description}</p>
                       </div>
-                      <strong>{formatPrice(addon.price)}</strong>
+                      <strong>{formatPrice(addon.priceCents)}</strong>
                     </div>
                     <span className={styles.addonState}>
                       {active ? 'Selecionado' : 'Adicionar ao pedido'}
@@ -325,7 +392,7 @@ function Checkout() {
               <div>
                 <h2 className={styles.cardTitle}>Como funciona daqui para frente</h2>
                 <p className={styles.cardSub}>
-                  O fluxo e simples, mas organizado para reduzir retrabalho e proteger ambas as partes.
+                  O fluxo é simples, mas organizado para reduzir retrabalho e proteger ambas as partes.
                 </p>
               </div>
             </div>
@@ -349,7 +416,7 @@ function Checkout() {
             <div className={styles.checkoutTop}>
               <div>
                 <span className={styles.checkoutLabel}>Resumo financeiro</span>
-                <h2>{selectedPackage.name}</h2>
+                <h2>{selectedPlan.title}</h2>
               </div>
               <strong>{formatPrice(total)}</strong>
             </div>
@@ -357,7 +424,7 @@ function Checkout() {
             <div className={styles.priceRows}>
               <div className={styles.priceRow}>
                 <span>Pacote base</span>
-                <strong>{formatPrice(selectedPackage.price)}</strong>
+                <strong>{formatPrice(selectedPlan.priceCents)}</strong>
               </div>
               <div className={styles.priceRow}>
                 <span>Extras</span>
@@ -374,7 +441,7 @@ function Checkout() {
             </div>
 
             <div className={styles.packageFeatures}>
-              {selectedPackage.features.map((item) => (
+              {(selectedPlanFeatures.length > 0 ? selectedPlanFeatures : ['Escopo conforme descrito no pacote']).map((item) => (
                 <div key={item} className={styles.packageFeature}>
                   <span className={styles.featureDot} />
                   <span>{item}</span>
@@ -392,12 +459,12 @@ function Checkout() {
             </button>
 
             <Link to={`/services/${service.id}`} className={styles.secondaryButton}>
-              Voltar ao servico
+              Voltar ao serviço
             </Link>
           </section>
 
           <section className={styles.card}>
-            <h2 className={styles.cardTitle}>Compra com seguranca</h2>
+            <h2 className={styles.cardTitle}>Compra com segurança</h2>
             <div className={styles.protectionList}>
               {protections.map((item) => (
                 <div key={item} className={styles.protectionItem}>
@@ -415,7 +482,7 @@ function Checkout() {
           <section className={styles.card}>
             <h2 className={styles.cardTitle}>Dica para um pedido melhor</h2>
             <p className={styles.tipText}>
-              Briefings com objetivo claro, publico definido e referencias visuais costumam reduzir revisoes e acelerar a primeira entrega.
+              Briefings com objetivo claro, público definido e referências visuais costumam reduzir revisões e acelerar a primeira entrega.
             </p>
           </section>
         </aside>

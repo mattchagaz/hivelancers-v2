@@ -339,12 +339,21 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  text-decoration: none;
+}
+
+.chatUserName:hover {
+  color: var(--primary-color);
 }
 
 .chatUserStatus {
   font-size: 0.72rem;
   color: var(--text-muted, #a0a0ab);
   font-weight: 500;
+}
+
+.chatUserTyping {
+  color: var(--primary-color);
 }
 
 .chatActions {
@@ -366,6 +375,16 @@
 .chatActionBtn:hover {
   background: var(--bg-tertiary, #eef0f6);
   border-color: var(--text-muted);
+}
+
+.profileActionBtn {
+  width: auto;
+  gap: 7px;
+  padding: 0 12px;
+  color: var(--text-primary);
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-decoration: none;
 }
 
 /* Messages Area */
@@ -459,6 +478,43 @@
 
 .bubbleTheirs .bubbleTime {
   color: var(--text-muted);
+}
+
+.typingBubble {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  width: 56px;
+  min-height: 36px;
+  padding: 12px 14px;
+}
+
+.typingBubble span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-muted, #a0a0ab);
+  animation: typingDot 1s infinite ease-in-out;
+}
+
+.typingBubble span:nth-child(2) {
+  animation-delay: 0.14s;
+}
+
+.typingBubble span:nth-child(3) {
+  animation-delay: 0.28s;
+}
+
+@keyframes typingDot {
+  0%, 80%, 100% {
+    opacity: 0.35;
+    transform: translateY(0);
+  }
+
+  40% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
 }
 
 /* Input Bar */
@@ -579,6 +635,15 @@
 
   .chatHeader {
     padding: 12px 14px;
+  }
+
+  .profileActionBtn span {
+    display: none;
+  }
+
+  .profileActionBtn {
+    width: 38px;
+    padding: 0;
   }
 }
 

@@ -7,9 +7,79 @@ import {
   getMessages,
   sendMessage,
 } from '../../../services/messages';
+import {
+  connectSocket,
+  disconnectSocket,
+  emitSocket,
+  getSocket,
+  joinConversationRoom,
+  leaveConversationRoom,
+} from '../../../services/socket';
 import styles from './Messages.module.css';
 
-const POLL_INTERVAL = 8000;
+const RECONCILE_INTERVAL = 4000;
+const TYPING_STOP_DELAY = 1200;
+const TYPING_STALE_DELAY = 3500;
+
+const toId = (value) => (value === undefined || value === null ? '' : String(value));
+
+const getSenderId = (message) => message?.senderId || message?.sender?.id || message?.userId;
+
+const getMessageConversationId = (message) =>
+  message?.conversationId || message?.conversation_id || message?.conversation?.id;
+
+const normalizeMessagePayload = (payload) =>
+  payload?.message || payload?.data?.message || payload;
+
+const normalizeConversationPayload = (payload) =>
+  payload?.conversation ||
+  payload?.data?.conversation ||
+  (payload?.participants || payload?.otherUser || payload?.lastMessage ? payload : null);
+
+const getMessageList = (data) =>
+  data?.messages || data?.data?.messages || (Array.isArray(data) ? data : []);
+
+const messagesChanged = (current, next) => {
+  if (current.length !== next.length) return true;
+  const currentLast = current[current.length - 1];
+  const nextLast = next[next.length - 1];
+  return toId(currentLast?.id) !== toId(nextLast?.id) ||
+    currentLast?.content !== nextLast?.content ||
+    currentLast?.createdAt !== nextLast?.createdAt;
+};
+
+const getPayloadConversationId = (payload, message) =>
+  payload?.conversationId ||
+  payload?.conversation_id ||
+  payload?.conversation?.id ||
+  payload?.data?.conversationId ||
+  getMessageConversationId(message);
+
+const getTypingConversationId = (payload) =>
+  payload?.conversationId ||
+  payload?.conversation_id ||
+  payload?.conversation?.id ||
+  payload?.data?.conversationId;
+
+const getTypingUserId = (payload) =>
+  payload?.userId ||
+  payload?.senderId ||
+  payload?.sender?.id ||
+  payload?.user?.id ||
+  payload?.data?.userId;
+
+const getTypingState = (payload, fallback) => {
+  if (typeof payload?.isTyping === 'boolean') return payload.isTyping;
+  if (typeof payload?.typing === 'boolean') return payload.typing;
+  if (typeof payload?.data?.isTyping === 'boolean') return payload.data.isTyping;
+  return fallback;
+};
+
+const markConversationRead = (conversationId) => {
+  if (!conversationId) return;
+  emitSocket('conversation:read', { conversationId });
+  emitSocket('mark_as_read', { conversationId });
+};
 
 const formatTime = (iso) => {
   if (!iso) return '';
@@ -55,30 +125,327 @@ function Messages() {
   const [sending, setSending] = useState(false);
   const [search, setSearch] = useState('');
   const [mobileShowChat, setMobileShowChat] = useState(false);
+  const [socketConnected, setSocketConnected] = useState(false);
+  const [isOtherTyping, setIsOtherTyping] = useState(false);
 
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const pollRef = useRef(null);
+  const activeIdRef = useRef(activeId);
+  const userIdRef = useRef(user?.id);
+  const typingRef = useRef(false);
+  const typingTimeoutRef = useRef(null);
+  const typingStaleTimeoutRef = useRef(null);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, []);
+
+  useEffect(() => {
+    activeIdRef.current = activeId;
+    setIsOtherTyping(false);
+  }, [activeId]);
+
+  useEffect(() => {
+    userIdRef.current = user?.id;
+  }, [user?.id]);
+
+  const moveConversationToTop = useCallback((items, conversationId) => {
+    const index = items.findIndex((item) => toId(item.id) === toId(conversationId));
+    if (index <= 0) return items;
+    const next = [...items];
+    const [updated] = next.splice(index, 1);
+    return [updated, ...next];
+  }, []);
+
+  const emitTypingState = useCallback((isTyping, conversationId = activeIdRef.current) => {
+    if (!conversationId) return;
+
+    const payload = {
+      conversationId,
+      userId: userIdRef.current,
+      isTyping,
+    };
+
+    emitSocket('conversation:typing', payload);
+    emitSocket('typing', payload);
+    emitSocket(isTyping ? 'typing:start' : 'typing:stop', payload);
+  }, []);
+
+  const stopTyping = useCallback((conversationId = activeIdRef.current) => {
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = null;
+    }
+
+    if (!typingRef.current) return;
+    typingRef.current = false;
+    emitTypingState(false, conversationId);
+  }, [emitTypingState]);
+
+  const scheduleTypingStop = useCallback(() => {
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    typingTimeoutRef.current = setTimeout(() => stopTyping(), TYPING_STOP_DELAY);
+  }, [stopTyping]);
+
+  const applyTypingUpdate = useCallback((payload, fallbackTyping) => {
+    const conversationId = getTypingConversationId(payload);
+    const senderId = getTypingUserId(payload);
+
+    if (conversationId && toId(conversationId) !== toId(activeIdRef.current)) return;
+    if (senderId && toId(senderId) === toId(userIdRef.current)) return;
+
+    const typing = getTypingState(payload, fallbackTyping);
+    setIsOtherTyping(Boolean(typing));
+
+    if (typingStaleTimeoutRef.current) {
+      clearTimeout(typingStaleTimeoutRef.current);
+      typingStaleTimeoutRef.current = null;
+    }
+
+    if (typing) {
+      typingStaleTimeoutRef.current = setTimeout(() => {
+        setIsOtherTyping(false);
+      }, TYPING_STALE_DELAY);
+    }
+  }, []);
+
+  const applyConversationPreview = useCallback((payload) => {
+    const message = normalizeMessagePayload(payload);
+    const conversationFromPayload = normalizeConversationPayload(payload);
+    const conversationId = getPayloadConversationId(payload, message) || conversationFromPayload?.id;
+
+    if (!conversationId) return;
+
+    setConversations((prev) => {
+      let found = false;
+      const activeConversationId = activeIdRef.current;
+      const currentUserId = userIdRef.current;
+      const senderId = getSenderId(message);
+      const isActive = toId(activeConversationId) === toId(conversationId);
+      const isOwn = toId(senderId) === toId(currentUserId);
+
+      const next = prev.map((conversation) => {
+        if (toId(conversation.id) !== toId(conversationId)) return conversation;
+
+        found = true;
+        const unreadCount = isActive || isOwn
+          ? 0
+          : Number(conversation.unreadCount || 0) + 1;
+
+        return {
+          ...conversation,
+          ...conversationFromPayload,
+          participants: conversationFromPayload?.participants || conversation.participants,
+          otherUser: conversationFromPayload?.otherUser || conversation.otherUser,
+          lastMessage: message?.id || message?.content
+            ? {
+                ...message,
+                senderId,
+                createdAt: message.createdAt || new Date().toISOString(),
+              }
+            : conversationFromPayload?.lastMessage || conversation.lastMessage,
+          unreadCount,
+        };
+      });
+
+      if (!found && conversationFromPayload?.id) {
+        return [conversationFromPayload, ...prev];
+      }
+
+      return moveConversationToTop(next, conversationId);
+    });
+  }, [moveConversationToTop]);
+
+  const appendIncomingMessage = useCallback((payload) => {
+    const message = normalizeMessagePayload(payload);
+    const conversationId = getPayloadConversationId(payload, message);
+    const activeConversationId = activeIdRef.current;
+
+    applyConversationPreview(payload);
+
+    if (!message?.id && !message?.content) return;
+    if (conversationId && toId(conversationId) !== toId(activeConversationId)) return;
+
+    setMessages((prev) => {
+      if (message.id && prev.some((item) => toId(item.id) === toId(message.id))) {
+        return prev;
+      }
+
+      const next = [...prev, message];
+      next.sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0));
+      return next;
+    });
+
+    if (toId(conversationId) === toId(activeConversationId)) {
+      markConversationRead(activeConversationId);
+      setTimeout(scrollToBottom, 50);
+    }
+  }, [applyConversationPreview, scrollToBottom]);
+
+  const applyConversationUpdate = useCallback((payload) => {
+    const conversation = normalizeConversationPayload(payload);
+    if (!conversation?.id) return;
+
+    setConversations((prev) => {
+      const exists = prev.some((item) => toId(item.id) === toId(conversation.id));
+      const next = exists
+        ? prev.map((item) => (
+            toId(item.id) === toId(conversation.id)
+              ? {
+                  ...item,
+                  ...conversation,
+                  participants: conversation.participants || item.participants,
+                  otherUser: conversation.otherUser || item.otherUser,
+                }
+              : item
+          ))
+        : [conversation, ...prev];
+
+      return moveConversationToTop(next, conversation.id);
+    });
+  }, [moveConversationToTop]);
+
+  const applyPresenceUpdate = useCallback((payload, fallbackOnline) => {
+    const presenceUserId = payload?.userId || payload?.id || payload?.user?.id;
+    if (!presenceUserId) return;
+
+    const online = typeof payload?.online === 'boolean' ? payload.online : fallbackOnline;
+
+    setConversations((prev) =>
+      prev.map((conversation) => {
+        const participants = conversation.participants || [];
+        const hasUser = participants.some((participant) => toId(participant.id) === toId(presenceUserId)) ||
+          toId(conversation.otherUser?.id) === toId(presenceUserId);
+
+        if (!hasUser) return conversation;
+
+        return {
+          ...conversation,
+          online,
+          participants: participants.map((participant) =>
+            toId(participant.id) === toId(presenceUserId)
+              ? { ...participant, online }
+              : participant
+          ),
+          otherUser: toId(conversation.otherUser?.id) === toId(presenceUserId)
+            ? { ...conversation.otherUser, online }
+            : conversation.otherUser,
+        };
+      })
+    );
+  }, []);
+
+  // Connect socket for authenticated users
+  useEffect(() => {
+    if (!user?.id) return undefined;
+
+    const socket = connectSocket();
+    const handleConnect = () => setSocketConnected(true);
+    const handleDisconnect = () => setSocketConnected(false);
+
+    socket.on('connect', handleConnect);
+    socket.on('disconnect', handleDisconnect);
+    socket.on('connect_error', handleDisconnect);
+    setSocketConnected(socket.connected);
+
+    return () => {
+      socket.off('connect', handleConnect);
+      socket.off('disconnect', handleDisconnect);
+      socket.off('connect_error', handleDisconnect);
+      disconnectSocket();
+      setSocketConnected(false);
+    };
+  }, [user?.id]);
+
+  // Listen to realtime events emitted by the backend
+  useEffect(() => {
+    if (!user?.id) return undefined;
+
+    const socket = getSocket();
+    const messageEvents = [
+      'message:new',
+      'message',
+      'new_message',
+      'receive_message',
+      'conversation:message',
+    ];
+    const conversationEvents = [
+      'conversation:new',
+      'conversation:update',
+      'conversation:updated',
+    ];
+    const typingStartEvents = [
+      'typing:start',
+      'user:typing',
+      'message:typing',
+    ];
+    const typingStopEvents = [
+      'typing:stop',
+      'user:stop_typing',
+      'message:stop_typing',
+    ];
+    const handleUserOnline = (payload) => applyPresenceUpdate(payload, true);
+    const handleUserOffline = (payload) => applyPresenceUpdate(payload, false);
+    const handleTypingStart = (payload) => applyTypingUpdate(payload, true);
+    const handleTypingStop = (payload) => applyTypingUpdate(payload, false);
+
+    messageEvents.forEach((event) => socket.on(event, appendIncomingMessage));
+    conversationEvents.forEach((event) => socket.on(event, applyConversationUpdate));
+    typingStartEvents.forEach((event) => socket.on(event, handleTypingStart));
+    typingStopEvents.forEach((event) => socket.on(event, handleTypingStop));
+    socket.on('user:online', handleUserOnline);
+    socket.on('user:offline', handleUserOffline);
+    socket.on('presence:update', applyPresenceUpdate);
+    socket.on('typing', handleTypingStart);
+    socket.on('conversation:typing', handleTypingStart);
+
+    return () => {
+      messageEvents.forEach((event) => socket.off(event, appendIncomingMessage));
+      conversationEvents.forEach((event) => socket.off(event, applyConversationUpdate));
+      typingStartEvents.forEach((event) => socket.off(event, handleTypingStart));
+      typingStopEvents.forEach((event) => socket.off(event, handleTypingStop));
+      socket.off('user:online', handleUserOnline);
+      socket.off('user:offline', handleUserOffline);
+      socket.off('presence:update', applyPresenceUpdate);
+      socket.off('typing', handleTypingStart);
+      socket.off('conversation:typing', handleTypingStart);
+    };
+  }, [appendIncomingMessage, applyConversationUpdate, applyPresenceUpdate, applyTypingUpdate, user?.id]);
 
   // Load conversations
   useEffect(() => {
     let cancelled = false;
     setLoadingConvs(true);
     listConversations()
-      .then((data) => { if (!cancelled) setConversations(data); })
+      .then((data) => { if (!cancelled) setConversations(data || []); })
       .catch((err) => { if (!cancelled) toast.error(err.message); })
       .finally(() => { if (!cancelled) setLoadingConvs(false); });
     return () => { cancelled = true; };
   }, []);
 
+  // Subscribe to the active conversation room
+  useEffect(() => {
+    if (!activeId || !socketConnected) return undefined;
+
+    joinConversationRoom(activeId);
+    markConversationRead(activeId);
+
+    return () => {
+      leaveConversationRoom(activeId);
+    };
+  }, [activeId, socketConnected]);
+
+  useEffect(() => () => {
+    stopTyping();
+    if (typingStaleTimeoutRef.current) clearTimeout(typingStaleTimeoutRef.current);
+  }, [stopTyping]);
+
   // Load messages when active conversation changes
   useEffect(() => {
     if (!activeId) {
       setMessages([]);
+      stopTyping();
       return;
     }
 
@@ -87,25 +454,33 @@ function Messages() {
     getMessages(activeId)
       .then((data) => {
         if (cancelled) return;
-        setMessages(data.messages || []);
+        setMessages(getMessageList(data));
+        markConversationRead(activeId);
+        setConversations((prev) =>
+          prev.map((conversation) =>
+            toId(conversation.id) === toId(activeId)
+              ? { ...conversation, unreadCount: 0 }
+              : conversation
+          )
+        );
         setTimeout(scrollToBottom, 100);
       })
       .catch((err) => { if (!cancelled) toast.error(err.message); })
       .finally(() => { if (!cancelled) setLoadingMsgs(false); });
 
     return () => { cancelled = true; };
-  }, [activeId, scrollToBottom]);
+  }, [activeId, scrollToBottom, stopTyping]);
 
-  // Poll for new messages
+  // Reconcile with REST while the backend websocket contract is still evolving.
   useEffect(() => {
-    if (!activeId) return;
+    if (!activeId) return undefined;
 
     pollRef.current = setInterval(() => {
       getMessages(activeId)
         .then((data) => {
           setMessages((prev) => {
-            const newMsgs = data.messages || [];
-            if (newMsgs.length !== prev.length) {
+            const newMsgs = getMessageList(data);
+            if (messagesChanged(prev, newMsgs)) {
               setTimeout(scrollToBottom, 100);
               return newMsgs;
             }
@@ -117,15 +492,24 @@ function Messages() {
       listConversations()
         .then(setConversations)
         .catch(() => {});
-    }, POLL_INTERVAL);
+    }, RECONCILE_INTERVAL);
 
     return () => clearInterval(pollRef.current);
   }, [activeId, scrollToBottom]);
 
   const selectConversation = (id) => {
+    stopTyping(activeIdRef.current);
     setSearchParams({ chat: id });
     setMobileShowChat(true);
     setText('');
+    markConversationRead(id);
+    setConversations((prev) =>
+      prev.map((conversation) =>
+        toId(conversation.id) === toId(id)
+          ? { ...conversation, unreadCount: 0 }
+          : conversation
+      )
+    );
   };
 
   const handleBack = () => {
@@ -137,21 +521,28 @@ function Messages() {
     const trimmed = text.trim();
     if (!trimmed || !activeId || sending) return;
 
+    stopTyping(activeId);
     setSending(true);
     try {
       const msg = await sendMessage(activeId, { content: trimmed });
-      setMessages((prev) => [...prev, msg]);
+      if (msg?.id || msg?.content) {
+        appendIncomingMessage({
+          conversationId: activeId,
+          message: { ...msg, senderId: getSenderId(msg) || user?.id },
+        });
+      } else {
+        const data = await getMessages(activeId);
+        const freshMessages = getMessageList(data);
+        setMessages(freshMessages);
+        if (freshMessages.length > 0) {
+          applyConversationPreview({
+            conversationId: activeId,
+            message: freshMessages[freshMessages.length - 1],
+          });
+        }
+      }
       setText('');
       setTimeout(scrollToBottom, 50);
-
-      // Update conversation preview
-      setConversations((prev) =>
-        prev.map((c) =>
-          c.id === activeId
-            ? { ...c, lastMessage: { content: trimmed, createdAt: msg.createdAt, senderId: user?.id } }
-            : c
-        )
-      );
     } catch (err) {
       toast.error(err.message);
     } finally {
@@ -160,12 +551,33 @@ function Messages() {
     }
   };
 
-  const activeConversation = conversations.find((c) => c.id === activeId);
-  const otherUser = activeConversation?.participants?.find((p) => p.id !== user?.id) || activeConversation?.otherUser;
+  const handleTextChange = (e) => {
+    const value = e.target.value;
+    setText(value);
+
+    if (!activeId) return;
+
+    if (!value.trim()) {
+      stopTyping(activeId);
+      return;
+    }
+
+    if (!typingRef.current) {
+      typingRef.current = true;
+      emitTypingState(true, activeId);
+    }
+
+    scheduleTypingStop();
+  };
+
+  const activeConversation = conversations.find((c) => toId(c.id) === toId(activeId));
+  const otherUser = activeConversation?.participants?.find((p) => toId(p.id) !== toId(user?.id)) || activeConversation?.otherUser;
+  const otherProfileHandle = otherUser?.username || otherUser?.handle || otherUser?.id;
+  const otherName = otherUser ? `${otherUser.firstName || ''} ${otherUser.lastName || ''}`.trim() : 'Usuário';
 
   const filteredConversations = search
     ? conversations.filter((c) => {
-        const other = c.participants?.find((p) => p.id !== user?.id) || c.otherUser;
+        const other = c.participants?.find((p) => toId(p.id) !== toId(user?.id)) || c.otherUser;
         const name = `${other?.firstName || ''} ${other?.lastName || ''}`.toLowerCase();
         return name.includes(search.toLowerCase());
       })
@@ -217,13 +629,13 @@ function Messages() {
             </div>
           ) : (
             filteredConversations.map((conv) => {
-              const other = conv.participants?.find((p) => p.id !== user?.id) || conv.otherUser;
+              const other = conv.participants?.find((p) => toId(p.id) !== toId(user?.id)) || conv.otherUser;
               const name = `${other?.firstName || ''} ${other?.lastName || ''}`.trim() || 'Usuário';
               const initials = name.split(' ').map((p) => p[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
               const lastMsg = conv.lastMessage;
-              const isOwn = lastMsg?.senderId === user?.id;
+              const isOwn = toId(lastMsg?.senderId) === toId(user?.id);
               const unread = conv.unreadCount > 0;
-              const isActive = conv.id === activeId;
+              const isActive = toId(conv.id) === toId(activeId);
 
               return (
                 <button
@@ -292,25 +704,32 @@ function Messages() {
               </div>
 
               <div className={styles.chatUserInfo}>
-                <span className={styles.chatUserName}>
-                  {otherUser ? `${otherUser.firstName || ''} ${otherUser.lastName || ''}`.trim() : 'Usuário'}
-                </span>
-                <span className={styles.chatUserStatus}>
-                  {activeConversation?.online ? 'Online' : 'Offline'}
+                {otherProfileHandle ? (
+                  <Link to={`/profile/${otherProfileHandle}`} className={styles.chatUserName}>
+                    {otherName || 'Usuário'}
+                  </Link>
+                ) : (
+                  <span className={styles.chatUserName}>{otherName || 'Usuário'}</span>
+                )}
+                <span className={`${styles.chatUserStatus} ${isOtherTyping ? styles.chatUserTyping : ''}`}>
+                  {isOtherTyping
+                    ? 'Digitando...'
+                    : activeConversation?.online || otherUser?.online ? 'Online' : 'Offline'}
                 </span>
               </div>
 
               <div className={styles.chatActions}>
-                {otherUser?.username && (
+                {otherProfileHandle && (
                   <Link
-                    to={`/profile/${otherUser.username}`}
-                    className={styles.chatActionBtn}
+                    to={`/profile/${otherProfileHandle}`}
+                    className={`${styles.chatActionBtn} ${styles.profileActionBtn}`}
                     title="Ver perfil"
                   >
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
                       <circle cx="12" cy="7" r="4" />
                     </svg>
+                    <span>Perfil</span>
                   </Link>
                 )}
               </div>
@@ -331,7 +750,7 @@ function Messages() {
                       <span>{group.dateLabel}</span>
                     </div>
                     {group.items.map((msg) => {
-                      const isMine = msg.senderId === user?.id;
+                      const isMine = toId(getSenderId(msg)) === toId(user?.id);
                       return (
                         <div
                           key={msg.id}
@@ -347,6 +766,15 @@ function Messages() {
                   </div>
                 ))
               )}
+              {isOtherTyping && !loadingMsgs && (
+                <div className={`${styles.message} ${styles.messageTheirs}`}>
+                  <div className={`${styles.bubble} ${styles.bubbleTheirs} ${styles.typingBubble}`}>
+                    <span />
+                    <span />
+                    <span />
+                  </div>
+                </div>
+              )}
               <div ref={messagesEndRef} />
             </div>
 
@@ -358,7 +786,7 @@ function Messages() {
                 type="text"
                 placeholder="Digite sua mensagem..."
                 value={text}
-                onChange={(e) => setText(e.target.value)}
+                onChange={handleTextChange}
                 disabled={sending}
                 autoFocus
               />

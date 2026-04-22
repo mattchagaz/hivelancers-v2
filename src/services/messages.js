@@ -12,7 +12,7 @@ const extractMessage = (error, fallback) => {
 export const listConversations = async () => {
   try {
     const { data } = await api.get('/conversations');
-    return data.conversations;
+    return data.conversations || data.data?.conversations || (Array.isArray(data) ? data : []);
   } catch (error) {
     throw new Error(extractMessage(error, 'Não foi possível carregar conversas.'));
   }
@@ -39,7 +39,10 @@ export const getMessages = async (conversationId, params = {}) => {
 export const sendMessage = async (conversationId, payload) => {
   try {
     const { data } = await api.post(`/conversations/${conversationId}/messages`, payload);
-    return data.message;
+    if (data?.message && typeof data.message === 'object') return data.message;
+    if (data?.data?.message) return data.data.message;
+    if (data?.id || data?.content) return data;
+    return null;
   } catch (error) {
     throw new Error(extractMessage(error, 'Não foi possível enviar a mensagem.'));
   }
