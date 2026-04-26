@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useAuth } from '../../contexts/AuthContext';
+import { getPublicProfilePath } from '../../utils/profileEnhancements';
 import styles from './TopBar.module.css';
 
 function TopBar({ userName = '', userRole = 'freelancer', avatarUrl = '', onMenuToggle }) {
@@ -9,7 +10,7 @@ function TopBar({ userName = '', userRole = 'freelancer', avatarUrl = '', onMenu
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
 
   useEffect(() => {
     const onClick = (e) => {
@@ -29,6 +30,7 @@ function TopBar({ userName = '', userRole = 'freelancer', avatarUrl = '', onMenu
   const displayName = userName || 'Usuário';
   const initials = displayName.split(' ').map((n) => n[0]).filter(Boolean).join('').slice(0, 2).toUpperCase();
   const firstName = displayName.split(' ')[0];
+  const profilePath = getPublicProfilePath(user);
 
   const handleLogout = async () => {
     try {
@@ -111,6 +113,20 @@ function TopBar({ userName = '', userRole = 'freelancer', avatarUrl = '', onMenu
 
           {menuOpen && (
             <div className={styles.userMenu}>
+              <Link to={profilePath} className={styles.menuItem} onClick={() => setMenuOpen(false)}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M20 21a8 8 0 10-16 0" />
+                  <circle cx="12" cy="7" r="4" />
+                </svg>
+                Meu perfil
+              </Link>
+              <Link to="/profile/customize" className={styles.menuItem} onClick={() => setMenuOpen(false)}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 20h9" />
+                  <path d="M16.5 3.5a2.12 2.12 0 113 3L7 19l-4 1 1-4 12.5-12.5z" />
+                </svg>
+                Personalizar perfil
+              </Link>
               <Link to="/settings" className={styles.menuItem} onClick={() => setMenuOpen(false)}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="12" cy="12" r="3" />

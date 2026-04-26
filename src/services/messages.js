@@ -56,3 +56,21 @@ export const startConversation = async (recipientId, message) => {
     throw new Error(extractMessage(error, 'Não foi possível iniciar a conversa.'));
   }
 };
+
+export const deleteMessage = async (conversationId, messageId) => {
+  try {
+    const { data } = await api.delete(`/conversations/${conversationId}/messages/${messageId}`);
+    return data;
+  } catch (error) {
+    throw new Error(extractMessage(error, 'Não foi possível apagar a mensagem.'));
+  }
+};
+
+export const deleteConversation = async (conversationId) => {
+  try {
+    const { data } = await api.delete(`/conversations/${conversationId}`);
+    return data;
+  } catch (error) {
+    throw new Error(extractMessage(error, 'Não foi possível excluir a conversa.'));
+  }
+};

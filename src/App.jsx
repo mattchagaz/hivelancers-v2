@@ -12,9 +12,11 @@ import CreateService from './components/Pages/CreateService/CreateService';
 import ExploreServices from './components/Pages/ExploreServices/ExploreServices';
 import ServiceDetails from './components/Pages/ServiceDetails/ServiceDetails';
 import Checkout from './components/Pages/Checkout/Checkout';
+import Orders from './components/Pages/Orders/Orders';
 import Settings from './components/Pages/Settings/Settings';
 import UserProfile from './components/Pages/UserProfile/UserProfile';
 import Messages from './components/Pages/Messages/Messages';
+import CustomizeProfile from './components/Pages/CustomizeProfile/CustomizeProfile';
 import './App.css';
 
 function App() {
@@ -46,8 +48,10 @@ function App() {
             <Route path="/services/:id/edit" element={<CreateService />} />
             <Route path="/services/:id" element={<ServiceDetails />} />
             <Route path="/checkout/:id" element={<Checkout />} />
+            <Route path="/orders" element={<Orders />} />
             <Route path="/explore" element={<ExploreServices />} />
             <Route path="/messages" element={<Messages />} />
+            <Route path="/profile/customize" element={<CustomizeProfile />} />
             <Route path="/profile/:handle" element={<UserProfile />} />
             <Route path="/settings" element={<Settings />} />
           </Route>

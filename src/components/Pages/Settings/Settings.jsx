@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useSettings } from '../../../contexts/SettingsContext';
@@ -8,6 +9,28 @@ import CityAutocomplete from '../../CityAutocomplete/CityAutocomplete';
 import { toRoleSlug, toUserType } from '../../../utils/authFlow';
 import { formatPhoneBR } from '../../../utils/formatters';
 import styles from './Settings.module.css';
+
+const PROFILE_FIELDS = ['firstName', 'lastName', 'username', 'headline', 'location', 'bio', 'website'];
+const ACCOUNT_FIELDS = ['phone'];
+
+const THEME_LABEL = {
+  light: 'Claro',
+  dark: 'Escuro',
+  system: 'Sistema',
+};
+
+const DENSITY_LABEL = {
+  compact: 'Compacta',
+  comfortable: 'Confortavel',
+  spacious: 'Espacosa',
+};
+
+const DIGEST_LABEL = {
+  realtime: 'Tempo real',
+  daily: 'Diario',
+  weekly: 'Semanal',
+  never: 'Desativado',
+};
 
 const profileFromUser = (user) => ({
   firstName: user?.firstName || '',
@@ -22,52 +45,178 @@ const profileFromUser = (user) => ({
   avatarUrl: user?.avatarUrl || '',
 });
 
-const TABS = [
-  { id: 'profile', label: 'Perfil', icon: 'user' },
-  { id: 'account', label: 'Conta', icon: 'shield' },
-  { id: 'notifications', label: 'Notificações', icon: 'bell' },
-  { id: 'appearance', label: 'Aparência', icon: 'palette' },
-  { id: 'privacy', label: 'Privacidade', icon: 'lock' },
-  { id: 'billing', label: 'Pagamentos', icon: 'card' },
-  { id: 'language', label: 'Idioma e região', icon: 'globe' },
-  { id: 'danger', label: 'Zona de perigo', icon: 'alert' },
-];
+const formatDate = (value) => {
+  if (!value) return 'Recentemente';
+
+  try {
+    return new Intl.DateTimeFormat('pt-BR', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    }).format(new Date(value));
+  } catch {
+    return 'Recentemente';
+  }
+};
+
+const getInitials = (firstName, lastName, fallback = 'U') => {
+  const fullName = `${firstName || ''} ${lastName || ''}`.trim();
+  if (!fullName) return fallback;
+  return fullName
+    .split(' ')
+    .map((part) => part[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
+};
+
+const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 
 function Settings() {
   const { user, setUser } = useAuth();
+  const { settings, toggleField, updateSection, resetSettings } = useSettings();
+
   const userRole = toRoleSlug(user?.userType) || 'freelancer';
   const isFreelancer = userRole === 'freelancer';
 
-  const { settings, updateField, toggleField, updateSection } = useSettings();
-  const { notifications, appearance, privacy, language } = settings;
-
   const [activeTab, setActiveTab] = useState('profile');
-
   const [profile, setProfile] = useState(() => profileFromUser(user));
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const avatarInputRef = useRef(null);
+
   const serverProfile = useMemo(() => profileFromUser(user), [user]);
+  const { notifications, appearance, privacy, language } = settings;
 
   useEffect(() => {
     setProfile(serverProfile);
   }, [serverProfile]);
 
-  const profileDirty = useMemo(
-    () => Object.keys(serverProfile).some((k) => (profile[k] || '') !== (serverProfile[k] || '')),
-    [profile, serverProfile]
+  const fullName = `${profile.firstName} ${profile.lastName}`.trim() || 'Usuario';
+  const initials = getInitials(profile.firstName, profile.lastName);
+
+  const getDirtyForFields = (fields) =>
+    fields.some((field) => (profile[field] || '') !== (serverProfile[field] || ''));
+
+  const profileDirty = getDirtyForFields(PROFILE_FIELDS);
+  const accountDirty = getDirtyForFields(ACCOUNT_FIELDS);
+
+  const profileCompletion = useMemo(() => {
+    const checklist = [
+      profile.avatarUrl,
+      profile.firstName,
+      profile.lastName,
+      profile.username,
+      profile.headline,
+      profile.location,
+      profile.bio,
+      profile.website,
+      profile.phone,
+    ];
+
+    const filled = checklist.filter(Boolean).length;
+    return Math.round((filled / checklist.length) * 100);
+  }, [profile]);
+
+  const emailEnabledCount = [
+    notifications.orderUpdates,
+    notifications.messages,
+    notifications.reviews,
+    notifications.marketing,
+    notifications.newsletter,
+  ].filter(Boolean).length;
+
+  const pushEnabledCount = [
+    notifications.pushMessages,
+    notifications.pushOrders,
+    notifications.pushPromos,
+  ].filter(Boolean).length;
+
+  const publicProfileHref = profile.username ? `/profile/${profile.username}` : null;
+
+  const tabs = useMemo(
+    () => [
+      {
+        id: 'profile',
+        label: 'Perfil',
+        icon: 'user',
+        description: 'Dados publicos e apresentacao',
+      },
+      {
+        id: 'account',
+        label: 'Conta',
+        icon: 'shield',
+        description: 'Login, telefone e seguranca',
+      },
+      {
+        id: 'notifications',
+        label: 'Notificacoes',
+        icon: 'bell',
+        description: 'Email, push e resumos',
+      },
+      {
+        id: 'appearance',
+        label: 'Aparencia',
+        icon: 'palette',
+        description: 'Tema, densidade e movimento',
+      },
+      {
+        id: 'privacy',
+        label: 'Privacidade',
+        icon: 'lock',
+        description: 'Visibilidade e mensagens',
+      },
+      {
+        id: 'billing',
+        label: 'Pagamentos',
+        icon: 'card',
+        description: isFreelancer ? 'Recebimentos e plano' : 'Cartoes e historico',
+      },
+      {
+        id: 'language',
+        label: 'Idioma e regiao',
+        icon: 'globe',
+        description: 'Idioma, fuso e moeda',
+      },
+      {
+        id: 'danger',
+        label: 'Zona de perigo',
+        icon: 'alert',
+        description: 'Acoes criticas da conta',
+      },
+    ],
+    [
+      isFreelancer,
+    ]
   );
 
-  const updateProfile = (field, value) => setProfile((prev) => ({ ...prev, [field]: value }));
-  const resetProfile = () => setProfile(serverProfile);
+  const activeTabData = tabs.find((tab) => tab.id === activeTab) || tabs[0];
+
+  const updateProfileField = (field, value) => {
+    setProfile((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const resetProfileFields = (fields) => {
+    setProfile((prev) => {
+      const next = { ...prev };
+      fields.forEach((field) => {
+        next[field] = serverProfile[field];
+      });
+      return next;
+    });
+  };
 
   const handleAvatarFile = async (file) => {
     if (!file || isUploadingAvatar) return;
+
     if (!file.type.startsWith('image/')) {
-      toast.error('Selecione uma imagem válida.');
+      toast.error('Selecione uma imagem valida.');
       return;
     }
+
     setIsUploadingAvatar(true);
+
     try {
       const { url } = await uploadImageToCloudinary(file);
       const updated = await apiUpdateProfile({ avatarUrl: url });
@@ -82,7 +231,9 @@ function Settings() {
 
   const handleAvatarRemove = async () => {
     if (isUploadingAvatar || !profile.avatarUrl) return;
+
     setIsUploadingAvatar(true);
+
     try {
       const updated = await apiUpdateProfile({ avatarUrl: '' });
       setUser(updated);
@@ -96,13 +247,16 @@ function Settings() {
 
   const saveProfile = async (fields) => {
     if (isSavingProfile) return;
-    const payload = fields.reduce((acc, f) => {
-      const val = profile[f];
-      if (f === 'email') return acc; // email não é editável aqui
-      acc[f] = typeof val === 'string' ? val.trim() : val;
+
+    const payload = fields.reduce((acc, field) => {
+      if (field === 'email') return acc;
+      const value = profile[field];
+      acc[field] = typeof value === 'string' ? value.trim() : value;
       return acc;
     }, {});
+
     setIsSavingProfile(true);
+
     try {
       const updated = await apiUpdateProfile(payload);
       setUser(updated);
@@ -113,180 +267,318 @@ function Settings() {
       setIsSavingProfile(false);
     }
   };
-  const toggleNotification = (field) => toggleField('notifications', field);
-  const togglePrivacy = (field) => toggleField('privacy', field);
-  const setNotifications = (updater) =>
-    updateSection('notifications', typeof updater === 'function' ? updater(notifications) : updater);
-  const setAppearance = (updater) =>
-    updateSection('appearance', typeof updater === 'function' ? updater(appearance) : updater);
-  const setPrivacy = (updater) =>
-    updateSection('privacy', typeof updater === 'function' ? updater(privacy) : updater);
-  const setLanguage = (updater) =>
-    updateSection('language', typeof updater === 'function' ? updater(language) : updater);
+
+  const restorePreferences = () => {
+    resetSettings();
+    toast.success('Preferencias restauradas para o padrao.');
+  };
+
+  const heroStats = [
+    {
+      label: 'Perfil publico',
+      value: `${profileCompletion}%`,
+      helper: profileCompletion >= 80 ? 'Quase la' : 'Vale completar mais campos',
+    },
+    {
+      label: 'Tema ativo',
+      value: THEME_LABEL[appearance.theme] || 'Claro',
+      helper: `${DENSITY_LABEL[appearance.density] || 'Confortavel'} na interface`,
+    },
+    {
+      label: 'Privacidade',
+      value: privacy.profilePublic ? 'Publico' : 'Privado',
+      helper: privacy.allowDm === 'everyone' ? 'DM aberto' : 'Mensagens filtradas',
+    },
+    {
+      label: 'Alertas',
+      value: `${emailEnabledCount + pushEnabledCount} ativos`,
+      helper: `${DIGEST_LABEL[notifications.emailDigest] || 'Diario'} por email`,
+    },
+  ];
+
+  const checklist = [
+    {
+      label: 'Foto do perfil',
+      done: Boolean(profile.avatarUrl),
+    },
+    {
+      label: 'Headline estrategica',
+      done: Boolean(profile.headline),
+    },
+    {
+      label: 'Bio completa',
+      done: (profile.bio || '').length >= 80,
+    },
+    {
+      label: 'Link externo',
+      done: Boolean(profile.website),
+    },
+  ];
 
   return (
     <div className={styles.page}>
       <section className={styles.hero}>
+        <div className={styles.heroGlow} />
+
         <div className={styles.heroMain}>
-          <div className={styles.heroBadge}>Configurações da conta</div>
-          <h1 className={styles.heroTitle}>Ajuste cada detalhe da sua experiência na Hivelancers.</h1>
+          <span className={styles.heroEyebrow}>Personalizar experiencia</span>
+          <h1 className={styles.heroTitle}>Uma central completa para ajustar seu perfil, sua conta e a forma como a Hivelancers aparece para voce.</h1>
           <p className={styles.heroText}>
-            Controle o que aparece no seu perfil, como você recebe avisos, a aparência da plataforma e as preferências que moldam o seu dia a dia.
+            Aqui voce organiza a vitrine publica, controla notificacoes, escolhe aparencia, ajusta privacidade e deixa sua conta com cara de produto pronto.
           </p>
+
+          <div className={styles.heroActions}>
+            {publicProfileHref ? (
+              <Link to={publicProfileHref} className={styles.primaryAction}>
+                Ver perfil publico
+              </Link>
+            ) : (
+              <button type="button" className={styles.primaryAction} onClick={() => setActiveTab('profile')}>
+                Completar perfil
+              </button>
+            )}
+
+            <button type="button" className={styles.secondaryAction} onClick={restorePreferences}>
+              Restaurar preferencias
+            </button>
+
+            <Link to="/profile/customize" className={styles.secondaryAction}>
+              Abrir editor completo
+            </Link>
+          </div>
+
           <div className={styles.heroStats}>
-            <div className={styles.heroStat}>
-              <span>Conta criada</span>
-              <strong>Jan 2024</strong>
-            </div>
-            <div className={styles.heroStat}>
-              <span>Plano atual</span>
-              <strong>Profissional</strong>
-            </div>
-            <div className={styles.heroStat}>
-              <span>Último login</span>
-              <strong>Hoje, 09:12</strong>
-            </div>
+            {heroStats.map((item) => (
+              <div key={item.label} className={styles.heroStat}>
+                <span>{item.label}</span>
+                <strong>{item.value}</strong>
+                <small>{item.helper}</small>
+              </div>
+            ))}
           </div>
         </div>
 
-        <div className={styles.heroSide}>
-          <div className={styles.profileCard}>
-            <div className={styles.avatar}>
-              {profile.avatarUrl ? (
-                <img
-                  src={profile.avatarUrl}
-                  alt=""
-                  style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }}
-                />
-              ) : (
-                `${profile.firstName} ${profile.lastName}`.trim().split(' ').map((part) => part[0]).filter(Boolean).slice(0, 2).join('').toUpperCase() || 'U'
-              )}
-            </div>
-            <div className={styles.profileInfo}>
-              <strong>{`${profile.firstName} ${profile.lastName}`.trim() || 'Usuário'}</strong>
-              <span>{profile.username ? `@${profile.username}` : profile.email}</span>
-              <div className={styles.roleTag}>
-                {isFreelancer ? 'Freelancer' : 'Cliente'}
+        <aside className={styles.heroSide}>
+          <div className={styles.identityCard}>
+            <div className={styles.identityHeader}>
+              <div className={styles.avatar}>
+                {profile.avatarUrl ? (
+                  <img src={profile.avatarUrl} alt="" className={styles.avatarImg} />
+                ) : (
+                  initials
+                )}
+              </div>
+
+              <div className={styles.identityInfo}>
+                <strong>{fullName}</strong>
+                <span>{profile.username ? `@${profile.username}` : profile.email}</span>
+                <div className={styles.identityMeta}>
+                  <span className={styles.roleBadge}>{isFreelancer ? 'Freelancer' : 'Cliente'}</span>
+                  <span>{formatDate(user?.createdAt)}</span>
+                </div>
               </div>
             </div>
+
+            <div className={styles.completionBlock}>
+              <div className={styles.completionHead}>
+                <span>Forca do perfil</span>
+                <strong>{profileCompletion}%</strong>
+              </div>
+              <div className={styles.progressTrack}>
+                <div
+                  className={styles.progressFill}
+                  style={{ width: `${clamp(profileCompletion, 6, 100)}%` }}
+                />
+              </div>
+              <div className={styles.checklist}>
+                {checklist.map((item) => (
+                  <div key={item.label} className={`${styles.checklistItem} ${item.done ? styles.checklistDone : ''}`}>
+                    <span className={styles.checkIndicator}>{item.done ? '✓' : '•'}</span>
+                    <span>{item.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             <input
               ref={avatarInputRef}
               type="file"
               accept="image/*"
               style={{ display: 'none' }}
-              onChange={(e) => {
-                const file = e.target.files?.[0];
+              onChange={(event) => {
+                const file = event.target.files?.[0];
                 if (file) handleAvatarFile(file);
-                e.target.value = '';
+                event.target.value = '';
               }}
             />
-            <button
-              type="button"
-              className={styles.avatarBtn}
-              onClick={() => avatarInputRef.current?.click()}
-              disabled={isUploadingAvatar}
-            >
-              {isUploadingAvatar ? 'Enviando...' : (profile.avatarUrl ? 'Trocar foto' : 'Adicionar foto')}
-            </button>
-            {profile.avatarUrl && (
+
+            <div className={styles.identityActions}>
               <button
                 type="button"
-                className={styles.avatarBtn}
-                onClick={handleAvatarRemove}
+                className={styles.identityButton}
+                onClick={() => avatarInputRef.current?.click()}
                 disabled={isUploadingAvatar}
-                style={{ marginTop: 8 }}
               >
-                Remover foto
+                {isUploadingAvatar ? 'Enviando...' : profile.avatarUrl ? 'Trocar foto' : 'Adicionar foto'}
               </button>
-            )}
+
+              {profile.avatarUrl && (
+                <button
+                  type="button"
+                  className={styles.identityGhost}
+                  onClick={handleAvatarRemove}
+                  disabled={isUploadingAvatar}
+                >
+                  Remover
+                </button>
+              )}
+            </div>
           </div>
-        </div>
+        </aside>
       </section>
 
-      <div className={styles.grid}>
+      <div className={styles.workspace}>
         <aside className={styles.sidebar}>
-          <span className={styles.sidebarLabel}>Categorias</span>
+          <div className={styles.sidebarHeader}>
+            <span className={styles.sidebarEyebrow}>Navegacao</span>
+            <h2>Ajustes da conta</h2>
+            <p>Troque de secao sem sair da pagina.</p>
+          </div>
+
           <nav className={styles.tabNav}>
-            {TABS.map((tab) => (
+            {tabs.map((tab) => (
               <button
                 key={tab.id}
+                type="button"
                 className={`${styles.tabItem} ${activeTab === tab.id ? styles.tabActive : ''} ${tab.id === 'danger' ? styles.tabDanger : ''}`}
                 onClick={() => setActiveTab(tab.id)}
               >
                 <span className={styles.tabIcon}>{renderTabIcon(tab.icon)}</span>
-                <span>{tab.label}</span>
-                <span className={styles.tabArrow}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="9 18 15 12 9 6" />
-                  </svg>
+
+                <span className={styles.tabCopy}>
+                  <strong>{tab.label}</strong>
+                  <small>{tab.description}</small>
                 </span>
               </button>
             ))}
           </nav>
 
-          <div className={styles.helpBox}>
-            <strong>Precisa de ajuda?</strong>
-            <p>Fale com nosso suporte e resolva dúvidas em minutos.</p>
-            <button className={styles.helpBtn}>Abrir central de ajuda</button>
+          <div className={styles.sidebarCard}>
+            <span className={styles.sidebarCardTag}>Visibilidade</span>
+            <strong>{privacy.profilePublic ? 'Perfil publico' : 'Perfil privado'}</strong>
+            <p>
+              {privacy.profilePublic
+                ? 'Sua vitrine esta visivel para outros usuarios.'
+                : 'Seu perfil esta restrito fora dos fluxos principais.'}
+            </p>
           </div>
         </aside>
 
-        <div className={styles.content}>
+        <main className={styles.main}>
+          <section className={styles.panelHero}>
+            <div>
+              <span className={styles.panelEyebrow}>{activeTabData.label}</span>
+              <h2>{activeTabData.description}</h2>
+            </div>
+            <div className={styles.panelBadge}>{activeTabData.value}</div>
+          </section>
+
           {activeTab === 'profile' && (
             <ProfilePanel
               profile={profile}
-              updateProfile={updateProfile}
+              updateProfile={updateProfileField}
               isFreelancer={isFreelancer}
               isSaving={isSavingProfile}
               dirty={profileDirty}
-              onSave={() => saveProfile(['firstName', 'lastName', 'username', 'headline', 'location', 'bio', 'website'])}
-              onCancel={resetProfile}
+              profileCompletion={profileCompletion}
+              onSave={() => saveProfile(PROFILE_FIELDS)}
+              onCancel={() => resetProfileFields(PROFILE_FIELDS)}
             />
           )}
+
           {activeTab === 'account' && (
             <AccountPanel
               profile={profile}
-              updateProfile={updateProfile}
+              updateProfile={updateProfileField}
               userRole={userRole}
               isSaving={isSavingProfile}
-              dirty={profileDirty}
-              onSave={() => saveProfile(['phone'])}
-              onCancel={resetProfile}
+              dirty={accountDirty}
+              onSave={() => saveProfile(ACCOUNT_FIELDS)}
+              onCancel={() => resetProfileFields(ACCOUNT_FIELDS)}
             />
           )}
+
           {activeTab === 'notifications' && (
-            <NotificationsPanel notifications={notifications} toggleNotification={toggleNotification} setNotifications={setNotifications} />
+            <NotificationsPanel
+              notifications={notifications}
+              toggleNotification={(field) => toggleField('notifications', field)}
+              setNotifications={(updater) =>
+                updateSection(
+                  'notifications',
+                  typeof updater === 'function' ? updater(notifications) : updater
+                )
+              }
+            />
           )}
+
           {activeTab === 'appearance' && (
-            <AppearancePanel appearance={appearance} setAppearance={setAppearance} />
+            <AppearancePanel
+              appearance={appearance}
+              setAppearance={(updater) =>
+                updateSection(
+                  'appearance',
+                  typeof updater === 'function' ? updater(appearance) : updater
+                )
+              }
+            />
           )}
+
           {activeTab === 'privacy' && (
-            <PrivacyPanel privacy={privacy} togglePrivacy={togglePrivacy} setPrivacy={setPrivacy} />
+            <PrivacyPanel
+              privacy={privacy}
+              togglePrivacy={(field) => toggleField('privacy', field)}
+              setPrivacy={(updater) =>
+                updateSection('privacy', typeof updater === 'function' ? updater(privacy) : updater)
+              }
+            />
           )}
+
           {activeTab === 'billing' && <BillingPanel isFreelancer={isFreelancer} />}
-          {activeTab === 'language' && <LanguagePanel language={language} setLanguage={setLanguage} />}
+
+          {activeTab === 'language' && (
+            <LanguagePanel
+              language={language}
+              setLanguage={(updater) =>
+                updateSection('language', typeof updater === 'function' ? updater(language) : updater)
+              }
+            />
+          )}
+
           {activeTab === 'danger' && <DangerPanel />}
-        </div>
+        </main>
       </div>
     </div>
   );
 }
 
-function SectionHeader({ title, subtitle }) {
+function SectionHeader({ title, subtitle, extra }) {
   return (
-    <div className={styles.sectionHead}>
-      <h2>{title}</h2>
-      {subtitle && <p>{subtitle}</p>}
+    <div className={styles.sectionHeader}>
+      <div>
+        <h3>{title}</h3>
+        {subtitle && <p>{subtitle}</p>}
+      </div>
+      {extra ? <div>{extra}</div> : null}
     </div>
   );
 }
 
-function Field({ label, hint, children }) {
+function Field({ label, hint, children, full = false }) {
   return (
-    <label className={styles.field}>
+    <label className={`${styles.field} ${full ? styles.fieldFull : ''}`}>
       <span className={styles.fieldLabel}>{label}</span>
       {children}
-      {hint && <span className={styles.fieldHint}>{hint}</span>}
+      {hint ? <span className={styles.fieldHint}>{hint}</span> : null}
     </label>
   );
 }
@@ -316,103 +608,210 @@ function ToggleRow({ title, description, checked, onChange }) {
   );
 }
 
-function ProfilePanel({ profile, updateProfile, isFreelancer, isSaving, dirty, onSave, onCancel }) {
+function FormActions({
+  primaryLabel = 'Salvar alteracoes',
+  onSave,
+  onCancel,
+  isSaving = false,
+  disabled = false,
+}) {
   return (
-    <section className={styles.card}>
-      <SectionHeader
-        title="Informações do perfil"
-        subtitle="Isso é o que aparece para outros usuários da plataforma."
-      />
+    <div className={styles.formActions}>
+      {onCancel ? (
+        <button
+          type="button"
+          className={styles.btnGhost}
+          onClick={onCancel}
+          disabled={isSaving}
+        >
+          Cancelar
+        </button>
+      ) : null}
 
-      <div className={styles.formGrid}>
-        <Field label="Nome">
-          <input
-            type="text"
-            className={styles.input}
-            value={profile.firstName}
-            onChange={(e) => updateProfile('firstName', e.target.value)}
-          />
-        </Field>
+      <button
+        type="button"
+        className={styles.btnPrimary}
+        onClick={onSave}
+        disabled={isSaving || disabled}
+      >
+        {isSaving ? 'Salvando...' : primaryLabel}
+      </button>
+    </div>
+  );
+}
 
-        <Field label="Sobrenome">
-          <input
-            type="text"
-            className={styles.input}
-            value={profile.lastName}
-            onChange={(e) => updateProfile('lastName', e.target.value)}
-          />
-        </Field>
+function ProfilePanel({
+  profile,
+  updateProfile,
+  isFreelancer,
+  isSaving,
+  dirty,
+  profileCompletion,
+  onSave,
+  onCancel,
+}) {
+  const recommendationCards = [
+    {
+      title: 'Clareza da proposta',
+      text: isFreelancer
+        ? 'Explique o que voce entrega, para quem e por que sua abordagem e diferente.'
+        : 'Use a headline para explicar sua empresa, setor ou contexto de compra.',
+    },
+    {
+      title: 'Contexto visual',
+      text: 'Uma boa foto e um username consistente deixam seu perfil mais memoravel.',
+    },
+    {
+      title: 'Conversao melhor',
+      text: 'Bio com nicho, resultado e prova social tende a gerar conversas mais qualificadas.',
+    },
+  ];
 
-        <Field label="Nome de usuário" hint="Aparece na URL do seu perfil público. Apenas letras, números, . e _">
-          <div className={styles.inputWithPrefix}>
-            <span className={styles.inputPrefix}>hivelancers.com/</span>
+  return (
+    <>
+      <section className={styles.card}>
+        <SectionHeader
+          title="Informacoes publicas"
+          subtitle="Esses campos aparecem na sua vitrine e ajudam outras pessoas a entender rapido quem voce e."
+          extra={<span className={styles.inlineBadge}>{profileCompletion}% completo</span>}
+        />
+
+        <div className={styles.insightGrid}>
+          {recommendationCards.map((card) => (
+            <div key={card.title} className={styles.infoCard}>
+              <strong>{card.title}</strong>
+              <p>{card.text}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className={styles.formGrid}>
+          <Field label="Nome">
             <input
               type="text"
               className={styles.input}
-              value={profile.username}
-              placeholder="seu-usuario"
-              onChange={(e) => updateProfile('username', e.target.value.toLowerCase())}
+              value={profile.firstName}
+              onChange={(event) => updateProfile('firstName', event.target.value)}
             />
-          </div>
-        </Field>
+          </Field>
 
-        <Field label={isFreelancer ? 'Título profissional' : 'Empresa / Cargo'}>
-          <input
-            type="text"
-            className={styles.input}
-            value={profile.headline}
-            onChange={(e) => updateProfile('headline', e.target.value)}
-          />
-        </Field>
+          <Field label="Sobrenome">
+            <input
+              type="text"
+              className={styles.input}
+              value={profile.lastName}
+              onChange={(event) => updateProfile('lastName', event.target.value)}
+            />
+          </Field>
 
-        <Field label="Localização" hint="Comece a digitar para selecionar sua cidade.">
-          <CityAutocomplete
-            value={profile.location}
-            onChange={(v) => updateProfile('location', v)}
-            placeholder="Ex: Porto Alegre"
-            inputClassName={styles.input}
-          />
-        </Field>
+          <Field
+            label="Nome de usuario"
+            hint="Aparece na URL do seu perfil. Use letras, numeros, ponto e underline."
+            full
+          >
+            <div className={styles.inputWithPrefix}>
+              <span className={styles.inputPrefix}>hivelancers.com/profile/</span>
+              <input
+                type="text"
+                className={styles.input}
+                value={profile.username}
+                placeholder="seu_usuario"
+                onChange={(event) => updateProfile('username', event.target.value.toLowerCase())}
+              />
+            </div>
+          </Field>
 
-        <Field label="Bio" hint={`${(profile.bio || '').length}/280 caracteres`}>
-          <textarea
-            className={`${styles.input} ${styles.textarea}`}
-            value={profile.bio}
-            maxLength={280}
-            rows={4}
-            onChange={(e) => updateProfile('bio', e.target.value)}
-          />
-        </Field>
+          <Field label={isFreelancer ? 'Titulo profissional' : 'Empresa ou cargo'}>
+            <input
+              type="text"
+              className={styles.input}
+              value={profile.headline}
+              placeholder={isFreelancer ? 'Ex: Designer de interfaces e branding' : 'Ex: Lider de produto na Acme'}
+              onChange={(event) => updateProfile('headline', event.target.value)}
+            />
+          </Field>
 
-        <Field label="Website">
-          <input
-            type="url"
-            className={styles.input}
-            value={profile.website}
-            placeholder="https://..."
-            onChange={(e) => updateProfile('website', e.target.value)}
-          />
-        </Field>
-      </div>
+          <Field label="Website">
+            <input
+              type="url"
+              className={styles.input}
+              value={profile.website}
+              placeholder="https://seusite.com"
+              onChange={(event) => updateProfile('website', event.target.value)}
+            />
+          </Field>
 
-      {isFreelancer && (
-        <>
-          <div className={styles.divider} />
-          <SectionHeader title="Habilidades" subtitle="Adicione até 10 tags que descrevem bem o seu trabalho." />
-          <div className={styles.skills}>
-            {['Branding', 'Logo design', 'Identidade visual', 'Figma', 'Ilustração', 'UI design'].map((skill) => (
-              <span key={skill} className={styles.skillChip}>
-                {skill}
-                <button className={styles.skillRemove}>×</button>
-              </span>
-            ))}
-            <button className={styles.skillAdd}>+ adicionar</button>
-          </div>
-        </>
-      )}
+          <Field label="Localizacao" hint="Comece digitando e selecione a cidade correta.">
+            <CityAutocomplete
+              value={profile.location}
+              onChange={(value) => updateProfile('location', value)}
+              placeholder="Ex: Porto Alegre, RS"
+              inputClassName={styles.input}
+            />
+          </Field>
 
-      <FormActions onSave={onSave} onCancel={onCancel} isSaving={isSaving} disabled={!dirty} />
-    </section>
+          <Field label="Bio" hint={`${(profile.bio || '').length}/280 caracteres`} full>
+            <textarea
+              className={`${styles.input} ${styles.textarea}`}
+              value={profile.bio}
+              maxLength={280}
+              rows={5}
+              placeholder={
+                isFreelancer
+                  ? 'Conte sua especialidade, os tipos de projeto em que voce se destaca e o que seu cliente pode esperar.'
+                  : 'Descreva sua empresa, time ou contexto para facilitar conexoes mais alinhadas.'
+              }
+              onChange={(event) => updateProfile('bio', event.target.value)}
+            />
+          </Field>
+        </div>
+
+        <FormActions onSave={onSave} onCancel={onCancel} isSaving={isSaving} disabled={!dirty} />
+      </section>
+
+      <section className={styles.card}>
+        <SectionHeader
+          title="Checklist de qualidade"
+          subtitle="Pequenos ajustes que deixam seu perfil mais forte e passam mais confianca."
+          extra={(
+            <Link to="/profile/customize" className={styles.inlineAction}>
+              Editor completo
+            </Link>
+          )}
+        />
+
+        <div className={styles.miniChecklistGrid}>
+          {[
+            {
+              title: 'Imagem de perfil',
+              status: profile.avatarUrl ? 'Pronto' : 'Pendente',
+              positive: Boolean(profile.avatarUrl),
+            },
+            {
+              title: 'Headline',
+              status: profile.headline ? 'Pronto' : 'Pendente',
+              positive: Boolean(profile.headline),
+            },
+            {
+              title: 'Bio acima de 80 caracteres',
+              status: (profile.bio || '').length >= 80 ? 'Pronto' : 'Ajustar',
+              positive: (profile.bio || '').length >= 80,
+            },
+            {
+              title: 'URL publica',
+              status: profile.username ? 'Pronto' : 'Defina um username',
+              positive: Boolean(profile.username),
+            },
+          ].map((item) => (
+            <div key={item.title} className={styles.checkCard}>
+              <span className={`${styles.statusDot} ${item.positive ? styles.statusPositive : styles.statusNeutral}`} />
+              <strong>{item.title}</strong>
+              <p>{item.status}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+    </>
   );
 }
 
@@ -422,9 +821,24 @@ function AccountTypeCard({ userRole }) {
   const [isSaving, setIsSaving] = useState(false);
   const dirty = selected !== userRole;
 
+  const options = [
+    {
+      id: 'freelancer',
+      title: 'Freelancer',
+      text: 'Publica servicos, recebe pedidos e construi reputacao.',
+    },
+    {
+      id: 'client',
+      title: 'Cliente',
+      text: 'Explora servicos, contrata profissionais e acompanha entregas.',
+    },
+  ];
+
   const save = async () => {
     if (!dirty || isSaving) return;
+
     setIsSaving(true);
+
     try {
       const updated = await updateUserType(toUserType(selected));
       setUser(updated);
@@ -439,49 +853,63 @@ function AccountTypeCard({ userRole }) {
 
   return (
     <section className={styles.card}>
-      <SectionHeader title="Tipo de conta" subtitle="Escolha como você utiliza a Hivelancers. Você pode alternar quando quiser." />
-      <div className={styles.formGrid}>
-        <Field label="Perfil atual">
-          <select
-            className={styles.input}
-            value={selected}
-            onChange={(e) => setSelected(e.target.value)}
+      <SectionHeader
+        title="Tipo de conta"
+        subtitle="Troque sua perspectiva principal na plataforma sem sair do painel."
+      />
+
+      <div className={styles.optionGrid}>
+        {options.map((option) => (
+          <button
+            key={option.id}
+            type="button"
+            className={`${styles.optionCard} ${selected === option.id ? styles.optionCardActive : ''}`}
+            onClick={() => setSelected(option.id)}
           >
-            <option value="freelancer">Freelancer — ofereço serviços</option>
-            <option value="client">Cliente — contrato serviços</option>
-          </select>
-        </Field>
+            <div>
+              <strong>{option.title}</strong>
+              <p>{option.text}</p>
+            </div>
+            <span className={styles.optionIndicator}>{selected === option.id ? 'Selecionado' : 'Selecionar'}</span>
+          </button>
+        ))}
       </div>
-      <div className={styles.formActions}>
-        <button
-          type="button"
-          className={styles.btnPrimary}
-          onClick={save}
-          disabled={!dirty || isSaving}
-        >
-          {isSaving ? 'Salvando...' : 'Salvar alteração'}
-        </button>
-      </div>
+
+      <FormActions
+        primaryLabel="Salvar tipo de conta"
+        onSave={save}
+        isSaving={isSaving}
+        disabled={!dirty}
+      />
     </section>
   );
 }
 
 function AccountPanel({ profile, updateProfile, userRole, isSaving, dirty, onSave, onCancel }) {
+  const [passwordDraft, setPasswordDraft] = useState({
+    current: '',
+    next: '',
+    confirm: '',
+  });
+  const [security, setSecurity] = useState({
+    authApp: false,
+    sms: true,
+    alertLogin: true,
+  });
+
   return (
     <>
       <AccountTypeCard userRole={userRole} />
+
       <section className={styles.card}>
-        <SectionHeader title="Conta e login" subtitle="Email, telefone e credenciais da sua conta." />
+        <SectionHeader
+          title="Contato principal"
+          subtitle="Informacoes basicas usadas para acesso, recuperacao e avisos importantes."
+        />
 
         <div className={styles.formGrid}>
-          <Field label="Email principal" hint="Para alterar o email, entre em contato com o suporte.">
-            <input
-              type="email"
-              className={styles.input}
-              value={profile.email}
-              disabled
-              readOnly
-            />
+          <Field label="Email principal" hint="A alteracao de email ainda e feita com suporte.">
+            <input type="email" className={styles.input} value={profile.email} readOnly disabled />
           </Field>
 
           <Field label="Telefone">
@@ -491,7 +919,7 @@ function AccountPanel({ profile, updateProfile, userRole, isSaving, dirty, onSav
               value={profile.phone}
               placeholder="(11) 99999-9999"
               maxLength={16}
-              onChange={(e) => updateProfile('phone', formatPhoneBR(e.target.value))}
+              onChange={(event) => updateProfile('phone', formatPhoneBR(event.target.value))}
             />
           </Field>
         </div>
@@ -500,68 +928,95 @@ function AccountPanel({ profile, updateProfile, userRole, isSaving, dirty, onSav
       </section>
 
       <section className={styles.card}>
-        <SectionHeader title="Senha" subtitle="Mantenha sua conta segura usando uma senha forte." />
+        <SectionHeader
+          title="Seguranca da conta"
+          subtitle="Deixe seu acesso mais protegido com verificacoes extras e senha forte."
+        />
 
         <div className={styles.formGrid}>
           <Field label="Senha atual">
-            <input type="password" className={styles.input} placeholder="••••••••" />
+            <input
+              type="password"
+              className={styles.input}
+              value={passwordDraft.current}
+              placeholder="••••••••"
+              onChange={(event) => setPasswordDraft((prev) => ({ ...prev, current: event.target.value }))}
+            />
           </Field>
+
           <Field label="Nova senha">
-            <input type="password" className={styles.input} placeholder="••••••••" />
+            <input
+              type="password"
+              className={styles.input}
+              value={passwordDraft.next}
+              placeholder="••••••••"
+              onChange={(event) => setPasswordDraft((prev) => ({ ...prev, next: event.target.value }))}
+            />
           </Field>
+
           <Field label="Confirmar nova senha">
-            <input type="password" className={styles.input} placeholder="••••••••" />
+            <input
+              type="password"
+              className={styles.input}
+              value={passwordDraft.confirm}
+              placeholder="••••••••"
+              onChange={(event) => setPasswordDraft((prev) => ({ ...prev, confirm: event.target.value }))}
+            />
           </Field>
         </div>
 
-        <FormActions
-          primaryLabel="Atualizar senha"
-          onSave={() => toast.message('Em breve você poderá alterar a senha por aqui.')}
-        />
-      </section>
-
-      <section className={styles.card}>
-        <SectionHeader title="Autenticação em dois fatores" subtitle="Adicione uma camada extra de segurança ao seu login." />
+        <div className={styles.divider} />
 
         <ToggleRow
           title="App autenticador"
-          description="Use Google Authenticator ou Authy para gerar códigos."
-          checked={false}
-          onChange={() => {}}
+          description="Use Google Authenticator, 1Password ou Authy para gerar codigos."
+          checked={security.authApp}
+          onChange={() => setSecurity((prev) => ({ ...prev, authApp: !prev.authApp }))}
         />
         <ToggleRow
-          title="Verificação por SMS"
-          description="Receba um código no seu celular cadastrado."
-          checked={true}
-          onChange={() => {}}
+          title="Verificacao por SMS"
+          description="Receba um codigo extra no celular cadastrado quando houver risco."
+          checked={security.sms}
+          onChange={() => setSecurity((prev) => ({ ...prev, sms: !prev.sms }))}
+        />
+        <ToggleRow
+          title="Alertas de novo login"
+          description="Avisamos por email quando sua conta entrar em um dispositivo novo."
+          checked={security.alertLogin}
+          onChange={() => setSecurity((prev) => ({ ...prev, alertLogin: !prev.alertLogin }))}
+        />
+
+        <FormActions
+          primaryLabel="Atualizar seguranca"
+          onSave={() => toast.message('Fluxo de senha em breve conectado ao backend.')}
         />
       </section>
 
       <section className={styles.card}>
-        <SectionHeader title="Sessões ativas" subtitle="Dispositivos conectados à sua conta neste momento." />
+        <SectionHeader
+          title="Sessoes ativas"
+          subtitle="Dispositivos e locais que estao com acesso a sua conta agora."
+        />
 
-        <div className={styles.sessionList}>
+        <div className={styles.listStack}>
           {[
-            { device: 'MacBook Pro · Safari', location: 'São Paulo, BR', time: 'Agora · dispositivo atual', current: true },
-            { device: 'iPhone 15 · App Hivelancers', location: 'São Paulo, BR', time: 'Há 2 horas', current: false },
-            { device: 'Chrome · Windows', location: 'Rio de Janeiro, BR', time: 'Há 3 dias', current: false },
+            { device: 'MacBook Pro · Safari', location: 'Sao Paulo, BR', time: 'Agora · dispositivo atual', current: true },
+            { device: 'iPhone 15 · App Hivelancers', location: 'Sao Paulo, BR', time: 'Ha 2 horas', current: false },
+            { device: 'Chrome · Windows', location: 'Rio de Janeiro, BR', time: 'Ha 3 dias', current: false },
           ].map((session) => (
-            <div key={session.device} className={styles.sessionItem}>
-              <div className={styles.sessionIcon}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="2" y="3" width="20" height="14" rx="2" />
-                  <line x1="8" y1="21" x2="16" y2="21" />
-                  <line x1="12" y1="17" x2="12" y2="21" />
-                </svg>
-              </div>
-              <div className={styles.sessionInfo}>
+            <div key={session.device} className={styles.listRow}>
+              <div className={styles.listIcon}>{renderDeviceIcon()}</div>
+              <div className={styles.listCopy}>
                 <strong>{session.device}</strong>
                 <span>{session.location} · {session.time}</span>
               </div>
+
               {session.current ? (
-                <span className={styles.sessionCurrent}>Atual</span>
+                <span className={styles.inlineBadge}>Atual</span>
               ) : (
-                <button className={styles.sessionRevoke}>Encerrar</button>
+                <button type="button" className={styles.rowAction}>
+                  Encerrar
+                </button>
               )}
             </div>
           ))}
@@ -572,91 +1027,164 @@ function AccountPanel({ profile, updateProfile, userRole, isSaving, dirty, onSav
 }
 
 function NotificationsPanel({ notifications, toggleNotification, setNotifications }) {
+  const [quietHours, setQuietHours] = useState({
+    enabled: true,
+    start: '22:00',
+    end: '08:00',
+  });
+
   return (
     <>
       <section className={styles.card}>
-        <SectionHeader title="Notificações por email" subtitle="Escolha quando queremos falar com você por email." />
+        <SectionHeader
+          title="Panorama de alertas"
+          subtitle="Combine email, push e resumos para continuar informado sem excesso."
+        />
+
+        <div className={styles.insightGrid}>
+          <div className={styles.infoCard}>
+            <strong>Email</strong>
+            <p>
+              {[
+                notifications.orderUpdates,
+                notifications.messages,
+                notifications.reviews,
+                notifications.marketing,
+                notifications.newsletter,
+              ].filter(Boolean).length} canais ativos
+            </p>
+          </div>
+          <div className={styles.infoCard}>
+            <strong>Push</strong>
+            <p>
+              {[
+                notifications.pushMessages,
+                notifications.pushOrders,
+                notifications.pushPromos,
+              ].filter(Boolean).length} categorias ligadas
+            </p>
+          </div>
+          <div className={styles.infoCard}>
+            <strong>Resumo</strong>
+            <p>{DIGEST_LABEL[notifications.emailDigest] || 'Diario'}</p>
+          </div>
+        </div>
+      </section>
+
+      <section className={styles.card}>
+        <SectionHeader title="Notificacoes por email" subtitle="Escolha quais acontecimentos merecem um email." />
 
         <ToggleRow
-          title="Atualizações de pedidos"
-          description="Status, mensagens e entregas dos seus pedidos."
+          title="Atualizacoes de pedidos"
+          description="Status, mensagens, aprovacoes e entregas dos seus pedidos."
           checked={notifications.orderUpdates}
           onChange={() => toggleNotification('orderUpdates')}
         />
         <ToggleRow
           title="Novas mensagens"
-          description="Avisos quando alguém te mandar uma mensagem direta."
+          description="Avisos quando alguem iniciar ou responder uma conversa."
           checked={notifications.messages}
           onChange={() => toggleNotification('messages')}
         />
         <ToggleRow
-          title="Avaliações e feedback"
-          description="Notificações sempre que receber uma nova avaliação."
+          title="Avaliacoes e feedback"
+          description="Receba um lembrete sempre que uma nova avaliacao chegar."
           checked={notifications.reviews}
           onChange={() => toggleNotification('reviews')}
         />
         <ToggleRow
-          title="Dicas e promoções"
-          description="Novidades da plataforma, recursos e ofertas especiais."
+          title="Dicas e promocoes"
+          description="Novidades da plataforma, recursos e oportunidades comerciais."
           checked={notifications.marketing}
           onChange={() => toggleNotification('marketing')}
         />
         <ToggleRow
           title="Newsletter semanal"
-          description="Resumo semanal de tendências, dicas e destaques."
+          description="Resumo editorial com tendencias, destaques e boas praticas."
           checked={notifications.newsletter}
           onChange={() => toggleNotification('newsletter')}
         />
       </section>
 
       <section className={styles.card}>
-        <SectionHeader title="Notificações push" subtitle="Alertas em tempo real no navegador e no app mobile." />
+        <SectionHeader title="Notificacoes push" subtitle="Alertas de alta prioridade no navegador e no app mobile." />
 
         <ToggleRow
           title="Mensagens"
-          description="Receba uma notificação push para cada nova mensagem."
+          description="Ideal para nao deixar conversas esfriarem."
           checked={notifications.pushMessages}
           onChange={() => toggleNotification('pushMessages')}
         />
         <ToggleRow
           title="Pedidos"
-          description="Alertas de novos pedidos, aprovações e entregas."
+          description="Aprovacoes, novos pedidos, entregas e alteracoes importantes."
           checked={notifications.pushOrders}
           onChange={() => toggleNotification('pushOrders')}
         />
         <ToggleRow
-          title="Promoções e dicas"
-          description="Notificações sobre missões, XP e recompensas novas."
+          title="Promocoes e missões"
+          description="Campanhas, recompensas e incentivos de crescimento."
           checked={notifications.pushPromos}
           onChange={() => toggleNotification('pushPromos')}
         />
       </section>
 
       <section className={styles.card}>
-        <SectionHeader title="Frequência dos resumos" subtitle="Com que frequência queremos te mandar um resumo por email." />
+        <SectionHeader title="Frequencia dos resumos" subtitle="Defina o ritmo ideal de consolidacao por email." />
 
-        <div className={styles.radioGrid}>
+        <div className={styles.optionGrid}>
           {[
-            { id: 'realtime', label: 'Tempo real', desc: 'Receba assim que algo acontecer.' },
-            { id: 'daily', label: 'Diário', desc: 'Um resumo todo fim de dia.' },
-            { id: 'weekly', label: 'Semanal', desc: 'Apenas um email por semana.' },
-            { id: 'never', label: 'Nunca', desc: 'Sem resumos por email.' },
+            { id: 'realtime', label: 'Tempo real', desc: 'Cada evento relevante chega individualmente.' },
+            { id: 'daily', label: 'Diario', desc: 'Um resumo objetivo no fim do dia.' },
+            { id: 'weekly', label: 'Semanal', desc: 'Apenas uma curadoria por semana.' },
+            { id: 'never', label: 'Nunca', desc: 'Sem consolidacoes por email.' },
           ].map((option) => (
             <button
               key={option.id}
               type="button"
-              className={`${styles.radioCard} ${notifications.emailDigest === option.id ? styles.radioActive : ''}`}
-              onClick={() => setNotifications((n) => ({ ...n, emailDigest: option.id }))}
+              className={`${styles.optionCard} ${notifications.emailDigest === option.id ? styles.optionCardActive : ''}`}
+              onClick={() => setNotifications((prev) => ({ ...prev, emailDigest: option.id }))}
             >
-              <div className={styles.radioDot}>
-                {notifications.emailDigest === option.id && <span />}
-              </div>
               <div>
                 <strong>{option.label}</strong>
-                <span>{option.desc}</span>
+                <p>{option.desc}</p>
               </div>
+              <span className={styles.optionIndicator}>
+                {notifications.emailDigest === option.id ? 'Ativo' : 'Selecionar'}
+              </span>
             </button>
           ))}
+        </div>
+      </section>
+
+      <section className={styles.card}>
+        <SectionHeader title="Horario silencioso" subtitle="Segure notificacoes fora do seu horario preferido." />
+
+        <ToggleRow
+          title="Ativar horario silencioso"
+          description="Mensagens nao criticas ficam pausadas durante a janela abaixo."
+          checked={quietHours.enabled}
+          onChange={() => setQuietHours((prev) => ({ ...prev, enabled: !prev.enabled }))}
+        />
+
+        <div className={styles.formGrid}>
+          <Field label="Inicio">
+            <input
+              type="time"
+              className={styles.input}
+              value={quietHours.start}
+              onChange={(event) => setQuietHours((prev) => ({ ...prev, start: event.target.value }))}
+            />
+          </Field>
+
+          <Field label="Fim">
+            <input
+              type="time"
+              className={styles.input}
+              value={quietHours.end}
+              onChange={(event) => setQuietHours((prev) => ({ ...prev, end: event.target.value }))}
+            />
+          </Field>
         </div>
       </section>
     </>
@@ -665,24 +1193,24 @@ function NotificationsPanel({ notifications, toggleNotification, setNotification
 
 function AppearancePanel({ appearance, setAppearance }) {
   const themes = [
-    { id: 'light', label: 'Claro', desc: 'Ideal para ambientes iluminados.' },
-    { id: 'dark', label: 'Escuro', desc: 'Descansa os olhos à noite.' },
-    { id: 'system', label: 'Sistema', desc: 'Segue a preferência do seu dispositivo.' },
+    { id: 'light', label: 'Claro', desc: 'Mais limpo e iluminado.' },
+    { id: 'dark', label: 'Escuro', desc: 'Contraste suave para noite.' },
+    { id: 'system', label: 'Sistema', desc: 'Segue seu dispositivo automaticamente.' },
   ];
 
   const accents = [
-    { id: 'blue', color: '#3e73e6' },
-    { id: 'purple', color: '#7c3aed' },
-    { id: 'green', color: '#059669' },
-    { id: 'amber', color: '#d97706' },
-    { id: 'pink', color: '#db2777' },
-    { id: 'teal', color: '#0d9488' },
+    { id: 'blue', label: 'Azul', color: '#3e73e6' },
+    { id: 'green', label: 'Verde', color: '#059669' },
+    { id: 'amber', label: 'Amber', color: '#d97706' },
+    { id: 'pink', label: 'Rosa', color: '#db2777' },
+    { id: 'teal', label: 'Teal', color: '#0d9488' },
+    { id: 'purple', label: 'Lavanda', color: '#7c3aed' },
   ];
 
   return (
     <>
       <section className={styles.card}>
-        <SectionHeader title="Tema" subtitle="Escolha como a Hivelancers aparece para você." />
+        <SectionHeader title="Tema" subtitle="Escolha o clima visual principal da aplicacao." />
 
         <div className={styles.themeGrid}>
           {themes.map((theme) => (
@@ -690,26 +1218,25 @@ function AppearancePanel({ appearance, setAppearance }) {
               key={theme.id}
               type="button"
               className={`${styles.themeCard} ${appearance.theme === theme.id ? styles.themeActive : ''}`}
-              onClick={() => setAppearance((a) => ({ ...a, theme: theme.id }))}
+              onClick={() => setAppearance((prev) => ({ ...prev, theme: theme.id }))}
             >
               <div className={`${styles.themePreview} ${styles[`theme_${theme.id}`]}`}>
                 <div className={styles.themeSidebar} />
                 <div className={styles.themeBody}>
                   <div className={styles.themeLine} />
                   <div className={styles.themeLineShort} />
+                  <div className={styles.themeChip} />
                 </div>
               </div>
-              <div className={styles.themeInfo}>
-                <strong>{theme.label}</strong>
-                <span>{theme.desc}</span>
-              </div>
+              <strong>{theme.label}</strong>
+              <span>{theme.desc}</span>
             </button>
           ))}
         </div>
       </section>
 
       <section className={styles.card}>
-        <SectionHeader title="Cor de destaque" subtitle="Aplicada em botões, links e indicadores de seleção." />
+        <SectionHeader title="Cor de destaque" subtitle="Afeta botoes, links, estados ativos e superficies em destaque." />
 
         <div className={styles.accentRow}>
           {accents.map((accent) => (
@@ -718,55 +1245,78 @@ function AppearancePanel({ appearance, setAppearance }) {
               type="button"
               className={`${styles.accentDot} ${appearance.accent === accent.id ? styles.accentActive : ''}`}
               style={{ background: accent.color }}
-              onClick={() => setAppearance((a) => ({ ...a, accent: accent.id }))}
-              aria-label={accent.id}
+              onClick={() => setAppearance((prev) => ({ ...prev, accent: accent.id }))}
+              aria-label={accent.label}
             >
-              {appearance.accent === accent.id && (
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="20 6 9 17 4 12" />
-                </svg>
-              )}
+              {appearance.accent === accent.id ? '✓' : ''}
             </button>
           ))}
         </div>
       </section>
 
       <section className={styles.card}>
-        <SectionHeader title="Densidade" subtitle="Quanto espaço entre os elementos da interface." />
+        <SectionHeader title="Densidade da interface" subtitle="Mais conteudo visivel ou mais respiro visual entre os blocos." />
 
-        <div className={styles.radioGrid}>
+        <div className={styles.optionGrid}>
           {[
-            { id: 'compact', label: 'Compacta', desc: 'Mais conteúdo visível ao mesmo tempo.' },
-            { id: 'comfortable', label: 'Confortável', desc: 'Espaçamento equilibrado (padrão).' },
-            { id: 'spacious', label: 'Espaçosa', desc: 'Mais respiro entre os blocos.' },
+            { id: 'compact', label: 'Compacta', desc: 'Mais elementos por tela.' },
+            { id: 'comfortable', label: 'Confortavel', desc: 'Equilibrio entre foco e leitura.' },
+            { id: 'spacious', label: 'Espacosa', desc: 'Mais ar e mais separacao visual.' },
           ].map((option) => (
             <button
               key={option.id}
               type="button"
-              className={`${styles.radioCard} ${appearance.density === option.id ? styles.radioActive : ''}`}
-              onClick={() => setAppearance((a) => ({ ...a, density: option.id }))}
+              className={`${styles.optionCard} ${appearance.density === option.id ? styles.optionCardActive : ''}`}
+              onClick={() => setAppearance((prev) => ({ ...prev, density: option.id }))}
             >
-              <div className={styles.radioDot}>
-                {appearance.density === option.id && <span />}
-              </div>
               <div>
                 <strong>{option.label}</strong>
-                <span>{option.desc}</span>
+                <p>{option.desc}</p>
               </div>
+              <span className={styles.optionIndicator}>
+                {appearance.density === option.id ? 'Ativo' : 'Selecionar'}
+              </span>
             </button>
           ))}
         </div>
       </section>
 
       <section className={styles.card}>
-        <SectionHeader title="Acessibilidade" subtitle="Ajustes visuais para uma experiência mais confortável." />
+        <SectionHeader title="Acessibilidade" subtitle="Ajustes visuais para deixar a navegacao mais confortavel." />
 
         <ToggleRow
-          title="Reduzir animações"
-          description="Desativa transições e efeitos de movimento na interface."
+          title="Reduzir animacoes"
+          description="Desativa transicoes mais intensas e suaviza movimento no app."
           checked={appearance.reducedMotion}
-          onChange={() => setAppearance((a) => ({ ...a, reducedMotion: !a.reducedMotion }))}
+          onChange={() => setAppearance((prev) => ({ ...prev, reducedMotion: !prev.reducedMotion }))}
         />
+
+        <div className={styles.previewSurface}>
+          <div className={styles.previewTop}>
+            <span className={styles.previewPill}>Preview</span>
+            <span className={styles.previewMuted}>{THEME_LABEL[appearance.theme]} · {DENSITY_LABEL[appearance.density]}</span>
+          </div>
+
+          <div className={styles.previewBoard}>
+            <aside className={styles.previewSidebar}>
+              <div className={styles.previewDot} />
+              <div className={styles.previewDot} />
+              <div className={styles.previewDot} />
+            </aside>
+
+            <div className={styles.previewMain}>
+              <div className={styles.previewCardLarge}>
+                <div className={styles.previewLineWide} />
+                <div className={styles.previewLineShort} />
+              </div>
+
+              <div className={styles.previewCardRow}>
+                <div className={styles.previewCardMini} />
+                <div className={styles.previewCardMini} />
+              </div>
+            </div>
+          </div>
+        </div>
       </section>
     </>
   );
@@ -776,83 +1326,87 @@ function PrivacyPanel({ privacy, togglePrivacy, setPrivacy }) {
   return (
     <>
       <section className={styles.card}>
-        <SectionHeader title="Visibilidade do perfil" subtitle="Controle quem pode ver suas informações." />
+        <SectionHeader title="Visibilidade do perfil" subtitle="Controle quem consegue te encontrar e o que pode ser exibido." />
 
         <ToggleRow
-          title="Perfil público"
-          description="Seu perfil aparece para qualquer pessoa navegando na Hivelancers."
+          title="Perfil publico"
+          description="Seu perfil fica acessivel para navegacao dentro da Hivelancers."
           checked={privacy.profilePublic}
           onChange={() => togglePrivacy('profilePublic')}
         />
         <ToggleRow
           title="Mostrar status online"
-          description="Outras pessoas podem ver quando você está ativo."
+          description="Outras pessoas podem saber quando voce esta ativo."
           checked={privacy.showOnline}
           onChange={() => togglePrivacy('showOnline')}
         />
         <ToggleRow
-          title="Aparecer em buscas"
-          description="Seu perfil pode ser encontrado no buscador da plataforma."
+          title="Aparecer na busca"
+          description="Seu perfil e servicos podem surgir em resultados e recomendacoes."
           checked={privacy.searchable}
           onChange={() => togglePrivacy('searchable')}
         />
         <ToggleRow
-          title="Mostrar ganhos públicos"
-          description="Exibe total faturado no seu perfil público."
+          title="Mostrar ganhos publicos"
+          description="Exibe faturamento acumulado na sua vitrine publica."
           checked={privacy.showEarnings}
           onChange={() => togglePrivacy('showEarnings')}
         />
       </section>
 
       <section className={styles.card}>
-        <SectionHeader title="Mensagens diretas" subtitle="Quem pode te mandar mensagens na plataforma." />
+        <SectionHeader title="Mensagens diretas" subtitle="Defina quem pode iniciar conversas com voce na plataforma." />
 
-        <div className={styles.radioGrid}>
+        <div className={styles.optionGrid}>
           {[
-            { id: 'everyone', label: 'Todos', desc: 'Qualquer usuário pode iniciar uma conversa.' },
-            { id: 'connections', label: 'Apenas conexões', desc: 'Somente pessoas com quem você já trabalhou.' },
-            { id: 'noone', label: 'Ninguém', desc: 'Desabilita mensagens diretas completamente.' },
+            { id: 'everyone', label: 'Todos', desc: 'Qualquer usuario pode te escrever.' },
+            { id: 'connections', label: 'Apenas conexoes', desc: 'Somente quem ja interagiu com voce.' },
+            { id: 'noone', label: 'Ninguem', desc: 'Bloqueia novas conversas diretas.' },
           ].map((option) => (
             <button
               key={option.id}
               type="button"
-              className={`${styles.radioCard} ${privacy.allowDm === option.id ? styles.radioActive : ''}`}
-              onClick={() => setPrivacy((p) => ({ ...p, allowDm: option.id }))}
+              className={`${styles.optionCard} ${privacy.allowDm === option.id ? styles.optionCardActive : ''}`}
+              onClick={() => setPrivacy((prev) => ({ ...prev, allowDm: option.id }))}
             >
-              <div className={styles.radioDot}>
-                {privacy.allowDm === option.id && <span />}
-              </div>
               <div>
                 <strong>{option.label}</strong>
-                <span>{option.desc}</span>
+                <p>{option.desc}</p>
               </div>
+              <span className={styles.optionIndicator}>
+                {privacy.allowDm === option.id ? 'Ativo' : 'Selecionar'}
+              </span>
             </button>
           ))}
         </div>
       </section>
 
       <section className={styles.card}>
-        <SectionHeader title="Dados e transparência" subtitle="Controle seus dados armazenados na plataforma." />
+        <SectionHeader title="Dados e transparencia" subtitle="Acoes relacionadas a exportacao de dados e leitura das politicas da plataforma." />
 
-        <div className={styles.linkList}>
-          <button className={styles.linkItem}>
-            <div>
-              <strong>Baixar meus dados</strong>
-              <span>Receba um arquivo com tudo que a Hivelancers guarda sobre você.</span>
-            </div>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="9 18 15 12 9 6" />
-            </svg>
-          </button>
-          <button className={styles.linkItem}>
-            <div>
-              <strong>Política de privacidade</strong>
-              <span>Entenda como seus dados são usados e protegidos.</span>
-            </div>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="9 18 15 12 9 6" />
-            </svg>
-          </button>
+        <div className={styles.listStack}>
+          {[
+            {
+              title: 'Baixar meus dados',
+              text: 'Receba um pacote com informacoes de perfil, pedidos e atividade.',
+            },
+            {
+              title: 'Politica de privacidade',
+              text: 'Veja como a Hivelancers trata armazenamento, uso e protecao de dados.',
+            },
+            {
+              title: 'Preferencias de consentimento',
+              text: 'Revise comunicacoes, cookies e compartilhamento interno.',
+            },
+          ].map((item) => (
+            <button key={item.title} type="button" className={styles.listRow}>
+              <div className={styles.listCopy}>
+                <strong>{item.title}</strong>
+                <span>{item.text}</span>
+              </div>
+              <span className={styles.rowAction}>Abrir</span>
+            </button>
+          ))}
         </div>
       </section>
     </>
@@ -863,88 +1417,80 @@ function BillingPanel({ isFreelancer }) {
   return (
     <>
       <section className={`${styles.card} ${styles.planCard}`}>
-        <div className={styles.planHead}>
+        <div className={styles.planHeader}>
           <div>
             <span className={styles.planTag}>Plano atual</span>
-            <h2>Profissional</h2>
-            <p>R$ 49/mês · renovação em 28 de maio de 2026</p>
+            <h3>Profissional</h3>
+            <p>R$ 49/mês · renovacao em 28 de maio de 2026</p>
           </div>
-          <button className={styles.planBtn}>Gerenciar plano</button>
+
+          <button type="button" className={styles.btnGhost}>
+            Gerenciar plano
+          </button>
         </div>
 
         <div className={styles.planPerks}>
-          <div className={styles.planPerk}>
-            <strong>Comissão reduzida</strong>
-            <span>5% em vez de 10%</span>
-          </div>
-          <div className={styles.planPerk}>
-            <strong>Destaque em buscas</strong>
-            <span>Prioridade no ranking</span>
-          </div>
-          <div className={styles.planPerk}>
-            <strong>Suporte prioritário</strong>
-            <span>Resposta em até 2h</span>
-          </div>
+          {[
+            ['Comissao reduzida', '5% em vez de 10%'],
+            ['Destaque em buscas', 'Mais exposicao na descoberta'],
+            ['Suporte prioritario', 'Resposta rapida em casos criticos'],
+          ].map(([title, text]) => (
+            <div key={title} className={styles.planPerk}>
+              <strong>{title}</strong>
+              <span>{text}</span>
+            </div>
+          ))}
         </div>
       </section>
 
       <section className={styles.card}>
         <SectionHeader
-          title={isFreelancer ? 'Formas de recebimento' : 'Métodos de pagamento'}
-          subtitle={isFreelancer ? 'Para onde enviamos seus ganhos da plataforma.' : 'Cartões e contas usados nas suas compras.'}
+          title={isFreelancer ? 'Formas de recebimento' : 'Metodos de pagamento'}
+          subtitle={isFreelancer ? 'Contas e metodos usados para receber seus ganhos.' : 'Cartoes e contas usados nas suas compras.'}
         />
 
-        <div className={styles.paymentList}>
-          <div className={styles.paymentItem}>
-            <div className={styles.paymentIcon}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="2" y="5" width="20" height="14" rx="3" />
-                <line x1="2" y1="10" x2="22" y2="10" />
-              </svg>
+        <div className={styles.listStack}>
+          {[
+            { title: 'Cartao final 4242', text: 'Visa · expira 08/2028', badge: 'Padrao' },
+            { title: 'Pix · joao.silva@email.com', text: 'Transferencias instantaneas', badge: 'Ativo' },
+          ].map((item) => (
+            <div key={item.title} className={styles.listRow}>
+              <div className={styles.listIcon}>{renderCardIcon()}</div>
+              <div className={styles.listCopy}>
+                <strong>{item.title}</strong>
+                <span>{item.text}</span>
+              </div>
+              <span className={styles.inlineBadge}>{item.badge}</span>
             </div>
-            <div className={styles.paymentInfo}>
-              <strong>Cartão final 4242</strong>
-              <span>Visa · expira 08/2028</span>
-            </div>
-            <span className={styles.paymentDefault}>Padrão</span>
-          </div>
+          ))}
+        </div>
 
-          <div className={styles.paymentItem}>
-            <div className={styles.paymentIcon}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10" />
-                <path d="M2 12h20" />
-                <path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z" />
-              </svg>
-            </div>
-            <div className={styles.paymentInfo}>
-              <strong>Pix · joao.silva@email.com</strong>
-              <span>Transferências instantâneas</span>
-            </div>
-            <button className={styles.paymentAction}>Editar</button>
-          </div>
-
-          <button className={styles.addPayment}>+ adicionar novo método</button>
+        <div className={styles.formActions}>
+          <button type="button" className={styles.btnGhost}>
+            Adicionar metodo
+          </button>
         </div>
       </section>
 
       <section className={styles.card}>
-        <SectionHeader title="Histórico de cobranças" subtitle="Últimas transações da sua conta." />
+        <SectionHeader title="Historico de cobrancas" subtitle="Ultimas movimentacoes relacionadas ao seu plano." />
 
-        <div className={styles.invoiceList}>
+        <div className={styles.tableLike}>
           {[
-            { date: '28 Abr 2026', desc: 'Plano Profissional — mensal', amount: 'R$ 49,00', status: 'Pago' },
-            { date: '28 Mar 2026', desc: 'Plano Profissional — mensal', amount: 'R$ 49,00', status: 'Pago' },
-            { date: '28 Fev 2026', desc: 'Plano Profissional — mensal', amount: 'R$ 49,00', status: 'Pago' },
-          ].map((invoice) => (
-            <div key={invoice.date} className={styles.invoiceRow}>
+            { date: '28 Abr 2026', description: 'Plano Profissional - mensal', amount: 'R$ 49,00', status: 'Pago' },
+            { date: '28 Mar 2026', description: 'Plano Profissional - mensal', amount: 'R$ 49,00', status: 'Pago' },
+            { date: '28 Fev 2026', description: 'Plano Profissional - mensal', amount: 'R$ 49,00', status: 'Pago' },
+          ].map((item) => (
+            <div key={item.date} className={styles.tableRow}>
               <div>
-                <strong>{invoice.desc}</strong>
-                <span>{invoice.date}</span>
+                <strong>{item.description}</strong>
+                <span>{item.date}</span>
               </div>
-              <span className={styles.invoiceAmount}>{invoice.amount}</span>
-              <span className={styles.invoiceStatus}>{invoice.status}</span>
-              <button className={styles.invoiceBtn}>Baixar</button>
+              <span>{item.amount}</span>
+              <span className={styles.inlineBadge}>{item.status}</span>
+              <button type="button" className={styles.rowAction}>
+                Baixar
+              </button>
             </div>
           ))}
         </div>
@@ -954,65 +1500,93 @@ function BillingPanel({ isFreelancer }) {
 }
 
 function LanguagePanel({ language, setLanguage }) {
+  const preview = new Intl.NumberFormat(language.lang || 'pt-BR', {
+    style: 'currency',
+    currency: language.currency || 'BRL',
+  }).format(1290.5);
+
   return (
-    <section className={styles.card}>
-      <SectionHeader title="Idioma e região" subtitle="Preferências locais para tradução, horário e moeda." />
+    <>
+      <section className={styles.card}>
+        <SectionHeader title="Idioma e regiao" subtitle="Traducoes, horario local, pais e moeda preferida." />
 
-      <div className={styles.formGrid}>
-        <Field label="Idioma">
-          <select
-            className={styles.input}
-            value={language.lang}
-            onChange={(e) => setLanguage((l) => ({ ...l, lang: e.target.value }))}
-          >
-            <option value="pt-BR">Português (Brasil)</option>
-            <option value="en-US">English (US)</option>
-            <option value="es-ES">Español</option>
-            <option value="fr-FR">Français</option>
-          </select>
-        </Field>
+        <div className={styles.formGrid}>
+          <Field label="Idioma">
+            <select
+              className={styles.input}
+              value={language.lang}
+              onChange={(event) => setLanguage((prev) => ({ ...prev, lang: event.target.value }))}
+            >
+              <option value="pt-BR">Portugues (Brasil)</option>
+              <option value="en-US">English (US)</option>
+              <option value="es-ES">Espanol</option>
+              <option value="fr-FR">Francais</option>
+            </select>
+          </Field>
 
-        <Field label="País / região">
-          <select
-            className={styles.input}
-            value={language.region}
-            onChange={(e) => setLanguage((l) => ({ ...l, region: e.target.value }))}
-          >
-            <option value="BR">Brasil</option>
-            <option value="PT">Portugal</option>
-            <option value="US">Estados Unidos</option>
-            <option value="ES">Espanha</option>
-          </select>
-        </Field>
+          <Field label="Pais ou regiao">
+            <select
+              className={styles.input}
+              value={language.region}
+              onChange={(event) => setLanguage((prev) => ({ ...prev, region: event.target.value }))}
+            >
+              <option value="BR">Brasil</option>
+              <option value="PT">Portugal</option>
+              <option value="US">Estados Unidos</option>
+              <option value="ES">Espanha</option>
+            </select>
+          </Field>
 
-        <Field label="Fuso horário">
-          <select
-            className={styles.input}
-            value={language.timezone}
-            onChange={(e) => setLanguage((l) => ({ ...l, timezone: e.target.value }))}
-          >
-            <option value="America/Sao_Paulo">(GMT-3) São Paulo</option>
-            <option value="America/New_York">(GMT-5) Nova Iorque</option>
-            <option value="Europe/Lisbon">(GMT+0) Lisboa</option>
-            <option value="Europe/Madrid">(GMT+1) Madrid</option>
-          </select>
-        </Field>
+          <Field label="Fuso horario">
+            <select
+              className={styles.input}
+              value={language.timezone}
+              onChange={(event) => setLanguage((prev) => ({ ...prev, timezone: event.target.value }))}
+            >
+              <option value="America/Sao_Paulo">(GMT-3) Sao Paulo</option>
+              <option value="America/New_York">(GMT-5) Nova Iorque</option>
+              <option value="Europe/Lisbon">(GMT+0) Lisboa</option>
+              <option value="Europe/Madrid">(GMT+1) Madrid</option>
+            </select>
+          </Field>
 
-        <Field label="Moeda">
-          <select
-            className={styles.input}
-            value={language.currency}
-            onChange={(e) => setLanguage((l) => ({ ...l, currency: e.target.value }))}
-          >
-            <option value="BRL">Real (R$)</option>
-            <option value="USD">Dólar (US$)</option>
-            <option value="EUR">Euro (€)</option>
-          </select>
-        </Field>
-      </div>
+          <Field label="Moeda">
+            <select
+              className={styles.input}
+              value={language.currency}
+              onChange={(event) => setLanguage((prev) => ({ ...prev, currency: event.target.value }))}
+            >
+              <option value="BRL">Real (R$)</option>
+              <option value="USD">Dolar (US$)</option>
+              <option value="EUR">Euro (€)</option>
+            </select>
+          </Field>
+        </div>
+      </section>
 
-      <FormActions onSave={() => toast.success('Preferências salvas.')} />
-    </section>
+      <section className={styles.card}>
+        <SectionHeader title="Preview local" subtitle="Como datas, valores e horarios vao aparecer para voce." />
+
+        <div className={styles.miniChecklistGrid}>
+          <div className={styles.checkCard}>
+            <strong>Idioma</strong>
+            <p>{language.lang}</p>
+          </div>
+          <div className={styles.checkCard}>
+            <strong>Regiao</strong>
+            <p>{language.region}</p>
+          </div>
+          <div className={styles.checkCard}>
+            <strong>Fuso</strong>
+            <p>{language.timezone}</p>
+          </div>
+          <div className={styles.checkCard}>
+            <strong>Moeda</strong>
+            <p>{preview}</p>
+          </div>
+        </div>
+      </section>
+    </>
   );
 }
 
@@ -1021,53 +1595,62 @@ function DangerPanel() {
     <section className={`${styles.card} ${styles.dangerCard}`}>
       <SectionHeader
         title="Zona de perigo"
-        subtitle="As ações abaixo são permanentes. Pense bem antes de continuar."
+        subtitle="Acoes abaixo impactam sua conta de forma permanente ou quase permanente."
       />
 
-      <div className={styles.dangerList}>
-        <div className={styles.dangerItem}>
-          <div>
-            <strong>Pausar conta</strong>
-            <span>Seu perfil fica oculto temporariamente. Você pode reativar quando quiser.</span>
+      <div className={styles.listStack}>
+        {[
+          {
+            title: 'Pausar conta',
+            text: 'Oculta seu perfil temporariamente sem apagar historico.',
+            action: 'Pausar',
+          },
+          {
+            title: 'Exportar e excluir',
+            text: 'Baixa seus dados e inicia processo de remocao com carencia.',
+            action: 'Iniciar processo',
+          },
+          {
+            title: 'Excluir conta permanentemente',
+            text: 'Remove dados, mensagens, pedidos e servicos de forma irreversivel.',
+            action: 'Excluir conta',
+            dangerous: true,
+          },
+        ].map((item) => (
+          <div key={item.title} className={styles.listRow}>
+            <div className={styles.listCopy}>
+              <strong>{item.title}</strong>
+              <span>{item.text}</span>
+            </div>
+            <button
+              type="button"
+              className={`${styles.rowAction} ${item.dangerous ? styles.rowActionDanger : ''}`}
+            >
+              {item.action}
+            </button>
           </div>
-          <button className={styles.dangerBtn}>Pausar</button>
-        </div>
-
-        <div className={styles.dangerItem}>
-          <div>
-            <strong>Exportar e excluir</strong>
-            <span>Baixa seus dados e remove sua conta depois de 30 dias de carência.</span>
-          </div>
-          <button className={styles.dangerBtn}>Iniciar processo</button>
-        </div>
-
-        <div className={styles.dangerItem}>
-          <div>
-            <strong>Excluir conta permanentemente</strong>
-            <span>Remove todos os dados, pedidos, mensagens e serviços. Não é possível reverter.</span>
-          </div>
-          <button className={`${styles.dangerBtn} ${styles.dangerBtnFilled}`}>Excluir conta</button>
-        </div>
+        ))}
       </div>
     </section>
   );
 }
 
-function FormActions({ primaryLabel = 'Salvar alterações', onSave, onCancel, isSaving = false, disabled = false }) {
+function renderDeviceIcon() {
   return (
-    <div className={styles.formActions}>
-      <button type="button" className={styles.btnGhost} onClick={onCancel} disabled={isSaving || disabled}>
-        Cancelar
-      </button>
-      <button
-        type="button"
-        className={styles.btnPrimary}
-        onClick={onSave}
-        disabled={isSaving || disabled}
-      >
-        {isSaving ? 'Salvando...' : primaryLabel}
-      </button>
-    </div>
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="3" width="20" height="14" rx="2" />
+      <line x1="8" y1="21" x2="16" y2="21" />
+      <line x1="12" y1="17" x2="12" y2="21" />
+    </svg>
+  );
+}
+
+function renderCardIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="5" width="20" height="14" rx="3" />
+      <line x1="2" y1="10" x2="22" y2="10" />
+    </svg>
   );
 }
 
@@ -1078,7 +1661,7 @@ function renderTabIcon(icon) {
     viewBox: '0 0 24 24',
     fill: 'none',
     stroke: 'currentColor',
-    strokeWidth: 1.8,
+    strokeWidth: 1.9,
     strokeLinecap: 'round',
     strokeLinejoin: 'round',
   };
@@ -1087,7 +1670,7 @@ function renderTabIcon(icon) {
     case 'user':
       return (
         <svg {...props}>
-          <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
           <circle cx="12" cy="7" r="4" />
         </svg>
       );
@@ -1100,25 +1683,24 @@ function renderTabIcon(icon) {
     case 'bell':
       return (
         <svg {...props}>
-          <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" />
-          <path d="M13.73 21a2 2 0 01-3.46 0" />
+          <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
+          <path d="M13.73 21a2 2 0 0 1-3.46 0" />
         </svg>
       );
     case 'palette':
       return (
         <svg {...props}>
-          <circle cx="13.5" cy="6.5" r="0.5" />
-          <circle cx="17.5" cy="10.5" r="0.5" />
-          <circle cx="8.5" cy="7.5" r="0.5" />
-          <circle cx="6.5" cy="12.5" r="0.5" />
-          <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-.99 0-.83.67-1.5 1.5-1.5H16c3.31 0 6-2.69 6-6 0-5.52-4.5-10-10-10z" />
+          <path d="M12 22a10 10 0 1 1 10-10c0 2.2-1.8 4-4 4h-1.3a1.7 1.7 0 0 0-1.7 1.7c0 .46.18.9.5 1.22A2 2 0 0 1 14 22z" />
+          <circle cx="7.5" cy="10.5" r="0.8" />
+          <circle cx="12" cy="7.5" r="0.8" />
+          <circle cx="16.5" cy="10.5" r="0.8" />
         </svg>
       );
     case 'lock':
       return (
         <svg {...props}>
-          <rect x="3" y="11" width="18" height="11" rx="2" />
-          <path d="M7 11V7a5 5 0 0110 0v4" />
+          <rect x="3" y="11" width="18" height="10" rx="2" />
+          <path d="M7 11V8a5 5 0 0 1 10 0v3" />
         </svg>
       );
     case 'card':
@@ -1133,13 +1715,13 @@ function renderTabIcon(icon) {
         <svg {...props}>
           <circle cx="12" cy="12" r="10" />
           <line x1="2" y1="12" x2="22" y2="12" />
-          <path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z" />
+          <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
         </svg>
       );
     case 'alert':
       return (
         <svg {...props}>
-          <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+          <path d="M10.29 3.86 1.82 18A2 2 0 0 0 3.53 21h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z" />
           <line x1="12" y1="9" x2="12" y2="13" />
           <line x1="12" y1="17" x2="12.01" y2="17" />
         </svg>

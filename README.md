@@ -14,3 +14,24 @@ The React Compiler is not enabled on this template because of its impact on dev 
 ## Expanding the ESLint configuration
 
 If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+
+## Codex Telegram notifications
+
+This repo includes a small wrapper for `codex exec` that sends Telegram notifications when a task starts and finishes.
+
+1. Create a Telegram bot with `@BotFather` and copy the bot token.
+2. Send any message to the bot from your Telegram account.
+3. Discover your chat ID with:
+
+```bash
+curl "https://api.telegram.org/bot<YOUR_BOT_TOKEN>/getUpdates"
+```
+
+4. Copy `.codex-notify.env.example` to `.codex-notify.env` and fill in the values.
+5. Run Codex through the wrapper:
+
+```bash
+npm run codex:notify -- --task "Corrigir lint" --full-auto "corrija os erros de lint"
+```
+
+You can also pass any other `codex exec` flags after `--task`.

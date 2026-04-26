@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { toast, Toaster } from 'sonner';
 import { getMyService, getPublicService } from '../../../services/services';
+import { createOrder } from '../../../services/orders';
 import styles from './Checkout.module.css';
 
 const formatPrice = (cents) =>
@@ -76,9 +77,8 @@ function Checkout() {
   const [briefing, setBriefing] = useState('');
   const [deliveryNote, setDeliveryNote] = useState('');
   const [attachments, setAttachments] = useState('');
-  const [selectedAddons, setSelectedAddons] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [orderComplete, setOrderComplete] = useState(false);
+  const [createdOrder, setCreatedOrder] = useState(null);
 
   useEffect(() => {
     if (service?.title) {
@@ -118,33 +118,6 @@ function Checkout() {
   const sellerInitials = getSellerInitials(sellerName);
   const selectedPlanFeatures = getPlanFeatures(selectedPlan);
 
-  const addons = [
-    {
-      id: 'priority',
-      label: 'Fila prioritária',
-      description: 'Seu pedido entra com prioridade no cronograma do freelancer.',
-      priceCents: Math.max(4000, Math.round(selectedPlan.priceCents * 0.18)),
-    },
-    {
-      id: 'extended_support',
-      label: 'Suporte pós-entrega',
-      description: 'Acompanhamento por 7 dias após a entrega final.',
-      priceCents: Math.max(3000, Math.round(selectedPlan.priceCents * 0.12)),
-    },
-    {
-      id: 'express_revision',
-      label: 'Revisão expressa',
-      description: 'Ajustes priorizados em até 24 horas depois do primeiro envio.',
-      priceCents: Math.max(2500, Math.round(selectedPlan.priceCents * 0.1)),
-    },
-  ];
-
-  const selectedExtrasTotal = addons
-    .filter((addon) => selectedAddons.includes(addon.id))
-    .reduce((acc, item) => acc + item.priceCents, 0);
-  const platformFee = Math.max(1200, Math.round(selectedPlan.priceCents * 0.09));
-  const total = selectedPlan.priceCents + selectedExtrasTotal + platformFee;
-
   const orderSteps = [
     {
       title: 'Briefing alinhado',
@@ -160,25 +133,17 @@ function Checkout() {
     },
     {
       title: 'Aprovação e liberação',
-      text: 'O pagamento fica protegido até sua aprovação final.',
+      text: 'Voce aprova a entrega final ou pede revisao dentro do fluxo do pedido.',
     },
   ];
 
   const protections = [
-    'Pagamento protegido via escrow até a aprovação',
-    'Todo o histórico do pedido fica salvo na plataforma',
-    'Arquivos, mensagens e revisões centralizados em um único fluxo',
+    'Todo o historico do pedido fica salvo na plataforma',
+    'Entregas e revisoes ficam centralizadas no mesmo fluxo',
+    'Cliente e freelancer acompanham o status em tempo real pela plataforma',
   ];
 
-  const toggleAddon = (addonId) => {
-    setSelectedAddons((prev) =>
-      prev.includes(addonId)
-        ? prev.filter((item) => item !== addonId)
-        : [...prev, addonId]
-    );
-  };
-
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!briefing.trim() || briefing.trim().length < 30) {
       toast.error('Descreva o briefing com pelo menos 30 caracteres.');
       return;
@@ -186,43 +151,68 @@ function Checkout() {
 
     setIsSubmitting(true);
 
-    setTimeout(() => {
+    try {
+      const requirements = [
+        orderTitle.trim() ? `Titulo interno: ${orderTitle.trim()}` : null,
+        briefing.trim() ? `Briefing:\n${briefing.trim()}` : null,
+        deliveryNote.trim() ? `Prazo ou contexto importante: ${deliveryNote.trim()}` : null,
+        attachments.trim() ? `Links e referencias:\n${attachments.trim()}` : null,
+      ]
+        .filter(Boolean)
+        .join('\n\n');
+
+      const result = await createOrder({
+        serviceId: service.id,
+        planTier: selectedPlan.tier,
+        requirements,
+      });
+
+      setCreatedOrder(result.order);
+      toast.success('Pedido criado com sucesso!');
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
       setIsSubmitting(false);
-      setOrderComplete(true);
-      toast.success('Pedido iniciado com sucesso!');
-    }, 1400);
+    }
   };
 
-  if (orderComplete) {
+  if (createdOrder) {
     return (
       <div className={styles.successState}>
         <div className={styles.successBadge}>Pedido criado</div>
         <h1 className={styles.successTitle}>Seu projeto já entrou no fluxo da Hivelancers.</h1>
         <p className={styles.successText}>
-          O pedido foi registrado com pagamento protegido e briefing salvo. O próximo passo é o freelancer confirmar o início do trabalho e alinhar detalhes finos com você.
+          O pedido foi registrado com o briefing salvo. Agora o proximo passo e o freelancer aceitar o pedido e iniciar a execucao.
         </p>
 
         <div className={styles.successGrid}>
           <div className={styles.successCard}>
             <span className={styles.successLabel}>Número do pedido</span>
-            <strong>#HL-{service.id}48</strong>
+            <strong>#{createdOrder.id.slice(-8).toUpperCase()}</strong>
           </div>
           <div className={styles.successCard}>
-            <span className={styles.successLabel}>XP desbloqueado</span>
-            <strong>+40 XP como cliente ativo</strong>
+            <span className={styles.successLabel}>Status atual</span>
+            <strong>Aguardando aceite do freelancer</strong>
           </div>
           <div className={styles.successCard}>
             <span className={styles.successLabel}>Próximo passo</span>
-            <strong>Aguardando confirmação do freelancer</strong>
+            <strong>Voce pode acompanhar tudo na area de pedidos</strong>
           </div>
         </div>
 
         <div className={styles.successActions}>
-          <button type="button" className={styles.primaryButton} onClick={() => navigate('/dashboard')}>
-            Ir para dashboard
+          <button type="button" className={styles.primaryButton} onClick={() => navigate(`/orders?id=${createdOrder.id}`)}>
+            Ver pedido
+          </button>
+          <button
+            type="button"
+            className={styles.secondaryButton}
+            onClick={() => navigate(`/messages${createdOrder.conversationId ? `?chat=${createdOrder.conversationId}` : ''}`)}
+          >
+            Abrir conversa
           </button>
           <Link to={`/services/${service.id}`} className={styles.secondaryButton}>
-            Voltar ao serviço
+            Voltar ao servico
           </Link>
         </div>
 
@@ -243,10 +233,10 @@ function Checkout() {
 
       <section className={styles.header}>
         <div>
-          <div className={styles.headerBadge}>Fluxo de pedido protegido</div>
+          <div className={styles.headerBadge}>Criacao formal de pedido</div>
           <h1 className={styles.title}>Finalizar pedido</h1>
           <p className={styles.subtitle}>
-            Monte o briefing, escolha extras e confirme o escopo antes de iniciar o projeto com {sellerName}.
+            Monte o briefing e confirme o escopo antes de iniciar o projeto com {sellerName}.
           </p>
         </div>
       </section>
@@ -353,43 +343,6 @@ function Checkout() {
           <section className={styles.card}>
             <div className={styles.cardHead}>
               <div>
-                <h2 className={styles.cardTitle}>Extras para este pedido</h2>
-                <p className={styles.cardSub}>
-                  Ajustes opcionais para acelerar, ampliar suporte ou ganhar prioridade de resposta.
-                </p>
-              </div>
-            </div>
-
-            <div className={styles.addonList}>
-              {addons.map((addon) => {
-                const active = selectedAddons.includes(addon.id);
-
-                return (
-                  <button
-                    key={addon.id}
-                    type="button"
-                    className={`${styles.addonCard} ${active ? styles.addonCardActive : ''}`}
-                    onClick={() => toggleAddon(addon.id)}
-                  >
-                    <div className={styles.addonTop}>
-                      <div>
-                        <h3>{addon.label}</h3>
-                        <p>{addon.description}</p>
-                      </div>
-                      <strong>{formatPrice(addon.priceCents)}</strong>
-                    </div>
-                    <span className={styles.addonState}>
-                      {active ? 'Selecionado' : 'Adicionar ao pedido'}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-
-          <section className={styles.card}>
-            <div className={styles.cardHead}>
-              <div>
                 <h2 className={styles.cardTitle}>Como funciona daqui para frente</h2>
                 <p className={styles.cardSub}>
                   O fluxo é simples, mas organizado para reduzir retrabalho e proteger ambas as partes.
@@ -415,10 +368,10 @@ function Checkout() {
           <section className={`${styles.card} ${styles.checkoutCard}`}>
             <div className={styles.checkoutTop}>
               <div>
-                <span className={styles.checkoutLabel}>Resumo financeiro</span>
+                <span className={styles.checkoutLabel}>Resumo do pedido</span>
                 <h2>{selectedPlan.title}</h2>
               </div>
-              <strong>{formatPrice(total)}</strong>
+              <strong>{formatPrice(selectedPlan.priceCents)}</strong>
             </div>
 
             <div className={styles.priceRows}>
@@ -427,16 +380,16 @@ function Checkout() {
                 <strong>{formatPrice(selectedPlan.priceCents)}</strong>
               </div>
               <div className={styles.priceRow}>
-                <span>Extras</span>
-                <strong>{formatPrice(selectedExtrasTotal)}</strong>
+                <span>Prazo</span>
+                <strong>{selectedPlan.deliveryDays} {selectedPlan.deliveryDays === 1 ? 'dia' : 'dias'}</strong>
               </div>
               <div className={styles.priceRow}>
-                <span>Taxa da plataforma</span>
-                <strong>{formatPrice(platformFee)}</strong>
+                <span>Revisoes</span>
+                <strong>{selectedPlan.revisions}</strong>
               </div>
               <div className={`${styles.priceRow} ${styles.priceTotal}`}>
-                <span>Total protegido</span>
-                <strong>{formatPrice(total)}</strong>
+                <span>Valor do plano</span>
+                <strong>{formatPrice(selectedPlan.priceCents)}</strong>
               </div>
             </div>
 
@@ -459,7 +412,7 @@ function Checkout() {
             </button>
 
             <Link to={`/services/${service.id}`} className={styles.secondaryButton}>
-              Voltar ao serviço
+              Voltar ao servico
             </Link>
           </section>
 
