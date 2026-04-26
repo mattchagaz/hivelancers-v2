@@ -1,5 +1,3 @@
-const STORAGE_KEY = 'hv_profile_enhancements';
-
 const DEFAULT_SOCIAL_LINKS = {
   linkedin: '',
   github: '',
@@ -13,27 +11,14 @@ const emptyProject = () => ({
   id: `project_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
   title: '',
   description: '',
+  coverImageUrl: '',
   imageUrl: '',
   projectUrl: '',
   tags: [],
+  position: 0,
+  isFeatured: false,
+  images: [],
 });
-
-const isBrowser = typeof window !== 'undefined';
-
-const readStorage = () => {
-  if (!isBrowser) return {};
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : {};
-  } catch {
-    return {};
-  }
-};
-
-const writeStorage = (value) => {
-  if (!isBrowser) return;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(value));
-};
 
 const parseMaybeJson = (value) => {
   if (Array.isArray(value) || (value && typeof value === 'object')) return value;
@@ -45,7 +30,7 @@ const parseMaybeJson = (value) => {
   }
 };
 
-const normalizeLink = (value = '') => {
+export const normalizeExternalUrl = (value = '') => {
   const next = String(value || '').trim();
   if (!next) return '';
   if (/^https?:\/\//i.test(next)) return next;
@@ -55,9 +40,17 @@ const normalizeLink = (value = '') => {
 export const normalizeSkills = (value) => {
   const parsed = parseMaybeJson(value) ?? value;
   if (!Array.isArray(parsed)) return [];
+
+  const seen = new Set();
   return parsed
     .map((item) => String(item || '').trim())
     .filter(Boolean)
+    .filter((item) => {
+      const key = item.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
     .slice(0, 12);
 };
 
@@ -65,7 +58,7 @@ export const normalizeSocialLinks = (value) => {
   const parsed = parseMaybeJson(value);
   const source = parsed && typeof parsed === 'object' ? parsed : value;
   return Object.keys(DEFAULT_SOCIAL_LINKS).reduce((acc, key) => {
-    acc[key] = normalizeLink(source?.[key] || '');
+    acc[key] = normalizeExternalUrl(source?.[key] || '');
     return acc;
   }, { ...DEFAULT_SOCIAL_LINKS });
 };
@@ -73,61 +66,88 @@ export const normalizeSocialLinks = (value) => {
 export const normalizePortfolioProjects = (value) => {
   const parsed = parseMaybeJson(value) ?? value;
   if (!Array.isArray(parsed)) return [];
+
   return parsed
-    .map((item, index) => ({
-      id: String(item?.id || `project_${index}`),
-      title: String(item?.title || '').trim(),
-      description: String(item?.description || '').trim(),
-      imageUrl: normalizeLink(item?.imageUrl || ''),
-      projectUrl: normalizeLink(item?.projectUrl || ''),
-      tags: normalizeSkills(item?.tags).slice(0, 5),
-    }))
-    .filter((item) => item.title || item.description || item.imageUrl || item.projectUrl || item.tags.length > 0)
+    .map((item, index) => {
+      const images = Array.isArray(item?.images)
+        ? item.images
+            .map((image, imageIndex) => ({
+              id: String(image?.id || `${item?.id || `project_${index}`}_image_${imageIndex}`),
+              url: normalizeExternalUrl(image?.url || ''),
+              position: Number.isFinite(image?.position) ? Number(image.position) : imageIndex,
+            }))
+            .filter((image) => image.url)
+            .sort((a, b) => a.position - b.position)
+            .slice(0, 8)
+        : [];
+
+      const coverImageUrl = normalizeExternalUrl(
+        item?.coverImageUrl || item?.imageUrl || images[0]?.url || ''
+      );
+
+      return {
+        id: String(item?.id || `project_${index}`),
+        title: String(item?.title || '').trim(),
+        description: String(item?.description || '').trim(),
+        coverImageUrl,
+        imageUrl: coverImageUrl,
+        projectUrl: normalizeExternalUrl(item?.projectUrl || ''),
+        tags: normalizeSkills(item?.tags).slice(0, 5),
+        position: Number.isFinite(item?.position) ? Number(item.position) : index,
+        isFeatured: Boolean(item?.isFeatured),
+        images,
+      };
+    })
+    .filter(
+      (item) =>
+        item.title ||
+        item.description ||
+        item.coverImageUrl ||
+        item.projectUrl ||
+        item.tags.length > 0 ||
+        item.images.length > 0
+    )
+    .sort((a, b) => a.position - b.position)
     .slice(0, 6);
 };
 
 export const getEmptyPortfolioProject = emptyProject;
 
-export const getStoredProfileEnhancements = (userId) => {
-  if (!userId) {
-    return {
-      skills: [],
-      socialLinks: { ...DEFAULT_SOCIAL_LINKS },
-      portfolioProjects: [],
-    };
-  }
-
-  const all = readStorage();
-  const entry = all[userId] || {};
+export const mergeProfileEnhancements = (profile, enhancements) => {
+  const portfolioProjects = normalizePortfolioProjects(
+    enhancements?.portfolioProjects ?? profile?.portfolioProjects
+  );
+  const featuredProjectId =
+    enhancements?.featuredProjectId ??
+    profile?.featuredProjectId ??
+    portfolioProjects.find((project) => project.isFeatured)?.id ??
+    null;
 
   return {
-    skills: normalizeSkills(entry.skills),
-    socialLinks: normalizeSocialLinks(entry.socialLinks),
-    portfolioProjects: normalizePortfolioProjects(entry.portfolioProjects),
+    ...profile,
+    skills: normalizeSkills(enhancements?.skills ?? profile?.skills),
+    socialLinks: normalizeSocialLinks(enhancements?.socialLinks ?? profile?.socialLinks),
+    featuredProjectId,
+    portfolioProjects: portfolioProjects.map((project) => ({
+      ...project,
+      isFeatured: featuredProjectId ? project.id === featuredProjectId : project.isFeatured,
+    })),
   };
 };
 
-export const saveStoredProfileEnhancements = (userId, value) => {
-  if (!userId) return;
-  const all = readStorage();
-  all[userId] = {
-    skills: normalizeSkills(value?.skills),
-    socialLinks: normalizeSocialLinks(value?.socialLinks),
-    portfolioProjects: normalizePortfolioProjects(value?.portfolioProjects),
-  };
-  writeStorage(all);
+export const getFeaturedProject = (profile) => {
+  const projects = normalizePortfolioProjects(profile?.portfolioProjects);
+  const featuredId = profile?.featuredProjectId;
+  return (
+    projects.find((project) => project.id === featuredId) ||
+    projects.find((project) => project.isFeatured) ||
+    projects[0] ||
+    null
+  );
 };
-
-export const mergeProfileEnhancements = (profile, enhancements) => ({
-  ...profile,
-  skills: normalizeSkills(enhancements?.skills ?? profile?.skills),
-  socialLinks: normalizeSocialLinks(enhancements?.socialLinks ?? profile?.socialLinks),
-  portfolioProjects: normalizePortfolioProjects(
-    enhancements?.portfolioProjects ?? profile?.portfolioProjects
-  ),
-});
 
 export const getProfileCompletion = (profile) => {
+  const portfolioProjects = normalizePortfolioProjects(profile?.portfolioProjects);
   const items = [
     { id: 'avatar', label: 'Foto de perfil', weight: 10, done: Boolean(profile?.avatarUrl) },
     {
@@ -159,9 +179,7 @@ export const getProfileCompletion = (profile) => {
       id: 'projects',
       label: 'Projeto com imagem',
       weight: 15,
-      done: normalizePortfolioProjects(profile?.portfolioProjects).some(
-        (project) => project.imageUrl && project.title
-      ),
+      done: portfolioProjects.some((project) => (project.coverImageUrl || project.images[0]?.url) && project.title),
     },
   ];
 
@@ -173,6 +191,35 @@ export const getProfileCompletion = (profile) => {
   };
 };
 
+export const getProfileMilestones = (profile) => {
+  const completion = getProfileCompletion(profile);
+  const milestones = [
+    {
+      id: 'starter',
+      title: 'Perfil montado',
+      threshold: 40,
+      reward: 'Comeca a passar confianca',
+    },
+    {
+      id: 'trusted',
+      title: 'Perfil confiavel',
+      threshold: 80,
+      reward: 'Desbloqueia a missao principal',
+    },
+    {
+      id: 'showcase',
+      title: 'Vitrine premium',
+      threshold: 100,
+      reward: 'Perfil pronto para campanhas e portfolio',
+    },
+  ];
+
+  return milestones.map((milestone) => ({
+    ...milestone,
+    unlocked: completion.percent >= milestone.threshold,
+  }));
+};
+
 export const getPublicProfilePath = (user) => {
   if (!user) return '/dashboard';
   return `/profile/${user.username || user.id}`;
@@ -181,7 +228,7 @@ export const getPublicProfilePath = (user) => {
 export const getProfileLinks = (profile) => {
   const socialLinks = normalizeSocialLinks(profile?.socialLinks);
   const links = [
-    profile?.website ? { key: 'website', label: 'Website', href: normalizeLink(profile.website) } : null,
+    profile?.website ? { key: 'website', label: 'Website', href: normalizeExternalUrl(profile.website) } : null,
     socialLinks.linkedin ? { key: 'linkedin', label: 'LinkedIn', href: socialLinks.linkedin } : null,
     socialLinks.github ? { key: 'github', label: 'GitHub', href: socialLinks.github } : null,
     socialLinks.behance ? { key: 'behance', label: 'Behance', href: socialLinks.behance } : null,

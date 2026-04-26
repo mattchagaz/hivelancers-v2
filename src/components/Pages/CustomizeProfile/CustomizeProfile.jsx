@@ -1,19 +1,36 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { FaStar } from 'react-icons/fa';
+import {
+  FaArrowUpRightFromSquare,
+  FaCamera,
+  FaGripVertical,
+  FaImage,
+  FaLink,
+  FaLocationDot,
+  FaMedal,
+} from 'react-icons/fa6';
 import { toast } from 'sonner';
 import { useAuth } from '../../../contexts/AuthContext';
-import { updateProfile as apiUpdateProfile } from '../../../services/users';
+import {
+  getMyProfileCustomization,
+  saveMyProfileCustomization,
+  updateProfile as apiUpdateProfile,
+} from '../../../services/users';
 import { uploadImageToCloudinary } from '../../../services/cloudinary';
 import CityAutocomplete from '../../CityAutocomplete/CityAutocomplete';
 import {
+  getFeaturedProject,
   getEmptyPortfolioProject,
   getProfileCompletion,
   getProfileLinks,
+  getProfileMilestones,
   getPublicProfilePath,
-  getStoredProfileEnhancements,
   mergeProfileEnhancements,
-  saveStoredProfileEnhancements,
 } from '../../../utils/profileEnhancements';
+import { getProfileLinkMeta } from '../../../utils/profileLinks';
+import { buildCustomizeProfileErrors, normalizeExternalUrl } from '../../../utils/profileValidation';
+import { SKILL_SUGGESTIONS } from '../../../utils/skillSuggestions';
 import styles from './CustomizeProfile.module.css';
 
 const profileFromUser = (user) => ({
@@ -31,7 +48,8 @@ function CustomizeProfile() {
   const navigate = useNavigate();
   const { user, setUser } = useAuth();
   const avatarInputRef = useRef(null);
-  const projectFileRefs = useRef({});
+  const projectCoverFileRefs = useRef({});
+  const projectGalleryFileRefs = useRef({});
 
   const [profile, setProfile] = useState(() => profileFromUser(user));
   const [skills, setSkills] = useState([]);
@@ -45,19 +63,77 @@ function CustomizeProfile() {
     youtube: '',
   });
   const [projects, setProjects] = useState([]);
+  const [featuredProjectId, setFeaturedProjectId] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [loadingCustomization, setLoadingCustomization] = useState(true);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [uploadingProjectId, setUploadingProjectId] = useState('');
+  const [draggingProjectId, setDraggingProjectId] = useState('');
 
   useEffect(() => {
-    const base = profileFromUser(user);
-    const stored = getStoredProfileEnhancements(user?.id);
-    const merged = mergeProfileEnhancements(base, stored);
-    setProfile(profileFromUser(merged));
-    setSkills(merged.skills || []);
-    setSocialLinks(merged.socialLinks || {});
-    setProjects(merged.portfolioProjects || []);
-  }, [user]);
+    let cancelled = false;
+
+    if (!user?.id) {
+      setProfile(profileFromUser(user));
+      setSkills([]);
+      setSocialLinks({
+        linkedin: '',
+        github: '',
+        behance: '',
+        dribbble: '',
+        instagram: '',
+        youtube: '',
+      });
+      setProjects([]);
+      setFeaturedProjectId(null);
+      setLoadingCustomization(false);
+      return undefined;
+    }
+
+    const hydrate = async () => {
+      setLoadingCustomization(true);
+      const base = profileFromUser(user);
+      try {
+        const customization = await getMyProfileCustomization();
+        if (cancelled) return;
+        const merged = mergeProfileEnhancements(
+          {
+            ...user,
+            ...base,
+          },
+          customization
+        );
+        setProfile(profileFromUser(merged));
+        setSkills(merged.skills || []);
+        setSocialLinks(merged.socialLinks || {});
+        setProjects(merged.portfolioProjects || []);
+        setFeaturedProjectId(merged.featuredProjectId || null);
+      } catch (err) {
+        if (cancelled) return;
+        setProfile(base);
+        setSkills([]);
+        setSocialLinks({
+          linkedin: '',
+          github: '',
+          behance: '',
+          dribbble: '',
+          instagram: '',
+          youtube: '',
+        });
+        setProjects([]);
+        setFeaturedProjectId(null);
+        toast.error(err.message);
+      } finally {
+        if (!cancelled) setLoadingCustomization(false);
+      }
+    };
+
+    hydrate();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
 
   const previewProfile = useMemo(
     () =>
@@ -69,15 +145,33 @@ function CustomizeProfile() {
         {
           skills,
           socialLinks,
+          featuredProjectId,
           portfolioProjects: projects,
         }
       ),
-    [user, profile, skills, socialLinks, projects]
+    [user, profile, skills, socialLinks, featuredProjectId, projects]
   );
 
   const completion = useMemo(() => getProfileCompletion(previewProfile), [previewProfile]);
+  const milestones = useMemo(() => getProfileMilestones(previewProfile), [previewProfile]);
   const visibleLinks = useMemo(() => getProfileLinks(previewProfile), [previewProfile]);
   const profilePath = useMemo(() => getPublicProfilePath({ ...user, username: profile.username }), [user, profile.username]);
+  const previewSkills = useMemo(() => skills.slice(0, 4), [skills]);
+  const featuredProject = useMemo(() => getFeaturedProject(previewProfile), [previewProfile]);
+  const bioPreview = profile.bio.trim() || 'Adicione uma bio curta para explicar sua especialidade, seu estilo de trabalho e o tipo de projeto que voce mais resolve.';
+  const validation = useMemo(
+    () => buildCustomizeProfileErrors({ profile, socialLinks, projects }),
+    [profile, socialLinks, projects]
+  );
+  const inputClassName = (hasError) => `${styles.input} ${hasError ? styles.inputError : ''}`;
+  const skillSuggestions = useMemo(() => {
+    const query = skillInput.trim().toLowerCase();
+    return SKILL_SUGGESTIONS.filter(
+      (suggestion) =>
+        !skills.some((skill) => skill.toLowerCase() === suggestion.toLowerCase()) &&
+        (!query || suggestion.toLowerCase().includes(query))
+    ).slice(0, 8);
+  }, [skillInput, skills]);
 
   const updateProfileField = (field, value) => {
     setProfile((prev) => ({ ...prev, [field]: value }));
@@ -87,10 +181,10 @@ function CustomizeProfile() {
     setSocialLinks((prev) => ({ ...prev, [field]: value }));
   };
 
-  const addSkill = () => {
-    const next = skillInput.trim();
+  const addSkill = (rawValue = skillInput) => {
+    const next = rawValue.trim();
     if (!next) return;
-    if (skills.includes(next)) {
+    if (skills.some((skill) => skill.toLowerCase() === next.toLowerCase())) {
       setSkillInput('');
       return;
     }
@@ -111,7 +205,14 @@ function CustomizeProfile() {
       toast.error('Voce pode destacar ate 6 projetos.');
       return;
     }
-    setProjects((prev) => [...prev, getEmptyPortfolioProject()]);
+    setProjects((prev) => {
+      const nextProject = getEmptyPortfolioProject();
+      const next = [...prev, { ...nextProject, position: prev.length }];
+      if (!featuredProjectId) {
+        setFeaturedProjectId(nextProject.id);
+      }
+      return next;
+    });
   };
 
   const updateProject = (projectId, field, value) => {
@@ -134,8 +235,47 @@ function CustomizeProfile() {
     );
   };
 
+  const reorderProjects = (sourceId, targetId) => {
+    if (!sourceId || !targetId || sourceId === targetId) return;
+    setProjects((prev) => {
+      const sourceIndex = prev.findIndex((project) => project.id === sourceId);
+      const targetIndex = prev.findIndex((project) => project.id === targetId);
+      if (sourceIndex === -1 || targetIndex === -1) return prev;
+      const next = [...prev];
+      const [moved] = next.splice(sourceIndex, 1);
+      next.splice(targetIndex, 0, moved);
+      return next.map((project, index) => ({
+        ...project,
+        position: index,
+      }));
+    });
+  };
+
+  const moveProject = (projectId, direction) => {
+    setProjects((prev) => {
+      const index = prev.findIndex((project) => project.id === projectId);
+      const targetIndex = direction === 'up' ? index - 1 : index + 1;
+      if (index === -1 || targetIndex < 0 || targetIndex >= prev.length) return prev;
+      const next = [...prev];
+      const [moved] = next.splice(index, 1);
+      next.splice(targetIndex, 0, moved);
+      return next.map((project, position) => ({
+        ...project,
+        position,
+      }));
+    });
+  };
+
   const removeProject = (projectId) => {
-    setProjects((prev) => prev.filter((project) => project.id !== projectId));
+    setProjects((prev) => {
+      const next = prev
+        .filter((project) => project.id !== projectId)
+        .map((project, position) => ({ ...project, position }));
+      if (featuredProjectId === projectId) {
+        setFeaturedProjectId(next[0]?.id || null);
+      }
+      return next;
+    });
   };
 
   const handleAvatarUpload = async (file) => {
@@ -148,7 +288,14 @@ function CustomizeProfile() {
     try {
       const { url } = await uploadImageToCloudinary(file);
       updateProfileField('avatarUrl', url);
-      toast.success('Foto carregada. Salve para publicar no perfil.');
+      try {
+        const updated = await apiUpdateProfile({ avatarUrl: url });
+        setUser(updated);
+        setProfile((prev) => ({ ...prev, avatarUrl: updated.avatarUrl || url }));
+        toast.success('Foto de perfil atualizada.');
+      } catch (err) {
+        toast.error(err.message || 'A foto foi enviada, mas nao conseguimos salvar no perfil agora.');
+      }
     } catch (err) {
       toast.error(err.message);
     } finally {
@@ -156,7 +303,7 @@ function CustomizeProfile() {
     }
   };
 
-  const handleProjectImageUpload = async (projectId, file) => {
+  const handleProjectCoverUpload = async (projectId, file) => {
     if (!file || uploadingProjectId) return;
     if (!file.type.startsWith('image/')) {
       toast.error('Selecione uma imagem valida.');
@@ -165,7 +312,17 @@ function CustomizeProfile() {
     setUploadingProjectId(projectId);
     try {
       const { url } = await uploadImageToCloudinary(file);
-      updateProject(projectId, 'imageUrl', url);
+      setProjects((prev) =>
+        prev.map((project) =>
+          project.id === projectId
+            ? {
+                ...project,
+                coverImageUrl: url,
+                imageUrl: url,
+              }
+            : project
+        )
+      );
       toast.success('Capa do projeto carregada.');
     } catch (err) {
       toast.error(err.message);
@@ -174,8 +331,63 @@ function CustomizeProfile() {
     }
   };
 
+  const handleProjectGalleryUpload = async (projectId, files) => {
+    const list = Array.from(files || []);
+    if (list.length === 0 || uploadingProjectId) return;
+    if (list.some((file) => !file.type.startsWith('image/'))) {
+      toast.error('Selecione apenas imagens validas.');
+      return;
+    }
+    setUploadingProjectId(projectId);
+    try {
+      const uploaded = [];
+      for (const file of list.slice(0, 8)) {
+        const { url } = await uploadImageToCloudinary(file);
+        uploaded.push(url);
+      }
+      setProjects((prev) =>
+        prev.map((project) => {
+          if (project.id !== projectId) return project;
+          const nextImages = [...(project.images || []), ...uploaded.map((url, index) => ({
+            id: `${projectId}_image_${Date.now()}_${index}`,
+            url,
+            position: (project.images || []).length + index,
+          }))].slice(0, 8);
+          return {
+            ...project,
+            images: nextImages.map((image, position) => ({ ...image, position })),
+          };
+        })
+      );
+      toast.success('Galeria do projeto atualizada.');
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setUploadingProjectId('');
+    }
+  };
+
+  const removeProjectGalleryImage = (projectId, imageId) => {
+    setProjects((prev) =>
+      prev.map((project) =>
+        project.id === projectId
+          ? {
+              ...project,
+              images: (project.images || [])
+                .filter((image) => image.id !== imageId)
+                .map((image, position) => ({ ...image, position })),
+            }
+          : project
+      )
+    );
+  };
+
   const handleSave = async () => {
     if (isSaving) return;
+    if (validation.hasErrors) {
+      toast.error('Revise os campos destacados antes de salvar.');
+      return;
+    }
     setIsSaving(true);
     try {
       const payload = {
@@ -185,18 +397,46 @@ function CustomizeProfile() {
         headline: profile.headline.trim(),
         bio: profile.bio.trim(),
         location: profile.location.trim(),
-        website: profile.website.trim(),
+        website: normalizeExternalUrl(profile.website),
         avatarUrl: profile.avatarUrl.trim(),
       };
 
       const updated = await apiUpdateProfile(payload);
       setUser(updated);
-
-      saveStoredProfileEnhancements(updated.id, {
+      setProfile((prev) => ({
+        ...prev,
+        ...profileFromUser(updated),
+      }));
+      const customization = await saveMyProfileCustomization({
         skills,
-        socialLinks,
-        portfolioProjects: projects,
+        socialLinks: Object.fromEntries(
+          Object.entries(socialLinks).map(([key, value]) => [key, normalizeExternalUrl(value)])
+        ),
+        featuredProjectId,
+        portfolioProjects: projects.map((project) => ({
+          id: project.id,
+          title: project.title,
+          description: project.description,
+          coverImageUrl: normalizeExternalUrl(project.coverImageUrl || project.imageUrl || ''),
+          projectUrl: normalizeExternalUrl(project.projectUrl),
+          tags: project.tags || [],
+          images: (project.images || []).map((image) => ({
+            id: image.id,
+            url: normalizeExternalUrl(image.url),
+          })),
+        })),
       });
+      const merged = mergeProfileEnhancements(
+        {
+          ...updated,
+          ...profileFromUser(updated),
+        },
+        customization
+      );
+      setSkills(merged.skills || []);
+      setSocialLinks(merged.socialLinks || {});
+      setProjects(merged.portfolioProjects || []);
+      setFeaturedProjectId(merged.featuredProjectId || null);
 
       toast.success('Perfil personalizado salvo com sucesso.');
     } catch (err) {
@@ -232,8 +472,8 @@ function CustomizeProfile() {
           </p>
 
           <div className={styles.heroActions}>
-            <button type="button" className={styles.primaryButton} onClick={handleSave} disabled={isSaving}>
-              {isSaving ? 'Salvando...' : 'Salvar perfil'}
+            <button type="button" className={styles.primaryButton} onClick={handleSave} disabled={isSaving || loadingCustomization}>
+              {loadingCustomization ? 'Carregando...' : isSaving ? 'Salvando...' : 'Salvar perfil'}
             </button>
             <button type="button" className={styles.secondaryButton} onClick={goToPublicProfile}>
               Ver perfil publico
@@ -261,11 +501,43 @@ function CustomizeProfile() {
                 </div>
               ))}
             </div>
+            <div className={styles.milestoneRow}>
+              {milestones.map((milestone) => (
+                <div
+                  key={milestone.id}
+                  className={`${styles.milestoneCard} ${milestone.unlocked ? styles.milestoneCardUnlocked : ''}`}
+                >
+                  <div className={styles.milestoneHead}>
+                    <span className={styles.milestoneIcon}>
+                      <FaMedal />
+                    </span>
+                    <strong>{milestone.title}</strong>
+                  </div>
+                  <p>{milestone.reward}</p>
+                  <span>{milestone.unlocked ? 'Desbloqueado' : `${milestone.threshold}% necessario`}</span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
         <aside className={styles.previewCard}>
           <div className={styles.previewCover} />
+          <div className={styles.previewTopBar}>
+            <span className={styles.previewBadge}>
+              <FaStar />
+              Preview publico
+            </span>
+            <button
+              type="button"
+              className={styles.previewPhotoButton}
+              onClick={() => avatarInputRef.current?.click()}
+              disabled={uploadingAvatar}
+            >
+              <FaCamera />
+              {uploadingAvatar ? 'Enviando...' : 'Atualizar foto'}
+            </button>
+          </div>
           <div className={styles.previewAvatar}>
             {profile.avatarUrl ? <img src={profile.avatarUrl} alt="" className={styles.previewAvatarImg} /> : initials || 'U'}
           </div>
@@ -273,11 +545,21 @@ function CustomizeProfile() {
             <strong>{fullName}</strong>
             <span>{profile.username ? `@${profile.username}` : 'usuario-publico'}</span>
             <p>{profile.headline || 'Seu titulo profissional aparece aqui.'}</p>
+            <div className={styles.previewMetaRow}>
+              <span className={styles.previewMetaPill}>
+                <FaLocationDot />
+                {profile.location || 'Adicione sua cidade'}
+              </span>
+              <span className={styles.previewMetaPill}>
+                <FaLink />
+                {visibleLinks.length} link{visibleLinks.length === 1 ? '' : 's'} ativo{visibleLinks.length === 1 ? '' : 's'}
+              </span>
+            </div>
           </div>
           <div className={styles.previewStats}>
             <div>
-              <span>Skills</span>
-              <strong>{skills.length}</strong>
+              <span>Forca</span>
+              <strong>{completion.percent}%</strong>
             </div>
             <div>
               <span>Links</span>
@@ -287,6 +569,104 @@ function CustomizeProfile() {
               <span>Projetos</span>
               <strong>{projects.length}</strong>
             </div>
+          </div>
+          <div className={styles.previewSections}>
+            <section className={styles.previewSection}>
+              <div className={styles.previewSectionHead}>
+                <span>Sobre</span>
+              </div>
+              <p className={styles.previewBio}>{bioPreview}</p>
+            </section>
+
+            <section className={styles.previewSection}>
+              <div className={styles.previewSectionHead}>
+                <span>Habilidades em destaque</span>
+                <strong>{skills.length}</strong>
+              </div>
+              <div className={styles.previewSkillList}>
+                {previewSkills.length > 0 ? (
+                  previewSkills.map((skill) => (
+                    <span key={skill} className={styles.previewSkillChip}>
+                      {skill}
+                    </span>
+                  ))
+                ) : (
+                  <span className={styles.previewEmpty}>Suas principais skills vao aparecer aqui.</span>
+                )}
+              </div>
+            </section>
+
+            <section className={styles.previewSection}>
+              <div className={styles.previewSectionHead}>
+                <span>Links visiveis</span>
+                <strong>{visibleLinks.length}</strong>
+              </div>
+              <div className={styles.previewLinks}>
+                {visibleLinks.length > 0 ? (
+                  visibleLinks.slice(0, 3).map((link) => {
+                    const meta = getProfileLinkMeta(link.key);
+                    const Icon = meta.icon;
+                    return (
+                    <a
+                      key={link.key}
+                      className={styles.previewLinkItem}
+                      href={link.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <span className={styles.previewLinkLabel}>
+                        <Icon />
+                        {meta.shortLabel || link.label}
+                      </span>
+                      <FaArrowUpRightFromSquare />
+                    </a>
+                    );
+                  })
+                ) : (
+                  <span className={styles.previewEmpty}>Adicione ao menos um link para passar mais confianca.</span>
+                )}
+              </div>
+            </section>
+
+            <section className={styles.previewSection}>
+              <div className={styles.previewSectionHead}>
+                <span>Projeto em destaque</span>
+                <strong>{featuredProject ? '1 pronto' : 'vazio'}</strong>
+              </div>
+              {featuredProject ? (
+                <div className={styles.previewProjectCard}>
+                  {featuredProject.imageUrl ? (
+                    <img src={featuredProject.imageUrl} alt="" className={styles.previewProjectImage} />
+                  ) : (
+                    <div className={styles.previewProjectFallback}>Sem capa</div>
+                  )}
+                  <div className={styles.previewProjectBody}>
+                    <strong>{featuredProject.title || 'Projeto sem titulo'}</strong>
+                    <p>
+                      {featuredProject.description || 'Adicione uma descricao curta para dar contexto ao trabalho mostrado no perfil.'}
+                    </p>
+                    {featuredProject.projectUrl ? (
+                      <a
+                        href={normalizeExternalUrl(featuredProject.projectUrl)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={styles.previewProjectLink}
+                      >
+                        Ver projeto
+                        <FaArrowUpRightFromSquare />
+                      </a>
+                    ) : null}
+                    {featuredProject.images?.length > 0 ? (
+                      <span className={styles.previewGalleryCount}>
+                        +{featuredProject.images.length} foto{featuredProject.images.length === 1 ? '' : 's'} na galeria
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
+              ) : (
+                <span className={styles.previewEmpty}>Seu melhor projeto pode virar a prova visual principal do perfil.</span>
+              )}
+            </section>
           </div>
         </aside>
       </section>
@@ -321,14 +701,14 @@ function CustomizeProfile() {
             </div>
 
             <div className={styles.formGrid}>
-              <Field label="Nome">
-                <input className={styles.input} value={profile.firstName} onChange={(e) => updateProfileField('firstName', e.target.value)} />
+              <Field label="Nome" error={validation.profile.firstName}>
+                <input className={inputClassName(validation.profile.firstName)} value={profile.firstName} onChange={(e) => updateProfileField('firstName', e.target.value)} />
               </Field>
-              <Field label="Sobrenome">
-                <input className={styles.input} value={profile.lastName} onChange={(e) => updateProfileField('lastName', e.target.value)} />
+              <Field label="Sobrenome" error={validation.profile.lastName}>
+                <input className={inputClassName(validation.profile.lastName)} value={profile.lastName} onChange={(e) => updateProfileField('lastName', e.target.value)} />
               </Field>
-              <Field label="Usuario publico">
-                <div className={styles.inputWithPrefix}>
+              <Field label="Usuario publico" error={validation.profile.username}>
+                <div className={`${styles.inputWithPrefix} ${validation.profile.username ? styles.inputWithPrefixError : ''}`}>
                   <span className={styles.inputPrefix}>hivelancers.com/</span>
                   <input
                     className={styles.input}
@@ -349,10 +729,10 @@ function CustomizeProfile() {
                   inputClassName={styles.input}
                 />
               </Field>
-              <Field label="Website principal">
+              <Field label="Website principal" error={validation.profile.website}>
                 <input
-                  className={styles.input}
-                  type="url"
+                  className={inputClassName(validation.profile.website)}
+                  type="text"
                   placeholder="https://seusite.com"
                   value={profile.website}
                   onChange={(e) => updateProfileField('website', e.target.value)}
@@ -379,23 +759,23 @@ function CustomizeProfile() {
             </div>
 
             <div className={styles.formGrid}>
-              <Field label="LinkedIn">
-                <input className={styles.input} placeholder="linkedin.com/in/..." value={socialLinks.linkedin} onChange={(e) => updateSocialLink('linkedin', e.target.value)} />
+              <Field label="LinkedIn" error={validation.socialLinks.linkedin}>
+                <input className={inputClassName(validation.socialLinks.linkedin)} placeholder="linkedin.com/in/..." value={socialLinks.linkedin} onChange={(e) => updateSocialLink('linkedin', e.target.value)} />
               </Field>
-              <Field label="GitHub">
-                <input className={styles.input} placeholder="github.com/..." value={socialLinks.github} onChange={(e) => updateSocialLink('github', e.target.value)} />
+              <Field label="GitHub" error={validation.socialLinks.github}>
+                <input className={inputClassName(validation.socialLinks.github)} placeholder="github.com/..." value={socialLinks.github} onChange={(e) => updateSocialLink('github', e.target.value)} />
               </Field>
-              <Field label="Behance">
-                <input className={styles.input} placeholder="behance.net/..." value={socialLinks.behance} onChange={(e) => updateSocialLink('behance', e.target.value)} />
+              <Field label="Behance" error={validation.socialLinks.behance}>
+                <input className={inputClassName(validation.socialLinks.behance)} placeholder="behance.net/..." value={socialLinks.behance} onChange={(e) => updateSocialLink('behance', e.target.value)} />
               </Field>
-              <Field label="Dribbble">
-                <input className={styles.input} placeholder="dribbble.com/..." value={socialLinks.dribbble} onChange={(e) => updateSocialLink('dribbble', e.target.value)} />
+              <Field label="Dribbble" error={validation.socialLinks.dribbble}>
+                <input className={inputClassName(validation.socialLinks.dribbble)} placeholder="dribbble.com/..." value={socialLinks.dribbble} onChange={(e) => updateSocialLink('dribbble', e.target.value)} />
               </Field>
-              <Field label="Instagram">
-                <input className={styles.input} placeholder="instagram.com/..." value={socialLinks.instagram} onChange={(e) => updateSocialLink('instagram', e.target.value)} />
+              <Field label="Instagram" error={validation.socialLinks.instagram}>
+                <input className={inputClassName(validation.socialLinks.instagram)} placeholder="instagram.com/..." value={socialLinks.instagram} onChange={(e) => updateSocialLink('instagram', e.target.value)} />
               </Field>
-              <Field label="YouTube">
-                <input className={styles.input} placeholder="youtube.com/..." value={socialLinks.youtube} onChange={(e) => updateSocialLink('youtube', e.target.value)} />
+              <Field label="YouTube" error={validation.socialLinks.youtube}>
+                <input className={inputClassName(validation.socialLinks.youtube)} placeholder="youtube.com/..." value={socialLinks.youtube} onChange={(e) => updateSocialLink('youtube', e.target.value)} />
               </Field>
             </div>
           </section>
@@ -425,6 +805,23 @@ function CustomizeProfile() {
                 Adicionar
               </button>
             </div>
+
+            {skillSuggestions.length > 0 ? (
+              <div className={styles.suggestionRow}>
+                {skillSuggestions.map((suggestion) => (
+                  <button
+                    key={suggestion}
+                    type="button"
+                    className={styles.suggestionChip}
+                    onClick={() => {
+                      addSkill(suggestion);
+                    }}
+                  >
+                    {suggestion}
+                  </button>
+                ))}
+              </div>
+            ) : null}
 
             <div className={styles.skillList}>
               {skills.length === 0 ? (
@@ -460,50 +857,135 @@ function CustomizeProfile() {
               </div>
             ) : (
               <div className={styles.projectStack}>
-                {projects.map((project) => (
-                  <article key={project.id} className={styles.projectCard}>
+                {projects.map((project, index) => (
+                  <article
+                    key={project.id}
+                    className={`${styles.projectCard} ${draggingProjectId === project.id ? styles.projectCardDragging : ''}`}
+                    draggable
+                    onDragStart={() => setDraggingProjectId(project.id)}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={() => {
+                      reorderProjects(draggingProjectId, project.id);
+                      setDraggingProjectId('');
+                    }}
+                    onDragEnd={() => setDraggingProjectId('')}
+                  >
                     <div className={styles.projectPreview}>
-                      {project.imageUrl ? (
-                        <img src={project.imageUrl} alt="" className={styles.projectImage} />
+                      {project.coverImageUrl || project.imageUrl ? (
+                        <img src={project.coverImageUrl || project.imageUrl} alt="" className={styles.projectImage} />
                       ) : (
                         <div className={styles.projectFallback}>Projeto</div>
                       )}
                     </div>
 
                     <div className={styles.projectForm}>
+                      <div className={styles.projectCardHead}>
+                        <div className={styles.projectDragHandle}>
+                          <FaGripVertical />
+                          <span>Arraste para ordenar</span>
+                        </div>
+                        <button
+                          type="button"
+                          className={`${styles.featuredButton} ${featuredProjectId === project.id ? styles.featuredButtonActive : ''}`}
+                          onClick={() => setFeaturedProjectId(project.id)}
+                        >
+                          <FaStar />
+                          {featuredProjectId === project.id ? 'Projeto em destaque' : 'Definir destaque'}
+                        </button>
+                      </div>
+
                       <div className={styles.projectActions}>
                         <button
                           type="button"
                           className={styles.ghostButton}
-                          onClick={() => projectFileRefs.current[project.id]?.click()}
+                          onClick={() => projectCoverFileRefs.current[project.id]?.click()}
                           disabled={uploadingProjectId === project.id}
                         >
-                          {uploadingProjectId === project.id ? 'Enviando capa...' : 'Enviar capa'}
+                          {uploadingProjectId === project.id ? 'Enviando capa...' : 'Trocar capa'}
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.ghostButton}
+                          onClick={() => projectGalleryFileRefs.current[project.id]?.click()}
+                          disabled={uploadingProjectId === project.id}
+                        >
+                          <FaImage />
+                          Adicionar fotos
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.ghostButton}
+                          onClick={() => moveProject(project.id, 'up')}
+                          disabled={index === 0}
+                        >
+                          Subir
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.ghostButton}
+                          onClick={() => moveProject(project.id, 'down')}
+                          disabled={index === projects.length - 1}
+                        >
+                          Descer
                         </button>
                         <button type="button" className={styles.dangerButton} onClick={() => removeProject(project.id)}>
                           Remover
                         </button>
                         <input
                           ref={(node) => {
-                            projectFileRefs.current[project.id] = node;
+                            projectCoverFileRefs.current[project.id] = node;
                           }}
                           type="file"
                           accept="image/*"
                           className={styles.hiddenInput}
                           onChange={(e) => {
                             const file = e.target.files?.[0];
-                            if (file) handleProjectImageUpload(project.id, file);
+                            if (file) handleProjectCoverUpload(project.id, file);
+                            e.target.value = '';
+                          }}
+                        />
+                        <input
+                          ref={(node) => {
+                            projectGalleryFileRefs.current[project.id] = node;
+                          }}
+                          type="file"
+                          multiple
+                          accept="image/*"
+                          className={styles.hiddenInput}
+                          onChange={(e) => {
+                            if (e.target.files?.length) handleProjectGalleryUpload(project.id, e.target.files);
                             e.target.value = '';
                           }}
                         />
                       </div>
 
+                      {project.images?.length > 0 ? (
+                        <div className={styles.galleryStrip}>
+                          {project.images.map((image) => (
+                            <div key={image.id} className={styles.galleryThumb}>
+                              <img src={image.url} alt="" className={styles.galleryThumbImg} />
+                              <button
+                                type="button"
+                                className={styles.galleryThumbRemove}
+                                onClick={() => removeProjectGalleryImage(project.id, image.id)}
+                              >
+                                ×
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className={styles.galleryEmpty}>
+                          Adicione fotos extras para mostrar mais detalhes alem da capa.
+                        </div>
+                      )}
+
                       <div className={styles.formGrid}>
-                        <Field label="Titulo do projeto">
-                          <input className={styles.input} value={project.title} onChange={(e) => updateProject(project.id, 'title', e.target.value)} />
+                        <Field label="Titulo do projeto" error={validation.projects[project.id]?.title}>
+                          <input className={inputClassName(validation.projects[project.id]?.title)} value={project.title} onChange={(e) => updateProject(project.id, 'title', e.target.value)} />
                         </Field>
-                        <Field label="Link do projeto">
-                          <input className={styles.input} value={project.projectUrl} placeholder="https://..." onChange={(e) => updateProject(project.id, 'projectUrl', e.target.value)} />
+                        <Field label="Link do projeto" error={validation.projects[project.id]?.projectUrl}>
+                          <input className={inputClassName(validation.projects[project.id]?.projectUrl)} value={project.projectUrl} placeholder="https://..." onChange={(e) => updateProject(project.id, 'projectUrl', e.target.value)} />
                         </Field>
                         <Field label="Tags" hint="Separe por virgula" fullWidth>
                           <input
@@ -511,6 +993,19 @@ function CustomizeProfile() {
                             value={project.tags.join(', ')}
                             placeholder="Branding, Figma, Landing page"
                             onChange={(e) => updateProject(project.id, 'tags', e.target.value)}
+                          />
+                        </Field>
+                        <Field
+                          label="Capa principal"
+                          error={validation.projects[project.id]?.coverImageUrl}
+                          fullWidth
+                          hint="A capa aparece no card e no projeto em destaque."
+                        >
+                          <input
+                            className={inputClassName(validation.projects[project.id]?.coverImageUrl)}
+                            value={project.coverImageUrl || ''}
+                            placeholder="https://..."
+                            onChange={(e) => updateProject(project.id, 'coverImageUrl', e.target.value)}
                           />
                         </Field>
                         <Field label="Descricao" fullWidth>
@@ -565,6 +1060,14 @@ function CustomizeProfile() {
                 </div>
               ))}
             </div>
+            <div className={styles.missionMilestones}>
+              {milestones.map((milestone) => (
+                <div key={milestone.id} className={`${styles.missionMilestone} ${milestone.unlocked ? styles.missionMilestoneUnlocked : ''}`}>
+                  <strong>{milestone.title}</strong>
+                  <span>{milestone.unlocked ? 'Liberado' : `${milestone.threshold}%`}</span>
+                </div>
+              ))}
+            </div>
           </section>
 
           <section className={styles.sideCard}>
@@ -580,10 +1083,13 @@ function CustomizeProfile() {
   );
 }
 
-function Field({ label, hint, fullWidth = false, children }) {
+function Field({ label, hint, error, fullWidth = false, children }) {
   return (
     <label className={`${styles.field} ${fullWidth ? styles.fieldFull : ''}`}>
-      <span className={styles.fieldLabel}>{label}</span>
+      <div className={styles.fieldMetaRow}>
+        <span className={styles.fieldLabel}>{label}</span>
+        {error ? <span className={styles.fieldError}>{error}</span> : null}
+      </div>
       {children}
       {hint ? <span className={styles.fieldHint}>{hint}</span> : null}
     </label>

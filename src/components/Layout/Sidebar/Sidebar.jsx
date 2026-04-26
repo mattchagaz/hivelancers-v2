@@ -22,6 +22,10 @@ function Sidebar({ userRole = 'freelancer', collapsed, mobileOpen, onToggle, onM
         { label: 'Recompensas', path: '/rewards', icon: 'rewards' },
       ];
 
+  if (isFreelancer) {
+    mainNav.splice(4, 0, { label: 'Favoritos', path: '/favorites', icon: 'heart' });
+  }
+
   const icons = {
     dashboard: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">

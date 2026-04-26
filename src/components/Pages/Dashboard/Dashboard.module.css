@@ -1076,6 +1076,368 @@
   margin-top: 4px;
 }
 
+.clientSummaryRow,
+.clientShortlistGrid,
+.resumeGrid,
+.clientOrderList,
+.reviewQueue,
+.clientInboxList,
+.savedServiceList,
+.shortlistSkills {
+  display: grid;
+  gap: 14px;
+}
+
+.clientSummaryRow {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.clientSummaryCard,
+.clientHeroPanel,
+.shortlistCard,
+.resumeCard,
+.clientOrderCard,
+.reviewItem,
+.clientInboxItem,
+.savedServiceItem {
+  border-radius: 18px;
+  border: 1px solid var(--border-light);
+  background: var(--bg-primary);
+}
+
+.clientSummaryCard {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.clientSummaryCard span {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.clientSummaryCard strong {
+  font-size: 1.6rem;
+  line-height: 1;
+  color: var(--text-primary);
+}
+
+.clientSummaryCard small {
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.clientSummary_blue { background: linear-gradient(180deg, var(--info-bg), var(--bg-primary)); }
+.clientSummary_amber { background: linear-gradient(180deg, var(--warning-bg), var(--bg-primary)); }
+.clientSummary_purple { background: linear-gradient(180deg, var(--purple-bg), var(--bg-primary)); }
+.clientSummary_green { background: linear-gradient(180deg, var(--success-bg), var(--bg-primary)); }
+
+.clientHeroPanel {
+  min-height: 250px;
+  padding: 22px;
+  background:
+    radial-gradient(circle at top right, rgba(96, 165, 250, 0.18), transparent 36%),
+    linear-gradient(160deg, #0f172a 0%, #1d4ed8 58%, #0f766e 100%);
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+}
+
+.clientEmpty {
+  padding: 22px;
+  border-radius: 18px;
+  border: 1px dashed var(--border-color);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.clientShortlistGrid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.shortlistCard {
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.shortlistTop,
+.shortlistProject {
+  text-decoration: none;
+  color: inherit;
+}
+
+.shortlistTop {
+  display: flex;
+  gap: 14px;
+}
+
+.shortlistAvatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, rgba(var(--primary-color-rgb), 0.14), rgba(15, 23, 42, 0.08));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  font-weight: 800;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.shortlistAvatarImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.shortlistIdentity {
+  min-width: 0;
+}
+
+.shortlistIdentity strong,
+.shortlistProject strong,
+.resumeBody strong,
+.clientOrderHead strong,
+.reviewItem strong,
+.clientInboxItem strong,
+.savedServiceItem strong {
+  display: block;
+  color: var(--text-primary);
+}
+
+.shortlistIdentity span,
+.shortlistProject span,
+.resumeBody span,
+.savedServiceItem small {
+  color: var(--text-muted);
+  font-size: 0.76rem;
+}
+
+.shortlistIdentity p,
+.resumeBody p,
+.reviewItem p,
+.clientInboxItem p,
+.savedServiceItem p {
+  margin: 8px 0 0;
+  color: var(--text-secondary);
+  line-height: 1.65;
+  font-size: 0.84rem;
+  overflow-wrap: anywhere;
+}
+
+.shortlistProject {
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr);
+  gap: 12px;
+  padding: 12px;
+  border-radius: 16px;
+  border: 1px solid var(--border-light);
+  background: var(--bg-secondary);
+}
+
+.shortlistProjectImage,
+.shortlistProjectFallback {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 14px;
+  object-fit: cover;
+}
+
+.shortlistProjectFallback {
+  min-height: 84px;
+}
+
+.shortlistSkills {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.shortlistSkillChip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: rgba(var(--primary-color-rgb), 0.08);
+  color: var(--primary-color);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.shortlistActions {
+  display: flex;
+  gap: 10px;
+  margin-top: auto;
+}
+
+.resumeGrid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.resumeCard {
+  overflow: hidden;
+  text-decoration: none;
+  color: inherit;
+}
+
+.resumeAccent {
+  height: 8px;
+}
+
+.resumeBody {
+  padding: 16px;
+}
+
+.clientOrderCard,
+.reviewItem,
+.clientInboxItem,
+.savedServiceItem {
+  padding: 16px;
+  text-decoration: none;
+  color: inherit;
+  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.resumeCard:hover,
+.clientOrderCard:hover,
+.reviewItem:hover,
+.clientInboxItem:hover,
+.savedServiceItem:hover,
+.shortlistCard:hover {
+  transform: translateY(-2px);
+  border-color: rgba(var(--primary-color-rgb), 0.18);
+  box-shadow: 0 16px 34px rgba(15, 23, 42, 0.08);
+  opacity: 1;
+}
+
+.clientOrderHead,
+.clientOrderMeta,
+.reviewItem,
+.clientInboxItem,
+.savedServiceItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.clientOrderHead span,
+.clientOrderMeta span,
+.clientTimelineStep small,
+.clientInboxMeta span,
+.savedServiceItem p {
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+}
+
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.statusPENDING { background: var(--warning-bg); color: var(--warning-color); }
+.statusIN_PROGRESS { background: var(--info-bg); color: var(--info-color); }
+.statusDELIVERED { background: var(--purple-bg); color: var(--purple-color); }
+.statusCOMPLETED { background: var(--success-bg); color: var(--success-color); }
+
+.clientTimeline {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.clientTimelineStep {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.clientTimelineDot {
+  width: 100%;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--bg-tertiary);
+}
+
+.timeline_done {
+  background: linear-gradient(90deg, #059669, #34d399);
+}
+
+.timeline_current {
+  background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+}
+
+.timeline_idle {
+  background: var(--bg-tertiary);
+}
+
+.reviewQueue {
+  grid-template-columns: 1fr;
+}
+
+.reviewItem span {
+  color: var(--primary-color);
+  font-size: 0.8rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.clientInboxMeta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.clientInboxMeta b {
+  min-width: 26px;
+  min-height: 26px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: rgba(var(--primary-color-rgb), 0.1);
+  color: var(--primary-color);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.76rem;
+}
+
+.savedServiceCategory {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: rgba(var(--primary-color-rgb), 0.08);
+  color: var(--primary-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.savedServiceItem {
+  align-items: flex-start;
+}
+
+.savedServiceItem > div {
+  flex: 1;
+  min-width: 0;
+}
+
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
@@ -1108,7 +1470,9 @@
 
   .clientFeaturedGrid,
   .boardGrid,
-  .clientPopularGrid {
+  .clientPopularGrid,
+  .clientShortlistGrid,
+  .resumeGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -1125,8 +1489,14 @@
   .clientFeaturedGrid,
   .boardGrid,
   .clientPopularGrid,
+  .clientShortlistGrid,
+  .resumeGrid,
   .serviceGrid,
   .categoryGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .clientSummaryRow {
     grid-template-columns: 1fr;
   }
 }
@@ -1196,7 +1566,11 @@
   .insightItem,
   .goalItem,
   .leaderItem,
-  .clientHeroActions {
+  .clientHeroActions,
+  .shortlistTop,
+  .reviewItem,
+  .clientInboxItem,
+  .savedServiceItem {
     flex-direction: column;
     align-items: flex-start;
   }
@@ -1208,6 +1582,11 @@
   .clientCategoryChip {
     width: 100%;
     justify-content: flex-start;
+  }
+
+  .shortlistSkills,
+  .clientTimeline {
+    grid-template-columns: 1fr;
   }
 }
 

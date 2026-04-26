@@ -18,6 +18,7 @@ import {
   joinConversationRoom,
   leaveConversationRoom,
 } from '../../../services/socket';
+import { recordRecentActivity } from '../../../utils/clientRecentActivity';
 import styles from './Messages.module.css';
 
 const TYPING_STOP_DELAY = 1200;
@@ -549,6 +550,17 @@ function Messages() {
   const otherUser = activeConversation?.participants?.find((p) => toId(p.id) !== toId(user?.id)) || activeConversation?.otherUser;
   const otherProfileHandle = otherUser?.username || otherUser?.handle || otherUser?.id;
   const otherName = otherUser ? `${otherUser.firstName || ''} ${otherUser.lastName || ''}`.trim() : 'Usuário';
+
+  useEffect(() => {
+    if (!activeConversation?.id || !user?.id) return;
+    recordRecentActivity(user.id, {
+      type: 'conversation',
+      id: activeConversation.id,
+      title: otherName || 'Conversa',
+      subtitle: otherProfileHandle ? `@${otherProfileHandle}` : 'Mensagens',
+      href: `/messages?chat=${activeConversation.id}`,
+    });
+  }, [activeConversation?.id, otherName, otherProfileHandle, user?.id]);
 
   const filteredConversations = search
     ? conversations.filter((c) => {

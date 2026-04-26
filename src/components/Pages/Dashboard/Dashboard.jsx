@@ -1,9 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
-import { CATEGORIES, SERVICE_GRADIENTS, SERVICES } from '../../../data/services';
+import { SERVICE_GRADIENTS } from '../../../data/services';
 import { useAuth } from '../../../contexts/AuthContext';
-import { listMyServices } from '../../../services/services';
+import { listCategories, listMyServices, listPublicServices } from '../../../services/services';
+import { listOrders } from '../../../services/orders';
+import { listConversations } from '../../../services/messages';
+import { getMyFavorites } from '../../../services/users';
+import { CategoryIcon } from '../../../utils/categoryIcons';
+import { getFeaturedProject } from '../../../utils/profileEnhancements';
+import { getRecentActivity } from '../../../utils/clientRecentActivity';
 import styles from './Dashboard.module.css';
 
 const STATUS_LABEL = {
@@ -14,6 +20,51 @@ const STATUS_LABEL = {
 
 const formatPriceBRL = (cents) =>
   (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+const CLIENT_ORDER_STAGES = [
+  { key: 'PENDING', label: 'Pedido criado' },
+  { key: 'IN_PROGRESS', label: 'Execucao' },
+  { key: 'DELIVERED', label: 'Entrega' },
+  { key: 'COMPLETED', label: 'Aprovacao' },
+];
+
+const formatRelativeTime = (value) => {
+  if (!value) return '';
+  const date = new Date(value);
+  const diffMinutes = Math.floor((Date.now() - date.getTime()) / 60000);
+  if (diffMinutes < 1) return 'Agora';
+  if (diffMinutes < 60) return `${diffMinutes} min`;
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) return `${diffHours} h`;
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays < 7) return `${diffDays} d`;
+  return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+};
+
+const getFullName = (person) =>
+  `${person?.firstName || ''} ${person?.lastName || ''}`.trim() || person?.username || 'Usuario';
+
+const getOrderStageState = (orderStatus, stageKey) => {
+  if (orderStatus === 'REJECTED' || orderStatus === 'CANCELED') {
+    return stageKey === 'PENDING' ? 'done' : 'idle';
+  }
+
+  const currentIndex = CLIENT_ORDER_STAGES.findIndex((stage) => stage.key === orderStatus);
+  const stageIndex = CLIENT_ORDER_STAGES.findIndex((stage) => stage.key === stageKey);
+
+  if (currentIndex === -1) return 'idle';
+  if (stageIndex < currentIndex) return 'done';
+  if (stageIndex === currentIndex) return 'current';
+  return 'idle';
+};
+
+const getRecentTypeLabel = (type) => {
+  if (type === 'service') return 'Servico visto';
+  if (type === 'profile') return 'Perfil visitado';
+  if (type === 'project') return 'Projeto aberto';
+  if (type === 'conversation') return 'Conversa ativa';
+  return 'Atividade recente';
+};
 
 function Dashboard() {
   const { user } = useAuth();
@@ -294,205 +345,471 @@ function FreelancerDashboard() {
 }
 
 function ClientDashboard() {
-  const spotlightService = SERVICES[1];
-  const featuredServices = [...SERVICES]
-    .sort((a, b) => Number(b.featured) - Number(a.featured))
-    .slice(0, 4);
-  const popularServices = [...SERVICES].sort((a, b) => b.reviews - a.reviews).slice(0, 6);
-  const activeProjects = [
-    { id: '#2038', service: 'Landing Page para campanha de maio', person: 'Lucas Mendes', status: 'progress', price: 'R$ 790', date: 'Entrega em 2 dias' },
-    { id: '#2032', service: 'Nova identidade visual para produto SaaS', person: 'Ana Costa', status: 'review', price: 'R$ 420', date: 'Em revisao' },
-    { id: '#2027', service: 'Gestao de redes sociais para lancamento', person: 'Julia Rocha', status: 'progress', price: 'R$ 1.300', date: 'Kickoff amanha' },
-  ];
-  const activities = [
-    { text: 'Entrega recebida', detail: 'Lucas Mendes enviou a primeira versao da landing page', time: '18 min', color: 'blue' },
-    { text: 'Freelancer recomendado', detail: '3 novos servicos combinam com sua lista salva', time: '1h', color: 'purple' },
-    { text: 'Pontos adicionados', detail: '+40 XP por concluir um pedido com feedback', time: '3h', color: 'green' },
-    { text: 'Projeto em revisao', detail: 'Ana Costa respondeu suas observacoes do pedido #2032', time: '6h', color: 'amber' },
-  ];
-  const clientMissions = [
-    {
-      title: 'Descoberta inteligente',
-      description: 'Salve 3 servicos em categorias diferentes para melhorar sua curadoria.',
-      progress: 66,
-      reward: '+90 XP',
-      accent: 'blue',
-    },
-    {
-      title: 'Cliente confiavel',
-      description: 'Conclua 1 pedido com briefing completo e feedback final.',
-      progress: 50,
-      reward: 'Selo Cliente Pro',
-      accent: 'amber',
-    },
-  ];
-  const curatedBoards = [
-    { title: 'Lançar produto digital', text: 'Landing pages, design de marca, social media e ads para colocar uma oferta no ar mais rapido.', to: '/explore' },
-    { title: 'Organizar time enxuto', text: 'Perfis para sites, conteudo, automacao e materiais comerciais sem contratar equipe fixa.', to: '/explore' },
-    { title: 'Escalar autoridade', text: 'Pacotes voltados para creators, consultores e negocios de servico que precisam aparecer melhor.', to: '/explore' },
-  ];
-  const categoryHighlights = CATEGORIES.filter((item) => item.id !== 'all').slice(0, 5);
-  const progressGoals = [
-    { label: 'Proximo nivel', value: '160 XP restantes', color: 'purple' },
-    { label: 'Curadoria premium', value: '1 pedido para desbloquear', color: 'green' },
-    { label: 'Recompensa mensal', value: 'Avalie 2 projetos restantes', color: 'blue' },
-  ];
-  const statusHighlights = [
-    { name: 'Voce', points: 'Nivel 2 · 1.240 XP', position: 1, highlight: true },
-    { name: 'Lista salva', points: '12 servicos acompanhados', position: 2 },
-    { name: 'Projetos no mes', points: '3 contratos ativos', position: 3 },
-  ];
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [favoriteServices, setFavoriteServices] = useState([]);
+  const [favoriteFreelancers, setFavoriteFreelancers] = useState([]);
+  const [buyerOrders, setBuyerOrders] = useState([]);
+  const [conversations, setConversations] = useState([]);
+  const [recentItems, setRecentItems] = useState([]);
+  const [marketCategories, setMarketCategories] = useState([]);
+  const [featuredServices, setFeaturedServices] = useState([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+
+    Promise.all([
+      getMyFavorites(),
+      listOrders({ role: 'buyer', page: 1, pageSize: 12 }),
+      listConversations(),
+      listCategories(),
+      listPublicServices({ page: 1, pageSize: 6, sort: 'newest' }),
+    ])
+      .then(([favoritesData, ordersData, conversationsData, categoriesData, servicesData]) => {
+        if (cancelled) return;
+        setFavoriteServices(favoritesData.services || []);
+        setFavoriteFreelancers(favoritesData.freelancers || []);
+        setBuyerOrders(ordersData.items || []);
+        setConversations(conversationsData || []);
+        setRecentItems(getRecentActivity(user?.id).slice(0, 4));
+        setMarketCategories((categoriesData || []).slice(0, 8));
+        setFeaturedServices(servicesData.items || []);
+      })
+      .catch((err) => {
+        if (!cancelled) toast.error(err.message);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
+
+  const summaryCards = useMemo(() => {
+    const activeOrders = buyerOrders.filter((order) => ['PENDING', 'IN_PROGRESS', 'DELIVERED'].includes(order.status));
+    const proposalsWaiting = buyerOrders.filter((order) => order.status === 'PENDING');
+    const reviewsWaiting = buyerOrders.filter((order) => order.status === 'DELIVERED');
+    const unreadConversations = conversations.filter((conversation) => Number(conversation.unreadCount || 0) > 0);
+
+    return [
+      {
+        label: 'Pedidos em andamento',
+        value: String(activeOrders.length),
+        sub: reviewsWaiting.length ? `${reviewsWaiting.length} aguardando revisao` : 'Tudo sob controle',
+        color: 'blue',
+      },
+      {
+        label: 'Propostas aguardando resposta',
+        value: String(proposalsWaiting.length),
+        sub: proposalsWaiting.length ? 'Freelancers ainda precisam aceitar' : 'Nenhuma pendencia agora',
+        color: 'amber',
+      },
+      {
+        label: 'Freelancers favoritados',
+        value: String(favoriteFreelancers.length),
+        sub: favoriteServices.length ? `${favoriteServices.length} servicos salvos tambem` : 'Monte sua shortlist',
+        color: 'purple',
+      },
+      {
+        label: 'Conversas com resposta pendente',
+        value: String(unreadConversations.length),
+        sub: unreadConversations.length ? 'Vale retomar essas conversas' : 'Inbox em dia',
+        color: 'green',
+      },
+    ];
+  }, [buyerOrders, conversations, favoriteFreelancers.length, favoriteServices.length]);
+
+  const shortlist = useMemo(
+    () =>
+      favoriteFreelancers.slice(0, 3).map((freelancer) => ({
+        ...freelancer,
+        featuredProject: getFeaturedProject(freelancer),
+      })),
+    [favoriteFreelancers]
+  );
+
+  const recentContinuations = useMemo(() => {
+    if (recentItems.length > 0) return recentItems;
+
+    const fallback = [];
+    if (favoriteServices[0]) {
+      fallback.push({
+        type: 'service',
+        id: favoriteServices[0].id,
+        title: favoriteServices[0].title,
+        subtitle: favoriteServices[0].owner ? getFullName(favoriteServices[0].owner) : 'Servico salvo',
+        href: `/services/${favoriteServices[0].id}`,
+      });
+    }
+    if (favoriteFreelancers[0]) {
+      const handle = favoriteFreelancers[0].username || favoriteFreelancers[0].id;
+      fallback.push({
+        type: 'profile',
+        id: favoriteFreelancers[0].id,
+        title: getFullName(favoriteFreelancers[0]),
+        subtitle: favoriteFreelancers[0].headline || 'Freelancer salvo',
+        href: `/profile/${handle}`,
+      });
+    }
+    if (conversations[0]) {
+      const other =
+        conversations[0].participants?.find((item) => item.id !== user?.id) || conversations[0].otherUser;
+      fallback.push({
+        type: 'conversation',
+        id: conversations[0].id,
+        title: getFullName(other),
+        subtitle: 'Conversa recente',
+        href: `/messages?chat=${conversations[0].id}`,
+      });
+    }
+    return fallback.slice(0, 3);
+  }, [recentItems, favoriteServices, favoriteFreelancers, conversations, user?.id]);
+
+  const trackedOrders = useMemo(
+    () => buyerOrders.filter((order) => ['PENDING', 'IN_PROGRESS', 'DELIVERED'].includes(order.status)).slice(0, 4),
+    [buyerOrders]
+  );
+
+  const inboxHighlights = useMemo(
+    () =>
+      conversations
+        .filter((conversation) => Number(conversation.unreadCount || 0) > 0)
+        .slice(0, 4)
+        .map((conversation) => {
+          const other =
+            conversation.participants?.find((item) => item.id !== user?.id) || conversation.otherUser;
+          const preview = conversation.lastMessage?.deletedAt
+            ? 'Mensagem apagada'
+            : conversation.lastMessage?.content || 'Nova atualizacao na conversa';
+
+          return {
+            id: conversation.id,
+            name: getFullName(other),
+            handle: other?.username || other?.id,
+            preview,
+            unreadCount: Number(conversation.unreadCount || 0),
+            time: formatRelativeTime(conversation.lastMessage?.createdAt || conversation.updatedAt),
+          };
+        }),
+    [conversations, user?.id]
+  );
+
+  const reviewQueue = useMemo(
+    () =>
+      buyerOrders
+        .filter((order) => order.status === 'DELIVERED')
+        .slice(0, 3)
+        .map((order) => ({
+          id: order.id,
+          title: order.service?.title || order.planTitle || 'Entrega pendente',
+          freelancer: getFullName(order.freelancer),
+          href: `/orders?id=${order.id}`,
+        })),
+    [buyerOrders]
+  );
+
+  const categoryChips = useMemo(
+    () => marketCategories.filter((item) => item?.slug).slice(0, 8),
+    [marketCategories]
+  );
 
   return (
     <div className={styles.page}>
       <section className={styles.clientHero}>
         <div className={styles.clientHeroMain}>
-          <div className={styles.heroBadge}>Descubra e contrate</div>
+          <div className={styles.heroBadge}>Painel do cliente</div>
           <h1 className={styles.heroTitle}>
-            Servicos prontos para voce contratar agora, sem sair da dashboard.
+            Organize sua shortlist, retome conversas e acompanhe cada contratacao sem perder contexto.
           </h1>
           <p className={styles.heroText}>
-            A experiencia do cliente aqui precisa vender. Por isso a dashboard agora prioriza descoberta, shortlist e caminhos de compra antes de mostrar blocos administrativos.
+            Esse espaco agora prioriza decisao: o que esta em andamento, quem voce quer contratar e onde vale voltar agora.
           </p>
 
           <div className={styles.clientHeroActions}>
             <Link to="/explore" className={styles.heroPrimaryAction}>
-              Explorar todos os servicos
+              Explorar servicos
             </Link>
-            <Link to={`/services/${spotlightService.id}`} className={styles.heroSecondaryAction}>
-              Ver servico em destaque
+            <Link to="/favorites" className={styles.heroSecondaryAction}>
+              Abrir favoritos
             </Link>
           </div>
 
-          <div className={styles.clientCategoryRow}>
-            {categoryHighlights.map((category) => (
-              <Link key={category.id} to="/explore" className={styles.clientCategoryChip}>
-                <span>{category.icon}</span>
-                <span>{category.label}</span>
-              </Link>
+          <div className={styles.clientSummaryRow}>
+            {summaryCards.map((card) => (
+              <div key={card.label} className={`${styles.clientSummaryCard} ${styles[`clientSummary_${card.color}`]}`}>
+                <span>{card.label}</span>
+                <strong>{loading ? '...' : card.value}</strong>
+                <small>{card.sub}</small>
+              </div>
             ))}
           </div>
         </div>
 
-        <Link to={`/services/${spotlightService.id}`} className={styles.spotlightCard}>
-          <div
-            className={styles.spotlightVisual}
-            style={{ background: SERVICE_GRADIENTS[spotlightService.id % SERVICE_GRADIENTS.length] }}
-          />
-          <div className={styles.spotlightBody}>
-            <span className={styles.spotlightBadge}>Destaque da semana</span>
-            <h2>{spotlightService.title}</h2>
-            <p>{spotlightService.summary}</p>
-            <div className={styles.spotlightMeta}>
-              <span>{spotlightService.seller.name}</span>
-              <span>{spotlightService.rating.toFixed(1)} estrelas</span>
-              <span>{spotlightService.delivery} dias</span>
-            </div>
-            <strong>R$ {spotlightService.price}</strong>
+        <div className={styles.clientHeroPanel}>
+          <span className={styles.heroSideLabel}>Pronto para agir</span>
+          <h2 className={styles.heroSideTitle}>
+            {loading ? 'Carregando seu panorama...' : `${trackedOrders.length} fluxos exigem atencao agora`}
+          </h2>
+          <p className={styles.heroSideText}>
+            {reviewQueue.length > 0
+              ? `Voce tem ${reviewQueue.length} entrega${reviewQueue.length > 1 ? 's' : ''} esperando revisao.`
+              : 'Seu backlog esta limpo. Vale usar o tempo para explorar novos talentos.'}
+          </p>
+          <div className={styles.heroTrack}>
+            <div
+              className={styles.heroTrackFill}
+              style={{ width: `${Math.min(100, Math.max(18, trackedOrders.length * 22))}%` }}
+            />
           </div>
-        </Link>
+          <span className={styles.heroSideMeta}>
+            {loading ? 'Sincronizando dados...' : `${favoriteFreelancers.length} freelancers e ${favoriteServices.length} servicos salvos`}
+          </span>
+        </div>
       </section>
 
       <section className={styles.clientFeaturedSection}>
         <SectionHeader
-          title="Projetos para contratar agora"
-          subtitle="Os servicos mais fortes da plataforma ja aparecem logo de cara para acelerar sua decisao."
+          title="Servicos para contratar agora"
+          subtitle="Uma vitrine viva para o cliente entrar e ja ter opcoes concretas de contratacao em maos."
           actionLabel="Ver catalogo completo"
           actionTo="/explore"
         />
 
-        <div className={styles.clientFeaturedGrid}>
-          {featuredServices.map((service, index) => (
-            <Link key={service.id} to={`/services/${service.id}`} className={styles.clientFeaturedCard}>
-              <div
-                className={styles.clientFeaturedVisual}
-                style={{ background: SERVICE_GRADIENTS[(service.id + index) % SERVICE_GRADIENTS.length] }}
-              />
-              <div className={styles.clientFeaturedBody}>
-                <span className={styles.clientFeaturedSeller}>{service.seller.name}</span>
-                <h3>{service.title}</h3>
-                <div className={styles.clientFeaturedMeta}>
-                  <span>{service.rating.toFixed(1)} estrelas</span>
-                  <span>{service.delivery} dias</span>
-                </div>
-                <strong>R$ {service.price}</strong>
-              </div>
-            </Link>
-          ))}
-        </div>
+        {categoryChips.length > 0 ? (
+          <div className={styles.clientCategoryRow}>
+            {categoryChips.map((category) => (
+              <Link
+                key={category.id}
+                to={`/explore?category=${category.slug}`}
+                className={styles.clientCategoryChip}
+              >
+                <CategoryIcon category={category} />
+                <span>{category.name}</span>
+              </Link>
+            ))}
+          </div>
+        ) : null}
+
+        {loading ? (
+          <div className={styles.clientEmpty}>Carregando servicos da vitrine...</div>
+        ) : featuredServices.length === 0 ? (
+          <div className={styles.clientEmpty}>
+            <p>Ainda nao ha servicos publicados suficientes para mostrar aqui.</p>
+          </div>
+        ) : (
+          <div className={styles.clientFeaturedGrid}>
+            {featuredServices.map((service, index) => {
+              const price = service.plans?.[0]?.priceCents ?? service.minPriceCents ?? 0;
+              const delivery = service.plans?.[0]?.deliveryDays;
+              const seller = service.owner ? getFullName(service.owner) : 'Freelancer';
+              return (
+                <Link key={service.id} to={`/services/${service.id}`} className={styles.clientFeaturedCard}>
+                  <div
+                    className={styles.clientFeaturedVisual}
+                    style={
+                      service.coverUrl
+                        ? { background: `url(${service.coverUrl}) center/cover` }
+                        : { background: SERVICE_GRADIENTS[index % SERVICE_GRADIENTS.length] }
+                    }
+                  />
+                  <div className={styles.clientFeaturedBody}>
+                    <span className={styles.clientFeaturedSeller}>{seller}</span>
+                    <h3>{service.title}</h3>
+                    <div className={styles.clientFeaturedMeta}>
+                      <span>{service.category?.name || 'Servico'}</span>
+                      {delivery ? <span>{delivery} dias</span> : null}
+                    </div>
+                    <strong>{formatPriceBRL(price)}</strong>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        )}
       </section>
 
       <div className={styles.clientDashboardGrid}>
         <div className={styles.mainColumn}>
           <section className={styles.card} style={{ animationDelay: '0.14s' }}>
             <SectionHeader
-              title="Colecoes para contratar melhor"
-              subtitle="Agrupamentos pensados para momentos reais do cliente, nao apenas por categoria tecnica."
+              title="Shortlist de freelancers"
+              subtitle="Os perfis que voce salvou para comparar, revisar portfolio e retomar contato."
+              actionLabel="Ver favoritos"
+              actionTo="/favorites"
             />
+            {loading ? (
+              <div className={styles.clientEmpty}>Carregando shortlist...</div>
+            ) : shortlist.length === 0 ? (
+              <div className={styles.clientEmpty}>
+                <p>Voce ainda nao salvou freelancers. Visite perfis publicos e monte sua shortlist.</p>
+                <Link to="/explore" className={styles.actionPrimary}>Explorar servicos</Link>
+              </div>
+            ) : (
+              <div className={styles.clientShortlistGrid}>
+                {shortlist.map((freelancer, index) => {
+                  const handle = freelancer.username || freelancer.id;
+                  return (
+                    <article key={freelancer.id} className={styles.shortlistCard}>
+                      <Link to={`/profile/${handle}`} className={styles.shortlistTop}>
+                        <div className={styles.shortlistAvatar}>
+                          {freelancer.avatarUrl ? (
+                            <img src={freelancer.avatarUrl} alt="" className={styles.shortlistAvatarImg} />
+                          ) : (
+                            getFullName(freelancer).slice(0, 2).toUpperCase()
+                          )}
+                        </div>
+                        <div className={styles.shortlistIdentity}>
+                          <strong>{getFullName(freelancer)}</strong>
+                          {freelancer.username ? <span>@{freelancer.username}</span> : null}
+                          <p>{freelancer.headline || 'Perfil salvo para comparacao rapida.'}</p>
+                        </div>
+                      </Link>
 
-            <div className={styles.boardGrid}>
-              {curatedBoards.map((board, index) => (
-                <Link key={board.title} to={board.to} className={styles.boardCard}>
-                  <div
-                    className={styles.boardAccent}
-                    style={{ background: SERVICE_GRADIENTS[(index + 4) % SERVICE_GRADIENTS.length] }}
-                  />
-                  <div className={styles.boardBody}>
-                    <h3>{board.title}</h3>
-                    <p>{board.text}</p>
-                    <span>Explorar combinacao</span>
-                  </div>
-                </Link>
-              ))}
-            </div>
+                      {freelancer.featuredProject ? (
+                        <Link to={`/profile/${handle}/projects/${freelancer.featuredProject.id}`} className={styles.shortlistProject}>
+                          {freelancer.featuredProject.coverImageUrl ? (
+                            <img
+                              src={freelancer.featuredProject.coverImageUrl}
+                              alt=""
+                              className={styles.shortlistProjectImage}
+                            />
+                          ) : (
+                            <div
+                              className={styles.shortlistProjectFallback}
+                              style={{ background: SERVICE_GRADIENTS[index % SERVICE_GRADIENTS.length] }}
+                            />
+                          )}
+                          <div>
+                            <span>Projeto em destaque</span>
+                            <strong>{freelancer.featuredProject.title || 'Projeto sem titulo'}</strong>
+                          </div>
+                        </Link>
+                      ) : null}
+
+                      {freelancer.skills?.length > 0 ? (
+                        <div className={styles.shortlistSkills}>
+                          {freelancer.skills.slice(0, 4).map((skill) => (
+                            <span key={skill} className={styles.shortlistSkillChip}>{skill}</span>
+                          ))}
+                        </div>
+                      ) : null}
+
+                      <div className={styles.shortlistActions}>
+                        <Link to={`/profile/${handle}`} className={styles.actionSec}>Ver perfil</Link>
+                        <Link to={`/messages`} className={styles.actionPrimary}>Abrir mensagens</Link>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            )}
           </section>
 
           <section className={styles.card} style={{ animationDelay: '0.18s' }}>
             <SectionHeader
-              title="Servicos populares da plataforma"
-              subtitle="Mais prova social, mais contexto e mais coisas para contratar sem depender da busca."
+              title="Continue de onde parou"
+              subtitle="Servicos, perfis, projetos e conversas recentes para retomar sem procurar tudo de novo."
             />
-
-            <div className={styles.clientPopularGrid}>
-              {popularServices.map((service, index) => (
-                <Link key={service.id} to={`/services/${service.id}`} className={styles.popularCard}>
-                  <div
-                    className={styles.popularVisual}
-                    style={{ background: SERVICE_GRADIENTS[(service.id + index + 2) % SERVICE_GRADIENTS.length] }}
-                  />
-                  <div className={styles.popularBody}>
-                    <h3>{service.title}</h3>
-                    <span className={styles.popularSeller}>{service.seller.name}</span>
-                    <div className={styles.popularMeta}>
-                      <span>{service.reviews} avaliacoes</span>
-                      <span>{service.delivery} dias</span>
+            {loading ? (
+              <div className={styles.clientEmpty}>Carregando retomadas...</div>
+            ) : recentContinuations.length === 0 ? (
+              <div className={styles.clientEmpty}>
+                <p>Assim que voce navegar por servicos, perfis e projetos, eles aparecem aqui.</p>
+              </div>
+            ) : (
+              <div className={styles.resumeGrid}>
+                {recentContinuations.map((item, index) => (
+                  <Link key={`${item.type}_${item.id}`} to={item.href} className={styles.resumeCard}>
+                    <div
+                      className={styles.resumeAccent}
+                      style={{ background: SERVICE_GRADIENTS[index % SERVICE_GRADIENTS.length] }}
+                    />
+                    <div className={styles.resumeBody}>
+                      <span>{getRecentTypeLabel(item.type)}</span>
+                      <strong>{item.title}</strong>
+                      <p>{item.subtitle || 'Retome esse contexto.'}</p>
                     </div>
-                    <strong>R$ {service.price}</strong>
-                  </div>
-                </Link>
-              ))}
-            </div>
+                  </Link>
+                ))}
+              </div>
+            )}
           </section>
 
           <div className={styles.doubleGrid}>
             <section className={styles.card} style={{ animationDelay: '0.22s' }}>
               <SectionHeader
-                title="Projetos em andamento"
-                subtitle="Tudo que voce ja contratou continua visivel, mas sem roubar o protagonismo da descoberta."
+                title="Status dos pedidos"
+                subtitle="Linha do tempo dos contratos que ainda pedem acompanhamento seu."
                 actionLabel="Ver todos"
                 actionTo="/orders"
               />
-              <OrdersTable orders={activeProjects} secondaryColumnLabel="Freelancer" lastColumnLabel="Proximo passo" />
+              {loading ? (
+                <div className={styles.clientEmpty}>Carregando pedidos...</div>
+              ) : trackedOrders.length === 0 ? (
+                <div className={styles.clientEmpty}>
+                  <p>Voce ainda nao tem pedidos em aberto. Quando contratar, o acompanhamento aparece aqui.</p>
+                </div>
+              ) : (
+                <div className={styles.clientOrderList}>
+                  {trackedOrders.map((order) => (
+                    <Link key={order.id} to={`/orders?id=${order.id}`} className={styles.clientOrderCard}>
+                      <div className={styles.clientOrderHead}>
+                        <div>
+                          <strong>{order.service?.title || order.planTitle}</strong>
+                          <span>{getFullName(order.freelancer)}</span>
+                        </div>
+                        <span className={`${styles.statusBadge} ${styles[`status${order.status}`]}`}>
+                          {STATUS_LABEL[order.status] || order.status}
+                        </span>
+                      </div>
+                      <div className={styles.clientOrderMeta}>
+                        <span>{formatPriceBRL(order.priceCents || 0)}</span>
+                        <span>{formatRelativeTime(order.updatedAt)}</span>
+                      </div>
+                      <div className={styles.clientTimeline}>
+                        {CLIENT_ORDER_STAGES.map((stage) => {
+                          const state = getOrderStageState(order.status, stage.key);
+                          return (
+                            <div key={stage.key} className={styles.clientTimelineStep}>
+                              <span className={`${styles.clientTimelineDot} ${styles[`timeline_${state}`]}`} />
+                              <small>{stage.label}</small>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              )}
             </section>
 
             <section className={styles.card} style={{ animationDelay: '0.26s' }}>
               <SectionHeader
-                title="Missoes do cliente"
-                subtitle="Gamificacao leve para estimular contratacao, feedback e exploracao recorrente."
-                actionLabel="Ver recompensas"
-                actionTo="/rewards"
+                title="Fila de revisao"
+                subtitle="Entregas recebidas que dependem da sua aprovacao ou de um pedido de revisao."
               />
-              <MissionList missions={clientMissions} />
+              {loading ? (
+                <div className={styles.clientEmpty}>Carregando revisoes...</div>
+              ) : reviewQueue.length === 0 ? (
+                <div className={styles.clientEmpty}>
+                  <p>Nenhuma entrega aguardando sua aprovacao no momento.</p>
+                </div>
+              ) : (
+                <div className={styles.reviewQueue}>
+                  {reviewQueue.map((item) => (
+                    <Link key={item.id} to={item.href} className={styles.reviewItem}>
+                      <div>
+                        <strong>{item.title}</strong>
+                        <p>{item.freelancer}</p>
+                      </div>
+                      <span>Revisar</span>
+                    </Link>
+                  ))}
+                </div>
+              )}
             </section>
           </div>
         </div>
@@ -501,46 +818,94 @@ function ClientDashboard() {
           <section className={`${styles.card} ${styles.cardAccent}`} style={{ animationDelay: '0.18s' }}>
             <SectionHeader
               title="Atalhos de compra"
-              subtitle="Acoes mais proximas de contratacao para o cliente voltar sempre."
+              subtitle="Entradas curtas para explorar, retomar conversa e revisar sua shortlist."
             />
             <QuickActions
               primary={{ label: 'Explorar servicos', to: '/explore' }}
               secondary={[
-                { label: 'Abrir destaque da semana', to: `/services/${spotlightService.id}` },
                 { label: 'Ver favoritos', to: '/favorites' },
+                { label: 'Abrir pedidos', to: '/orders' },
               ]}
             />
           </section>
 
           <section className={styles.card} style={{ animationDelay: '0.22s' }}>
             <SectionHeader
-              title="Seu progresso como cliente"
-              subtitle="Pontos, niveis e beneficios para manter descoberta e compra recorrente."
-              actionLabel="Ver tudo"
-              actionTo="/rewards"
+              title="Inbox que pede acao"
+              subtitle="Conversas com mensagem nova ou que merecem retomada rapida."
             />
-            <ProgressCard
-              title="Nivel 2 - Cliente explorador"
-              subtitle="540 / 700 XP"
-              progressWidth="77%"
-              goals={progressGoals}
-            />
+            {loading ? (
+              <div className={styles.clientEmpty}>Carregando inbox...</div>
+            ) : inboxHighlights.length === 0 ? (
+              <div className={styles.clientEmpty}>
+                <p>Nenhuma conversa com resposta pendente agora.</p>
+              </div>
+            ) : (
+              <div className={styles.clientInboxList}>
+                {inboxHighlights.map((item) => (
+                  <Link key={item.id} to={`/messages?chat=${item.id}`} className={styles.clientInboxItem}>
+                    <div>
+                      <strong>{item.name}</strong>
+                      <p>{item.preview}</p>
+                    </div>
+                    <div className={styles.clientInboxMeta}>
+                      <span>{item.time}</span>
+                      <b>{item.unreadCount}</b>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
           </section>
 
           <section className={styles.card} style={{ animationDelay: '0.26s' }}>
             <SectionHeader
-              title="Seu status na plataforma"
-              subtitle="Resumo rapido do quanto voce esta usando a Hivelancers de forma inteligente."
+              title="Servicos salvos"
+              subtitle="Atalhos rapidos para ofertas que ainda estao no seu radar."
             />
-            <Leaderboard items={statusHighlights} />
+            {loading ? (
+              <div className={styles.clientEmpty}>Carregando servicos salvos...</div>
+            ) : favoriteServices.length === 0 ? (
+              <div className={styles.clientEmpty}>
+                <p>Salve alguns servicos para comparar depois e voltar com mais velocidade.</p>
+              </div>
+            ) : (
+              <div className={styles.savedServiceList}>
+                {favoriteServices.slice(0, 4).map((service) => (
+                  <Link key={service.id} to={`/services/${service.id}`} className={styles.savedServiceItem}>
+                    <span className={styles.savedServiceCategory}>
+                      <CategoryIcon category={service.category} />
+                    </span>
+                    <div>
+                      <strong>{service.title}</strong>
+                      <p>{service.owner ? getFullName(service.owner) : service.category?.name}</p>
+                    </div>
+                    <small>{formatPriceBRL(service.plans?.[0]?.priceCents || service.minPriceCents || 0)}</small>
+                  </Link>
+                ))}
+              </div>
+            )}
           </section>
 
           <section className={styles.card} style={{ animationDelay: '0.3s' }}>
             <SectionHeader
-              title="Atividade recente"
-              subtitle="O que aconteceu nos seus pedidos e no seu radar de descoberta."
+              title="Proximos passos sugeridos"
+              subtitle="Pequenas acoes que mantem seu fluxo de contratacao andando."
             />
-            <ActivityFeed items={activities} />
+            <RecommendationBox
+              label="Agora vale fazer isso"
+              items={[
+                reviewQueue.length > 0
+                  ? 'Revisar entregas pendentes para nao travar o fluxo dos freelancers.'
+                  : 'Explorar novos servicos para abastecer sua shortlist.',
+                inboxHighlights.length > 0
+                  ? 'Responder conversas recentes pode acelerar prazo e alinhamento.'
+                  : 'Sua inbox esta em dia. Aproveite para comparar mais perfis.',
+                shortlist.length > 0
+                  ? 'Abra os projetos em destaque da sua shortlist e refine sua decisao.'
+                  : 'Favorite freelancers promissores para montar comparacoes melhores.',
+              ]}
+            />
           </section>
         </div>
       </div>
@@ -591,7 +956,7 @@ function MyServicesList({ services, loading }) {
           >
             <div className={styles.myServiceHead}>
               <span className={styles.myServiceCat}>
-                {service.category?.icon || '📦'} {service.category?.name}
+                <CategoryIcon category={service.category} /> {service.category?.name}
               </span>
               <span
                 className={`${styles.myServiceStatus} ${styles[`status_${service.status}`]}`}

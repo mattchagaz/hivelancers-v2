@@ -3,7 +3,10 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast, Toaster } from 'sonner';
 import { getPublicService, getMyService } from '../../../services/services';
 import { startConversation } from '../../../services/messages';
+import { addFavoriteService, getMyFavorites, removeFavoriteService } from '../../../services/users';
 import { useAuth } from '../../../contexts/AuthContext';
+import { CategoryIcon } from '../../../utils/categoryIcons';
+import { recordRecentActivity } from '../../../utils/clientRecentActivity';
 import styles from './ServiceDetails.module.css';
 
 const formatPrice = (cents) =>
@@ -68,6 +71,29 @@ function ServiceDetails() {
       setSelectedPlanId(service.plans[0].id);
     }
   }, [service]);
+
+  useEffect(() => {
+    getMyFavorites()
+      .then((data) => {
+        if (service?.id) {
+          setIsFavorite((data.serviceIds || []).includes(service.id));
+        }
+      })
+      .catch(() => {});
+  }, [service?.id]);
+
+  useEffect(() => {
+    if (!service?.id || !user?.id || user?.userType !== 'CLIENT') return;
+    recordRecentActivity(user.id, {
+      type: 'service',
+      id: service.id,
+      title: service.title,
+      subtitle: service.owner
+        ? `${service.owner.firstName || ''} ${service.owner.lastName || ''}`.trim()
+        : service.category?.name,
+      href: `/services/${service.id}`,
+    });
+  }, [service?.id, service?.title, service?.owner, service?.category?.name, user?.id, user?.userType]);
 
   useEffect(() => {
     if (!lightboxOpen) return;
@@ -145,9 +171,26 @@ function ServiceDetails() {
     }
   };
 
-  const handleFavorite = () => {
-    setIsFavorite((prev) => !prev);
-    toast.success(!isFavorite ? 'Serviço salvo nos favoritos.' : 'Serviço removido dos favoritos.');
+  const handleFavorite = async () => {
+    if (isOwner) {
+      toast.info('Você não pode favoritar o próprio serviço.');
+      return;
+    }
+
+    const nextValue = !isFavorite;
+    setIsFavorite(nextValue);
+    try {
+      if (nextValue) {
+        await addFavoriteService(service.id);
+        toast.success('Serviço salvo nos favoritos.');
+      } else {
+        await removeFavoriteService(service.id);
+        toast.success('Serviço removido dos favoritos.');
+      }
+    } catch (err) {
+      setIsFavorite(!nextValue);
+      toast.error(err.message);
+    }
   };
 
   const handleShare = () => {
@@ -175,7 +218,7 @@ function ServiceDetails() {
         <div className={styles.heroContent}>
           <div className={styles.badges}>
             <span className={styles.badgePrimary}>
-              {service.category?.icon} {service.category?.name}
+              <CategoryIcon category={service.category} /> {service.category?.name}
             </span>
             {service.status !== 'PUBLISHED' && (
               <span className={styles.badgeSoft}>{STATUS_LABEL[service.status]}</span>

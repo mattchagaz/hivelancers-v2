@@ -1,0 +1,348 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  padding-bottom: 40px;
+}
+
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) 320px;
+  gap: 20px;
+  padding: 28px;
+  border-radius: 28px;
+  color: #fff;
+  background:
+    radial-gradient(circle at top left, rgba(251, 191, 36, 0.16), transparent 28%),
+    linear-gradient(135deg, #111827 0%, #1d4ed8 48%, #0f766e 100%);
+}
+
+.eyebrow {
+  display: inline-flex;
+  min-height: 30px;
+  align-items: center;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.title {
+  margin: 14px 0 10px;
+  font-size: clamp(2.1rem, 4vw, 3.3rem);
+  line-height: 0.98;
+  letter-spacing: -0.05em;
+}
+
+.subtitle {
+  margin: 0;
+  max-width: 720px;
+  color: rgba(255, 255, 255, 0.84);
+  line-height: 1.75;
+}
+
+.heroStats {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+
+.statCard {
+  padding: 18px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.statCard span {
+  display: block;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 8px;
+}
+
+.statCard strong {
+  display: block;
+  font-size: 1.7rem;
+  line-height: 1;
+}
+
+.sections {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.section,
+.emptyState {
+  padding: 24px;
+  border-radius: 22px;
+  border: 1px solid var(--border-color, #e8e8ef);
+  background: var(--bg-primary, #fff);
+  box-shadow: 0 18px 44px rgba(15, 23, 42, 0.05);
+}
+
+.sectionHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.sectionHead h2,
+.emptyState h2,
+.emptyState p {
+  margin: 0;
+}
+
+.sectionHead span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  min-height: 34px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgba(var(--primary-color-rgb), 0.08);
+  color: var(--primary-color);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.serviceGrid,
+.freelancerGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.serviceCard,
+.freelancerCard {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 20px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+}
+
+.serviceMedia,
+.freelancerTop,
+.projectPreview {
+  text-decoration: none;
+  color: inherit;
+}
+
+.serviceImage,
+.serviceFallback {
+  width: 100%;
+  aspect-ratio: 1.5 / 1;
+  object-fit: cover;
+}
+
+.serviceFallback,
+.projectPreviewFallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  background:
+    radial-gradient(circle at top left, rgba(var(--primary-color-rgb), 0.12), transparent 36%),
+    linear-gradient(135deg, rgba(var(--primary-color-rgb), 0.06), rgba(15, 23, 42, 0.03));
+}
+
+.serviceBody,
+.freelancerCard {
+  padding: 18px;
+}
+
+.serviceCategory,
+.projectPreviewLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted);
+  font-size: 0.77rem;
+  font-weight: 700;
+}
+
+.serviceTitle {
+  display: block;
+  margin-top: 10px;
+  color: var(--text-primary);
+  text-decoration: none;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.serviceBody p,
+.freelancerIdentity p {
+  margin: 10px 0 0;
+  color: var(--text-secondary);
+  line-height: 1.7;
+  font-size: 0.88rem;
+  overflow-wrap: anywhere;
+}
+
+.serviceMeta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 14px;
+  color: var(--text-primary);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.cardActions,
+.emptyActions,
+.skillRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.cardActions {
+  margin-top: 16px;
+}
+
+.primaryAction,
+.secondaryAction {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 14px;
+  text-decoration: none;
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.primaryAction {
+  border: 0;
+  background: var(--primary-color);
+  color: #fff;
+}
+
+.secondaryAction {
+  border: 1px solid var(--border-color);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.freelancerTop {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.avatar {
+  width: 62px;
+  height: 62px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, rgba(var(--primary-color-rgb), 0.14), rgba(15, 23, 42, 0.08));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  font-weight: 800;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.avatarImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.freelancerIdentity {
+  min-width: 0;
+}
+
+.freelancerIdentity strong,
+.projectPreview strong {
+  display: block;
+  color: var(--text-primary);
+}
+
+.freelancerIdentity span {
+  display: block;
+  margin-top: 4px;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+.projectPreview {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  gap: 12px;
+  margin-top: 16px;
+  padding: 12px;
+  border-radius: 16px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-primary);
+}
+
+.projectPreviewImage,
+.projectPreviewFallback {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 14px;
+  object-fit: cover;
+}
+
+.skillChip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: rgba(var(--primary-color-rgb), 0.08);
+  color: var(--primary-color);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.skillRow {
+  margin-top: 16px;
+}
+
+.emptyBox {
+  padding: 20px;
+  border-radius: 18px;
+  background: var(--bg-secondary);
+  border: 1px dashed var(--border-color);
+  color: var(--text-secondary);
+}
+
+@media (max-width: 1080px) {
+  .hero {
+    grid-template-columns: 1fr;
+  }
+
+  .serviceGrid,
+  .freelancerGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .page {
+    gap: 18px;
+  }
+
+  .hero,
+  .section,
+  .emptyState {
+    padding: 18px;
+  }
+}

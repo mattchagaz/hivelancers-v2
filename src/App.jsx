@@ -17,6 +17,8 @@ import Settings from './components/Pages/Settings/Settings';
 import UserProfile from './components/Pages/UserProfile/UserProfile';
 import Messages from './components/Pages/Messages/Messages';
 import CustomizeProfile from './components/Pages/CustomizeProfile/CustomizeProfile';
+import ProfileProjectDetails from './components/Pages/ProfileProjectDetails/ProfileProjectDetails';
+import Favorites from './components/Pages/Favorites/Favorites';
 import './App.css';
 
 function App() {
@@ -51,7 +53,9 @@ function App() {
             <Route path="/orders" element={<Orders />} />
             <Route path="/explore" element={<ExploreServices />} />
             <Route path="/messages" element={<Messages />} />
+            <Route path="/favorites" element={<Favorites />} />
             <Route path="/profile/customize" element={<CustomizeProfile />} />
+            <Route path="/profile/:handle/projects/:projectId" element={<ProfileProjectDetails />} />
             <Route path="/profile/:handle" element={<UserProfile />} />
             <Route path="/settings" element={<Settings />} />
           </Route>

@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { toast, Toaster } from 'sonner';
 import { SERVICE_GRADIENTS } from '../../../data/services';
 import { listCategories, listPublicServices } from '../../../services/services';
+import { addFavoriteService, getMyFavorites, removeFavoriteService } from '../../../services/users';
+import { CategoryIcon } from '../../../utils/categoryIcons';
 import styles from './ExploreServices.module.css';
 
 const formatPrice = (cents) =>
@@ -12,6 +14,7 @@ const formatPrice = (cents) =>
   }).format((cents || 0) / 100);
 
 function ExploreServices() {
+  const [searchParams] = useSearchParams();
   const [categories, setCategories] = useState([]);
   const [services, setServices] = useState([]);
   const [total, setTotal] = useState(0);
@@ -33,9 +36,22 @@ function ExploreServices() {
   const pageSize = 12;
 
   const toggleFavorite = (id) => {
+    const alreadyFavorite = favorites.includes(id);
     setFavorites((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+      alreadyFavorite ? prev.filter((item) => item !== id) : [...prev, id]
     );
+
+    const action = alreadyFavorite ? removeFavoriteService(id) : addFavoriteService(id);
+    action
+      .then(() => {
+        toast.success(alreadyFavorite ? 'Serviço removido dos favoritos.' : 'Serviço salvo nos favoritos.');
+      })
+      .catch((err) => {
+        setFavorites((prev) =>
+          alreadyFavorite ? [...prev, id] : prev.filter((item) => item !== id)
+        );
+        toast.error(err.message);
+      });
   };
 
   useEffect(() => {
@@ -43,6 +59,19 @@ function ExploreServices() {
       .then(setCategories)
       .catch((err) => toast.error(err.message));
   }, []);
+
+  useEffect(() => {
+    getMyFavorites()
+      .then((data) => setFavorites(data.serviceIds || []))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    const categoryFromUrl = searchParams.get('category');
+    if (categoryFromUrl) {
+      setActiveCategorySlug(categoryFromUrl);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search.trim()), 350);
@@ -102,7 +131,7 @@ function ExploreServices() {
     sort !== 'newest';
 
   const categoryChips = useMemo(
-    () => [{ id: 'all', slug: 'all', name: 'Todas', icon: '🌐' }, ...categories],
+    () => [{ id: 'all', slug: 'all', name: 'Todas', iconKey: 'globe' }, ...categories],
     [categories]
   );
 
@@ -125,7 +154,9 @@ function ExploreServices() {
               className={`${styles.catChip} ${activeCategorySlug === cat.slug ? styles.catChipActive : ''}`}
               onClick={() => setActiveCategorySlug(cat.slug)}
             >
-              <span className={styles.catIcon}>{cat.icon || '📦'}</span>
+              <span className={styles.catIcon}>
+                <CategoryIcon category={cat} />
+              </span>
               <span>{cat.name}</span>
             </button>
           ))}
