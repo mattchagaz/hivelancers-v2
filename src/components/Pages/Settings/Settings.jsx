@@ -1,9 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useSettings } from '../../../contexts/SettingsContext';
 import { updateProfile as apiUpdateProfile, updateUserType } from '../../../services/users';
+import {
+  createMyStripeConnectDashboardLink,
+  createMyStripeConnectOnboardingLink,
+  getMyStripeConnectStatus,
+} from '../../../services/payments';
 import { uploadImageToCloudinary } from '../../../services/cloudinary';
 import CityAutocomplete from '../../CityAutocomplete/CityAutocomplete';
 import { toRoleSlug, toUserType } from '../../../utils/authFlow';
@@ -74,6 +79,7 @@ const getInitials = (firstName, lastName, fallback = 'U') => {
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 
 function Settings() {
+  const [searchParams] = useSearchParams();
   const { user, setUser } = useAuth();
   const { settings, toggleField, updateSection, resetSettings } = useSettings();
 
@@ -190,6 +196,29 @@ function Settings() {
       isFreelancer,
     ]
   );
+
+  useEffect(() => {
+    const requestedTab = searchParams.get('tab');
+    if (requestedTab && tabs.some((tab) => tab.id === requestedTab)) {
+      setActiveTab(requestedTab);
+    }
+  }, [searchParams, tabs]);
+
+  useEffect(() => {
+    const stripeFlow = searchParams.get('stripe');
+    if (!stripeFlow) return;
+
+    setActiveTab('billing');
+
+    if (stripeFlow === 'return') {
+      toast.success('Voltamos da Stripe. Atualizando o status da sua conta.');
+      return;
+    }
+
+    if (stripeFlow === 'refresh') {
+      toast.message('O link da Stripe expirou. Gere um novo para continuar a conexão.');
+    }
+  }, [searchParams]);
 
   const activeTabData = tabs.find((tab) => tab.id === activeTab) || tabs[0];
 
@@ -1414,6 +1443,63 @@ function PrivacyPanel({ privacy, togglePrivacy, setPrivacy }) {
 }
 
 function BillingPanel({ isFreelancer }) {
+  const [connectState, setConnectState] = useState({
+    configured: true,
+    connected: false,
+    account: null,
+  });
+  const [isLoadingConnect, setIsLoadingConnect] = useState(isFreelancer);
+  const [isOpeningStripe, setIsOpeningStripe] = useState(false);
+
+  const loadConnectState = async () => {
+    if (!isFreelancer) return;
+
+    setIsLoadingConnect(true);
+    try {
+      const data = await getMyStripeConnectStatus();
+      setConnectState(data);
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setIsLoadingConnect(false);
+    }
+  };
+
+  useEffect(() => {
+    loadConnectState();
+  }, [isFreelancer]);
+
+  const handleConnectStripe = async () => {
+    if (isOpeningStripe) return;
+
+    setIsOpeningStripe(true);
+    try {
+      const data = await createMyStripeConnectOnboardingLink();
+      if (!data.url) throw new Error('A Stripe não retornou um link de conexão.');
+      window.location.assign(data.url);
+    } catch (err) {
+      toast.error(err.message);
+      setIsOpeningStripe(false);
+    }
+  };
+
+  const handleOpenDashboard = async () => {
+    if (isOpeningStripe) return;
+
+    setIsOpeningStripe(true);
+    try {
+      const data = await createMyStripeConnectDashboardLink();
+      if (!data.url) throw new Error('A Stripe não retornou um link de dashboard.');
+      window.location.assign(data.url);
+    } catch (err) {
+      toast.error(err.message);
+      setIsOpeningStripe(false);
+    }
+  };
+
+  const account = connectState.account;
+  const stripeReady = Boolean(account?.detailsSubmitted && account?.payoutsEnabled);
+
   return (
     <>
       <section className={`${styles.card} ${styles.planCard}`}>
@@ -1449,27 +1535,112 @@ function BillingPanel({ isFreelancer }) {
           subtitle={isFreelancer ? 'Contas e metodos usados para receber seus ganhos.' : 'Cartoes e contas usados nas suas compras.'}
         />
 
-        <div className={styles.listStack}>
-          {[
-            { title: 'Cartao final 4242', text: 'Visa · expira 08/2028', badge: 'Padrao' },
-            { title: 'Pix · joao.silva@email.com', text: 'Transferencias instantaneas', badge: 'Ativo' },
-          ].map((item) => (
-            <div key={item.title} className={styles.listRow}>
-              <div className={styles.listIcon}>{renderCardIcon()}</div>
-              <div className={styles.listCopy}>
-                <strong>{item.title}</strong>
-                <span>{item.text}</span>
+        {isFreelancer ? (
+          <>
+            <div className={styles.listStack}>
+              <div className={styles.listRow}>
+                <div className={styles.listIcon}>{renderCardIcon()}</div>
+                <div className={styles.listCopy}>
+                  <strong>Checkout Hivelancers via Stripe</strong>
+                  <span>Seus clientes pagam com Pix ou cartão. O repasse sai após a aprovação da entrega.</span>
+                </div>
+                <span className={styles.inlineBadge}>Marketplace</span>
               </div>
-              <span className={styles.inlineBadge}>{item.badge}</span>
-            </div>
-          ))}
-        </div>
 
-        <div className={styles.formActions}>
-          <button type="button" className={styles.btnGhost}>
-            Adicionar metodo
-          </button>
-        </div>
+              <div className={styles.listRow}>
+                <div className={styles.listIcon}>{renderCardIcon()}</div>
+                <div className={styles.listCopy}>
+                  <strong>
+                    {isLoadingConnect
+                      ? 'Carregando conta Stripe...'
+                      : !connectState.configured
+                      ? 'Stripe ainda nao configurada'
+                      : !account
+                      ? 'Conta Stripe nao conectada'
+                      : stripeReady
+                      ? 'Conta Stripe pronta para repasses'
+                      : 'Conta Stripe precisa de revisao'}
+                  </strong>
+                  <span>
+                    {isLoadingConnect
+                      ? 'Estamos verificando o status atual da sua conta recebedora.'
+                      : !connectState.configured
+                      ? 'Falta configurar as credenciais da Stripe no backend antes de ativar o pagamento.'
+                      : !account
+                      ? 'Conecte sua conta Stripe para receber pedidos pagos com Pix ou cartao.'
+                      : stripeReady
+                      ? `Conta ${account.country || 'BR'} conectada. Dashboard pronto para acompanhar recebimentos.`
+                      : 'Complete o onboarding da Stripe para liberar os repasses do marketplace.'}
+                  </span>
+                </div>
+                <span className={styles.inlineBadge}>
+                  {isLoadingConnect
+                    ? 'Verificando'
+                    : !connectState.configured
+                    ? 'Backend'
+                    : stripeReady
+                    ? 'Pronto'
+                    : account
+                    ? 'Pendente'
+                    : 'Desconectado'}
+                </span>
+              </div>
+            </div>
+
+            <div className={styles.formActions}>
+              <button
+                type="button"
+                className={styles.btnPrimary}
+                onClick={handleConnectStripe}
+                disabled={isOpeningStripe || !connectState.configured}
+              >
+                {isOpeningStripe ? 'Abrindo Stripe...' : account ? 'Revisar conexao Stripe' : 'Conectar Stripe'}
+              </button>
+
+              <button
+                type="button"
+                className={styles.btnGhost}
+                onClick={handleOpenDashboard}
+                disabled={isOpeningStripe || !account?.detailsSubmitted}
+              >
+                Abrir dashboard Stripe
+              </button>
+
+              <button
+                type="button"
+                className={styles.btnGhost}
+                onClick={loadConnectState}
+                disabled={isLoadingConnect}
+              >
+                {isLoadingConnect ? 'Atualizando...' : 'Atualizar status'}
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className={styles.listStack}>
+              {[
+                { title: 'Pix no checkout', text: 'Pagamento instantaneo com QR Code dentro da Stripe', badge: 'Ativo' },
+                { title: 'Cartao no checkout', text: 'Credito e debito suportados pelo checkout hospedado', badge: 'Ativo' },
+              ].map((item) => (
+                <div key={item.title} className={styles.listRow}>
+                  <div className={styles.listIcon}>{renderCardIcon()}</div>
+                  <div className={styles.listCopy}>
+                    <strong>{item.title}</strong>
+                    <span>{item.text}</span>
+                  </div>
+                  <span className={styles.inlineBadge}>{item.badge}</span>
+                </div>
+              ))}
+            </div>
+
+            <div className={styles.formActions}>
+              <button type="button" className={styles.btnGhost}>
+                Metodos salvos em breve
+              </button>
+            </div>
+          </>
+        )}
       </section>
 
       <section className={styles.card}>

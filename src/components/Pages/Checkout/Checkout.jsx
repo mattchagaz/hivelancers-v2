@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { toast, Toaster } from 'sonner';
 import { getMyService, getPublicService } from '../../../services/services';
-import { createOrder } from '../../../services/orders';
+import { createCheckoutSession, getCheckoutSessionStatus } from '../../../services/payments';
 import styles from './Checkout.module.css';
 
 const formatPrice = (cents) =>
@@ -36,6 +36,8 @@ function Checkout() {
   const [service, setService] = useState(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const checkoutSessionId = searchParams.get('session_id');
+  const checkoutReturnStatus = searchParams.get('status');
 
   useEffect(() => {
     let cancelled = false;
@@ -79,12 +81,71 @@ function Checkout() {
   const [attachments, setAttachments] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [createdOrder, setCreatedOrder] = useState(null);
+  const [paymentStatus, setPaymentStatus] = useState(null);
+  const [isCheckingPayment, setIsCheckingPayment] = useState(false);
 
   useEffect(() => {
     if (service?.title) {
       setOrderTitle((current) => current || `Pedido para ${service.title}`);
     }
   }, [service]);
+
+  useEffect(() => {
+    if (checkoutReturnStatus !== 'cancel') return;
+    toast.message('Pagamento cancelado. Você pode revisar o briefing e tentar novamente.');
+  }, [checkoutReturnStatus]);
+
+  useEffect(() => {
+    if (checkoutReturnStatus !== 'success' || !checkoutSessionId) return;
+
+    let cancelled = false;
+    let intervalId = null;
+
+    const checkStatus = async () => {
+      if (!cancelled) setIsCheckingPayment(true);
+
+      try {
+        const { payment } = await getCheckoutSessionStatus(checkoutSessionId);
+        if (cancelled) return false;
+
+        setPaymentStatus(payment);
+
+        if (payment.order) {
+          setCreatedOrder(payment.order);
+          return false;
+        }
+
+        return ['CHECKOUT_CREATED', 'PENDING'].includes(payment.status);
+      } catch (err) {
+        if (!cancelled) {
+          toast.error(err.message);
+        }
+        return false;
+      } finally {
+        if (!cancelled) setIsCheckingPayment(false);
+      }
+    };
+
+    const bootstrap = async () => {
+      const shouldKeepPolling = await checkStatus();
+      if (!shouldKeepPolling || cancelled) return;
+
+      intervalId = window.setInterval(async () => {
+        const shouldContinue = await checkStatus();
+        if (!shouldContinue && intervalId) {
+          window.clearInterval(intervalId);
+          intervalId = null;
+        }
+      }, 4000);
+    };
+
+    bootstrap();
+
+    return () => {
+      cancelled = true;
+      if (intervalId) window.clearInterval(intervalId);
+    };
+  }, [checkoutReturnStatus, checkoutSessionId]);
 
   if (loading) {
     return (
@@ -161,14 +222,17 @@ function Checkout() {
         .filter(Boolean)
         .join('\n\n');
 
-      const result = await createOrder({
+      const result = await createCheckoutSession({
         serviceId: service.id,
         planTier: selectedPlan.tier,
         requirements,
       });
 
-      setCreatedOrder(result.order);
-      toast.success('Pedido criado com sucesso!');
+      if (!result.checkoutUrl) {
+        throw new Error('Não foi possível abrir o checkout agora.');
+      }
+
+      window.location.assign(result.checkoutUrl);
     } catch (err) {
       toast.error(err.message);
     } finally {
@@ -211,6 +275,77 @@ function Checkout() {
           >
             Abrir conversa
           </button>
+          <Link to={`/services/${service.id}`} className={styles.secondaryButton}>
+            Voltar ao servico
+          </Link>
+        </div>
+
+        <Toaster position="top-center" richColors />
+      </div>
+    );
+  }
+
+  if (checkoutReturnStatus === 'success' && checkoutSessionId && paymentStatus && !createdOrder) {
+    const isPending = ['CHECKOUT_CREATED', 'PENDING'].includes(paymentStatus.status);
+    const isFailed = ['FAILED', 'CANCELED', 'REFUNDED'].includes(paymentStatus.status);
+
+    return (
+      <div className={styles.successState}>
+        <div className={styles.successBadge}>{isPending ? 'Pagamento em análise' : 'Pagamento atualizado'}</div>
+        <h1 className={styles.successTitle}>
+          {isPending ? 'Estamos aguardando a confirmação do pagamento.' : 'O pagamento não foi concluído.'}
+        </h1>
+        <p className={styles.successText}>
+          {isPending
+            ? 'Se você escolheu Pix, a confirmação pode levar alguns instantes. Assim que o pagamento entrar, o pedido será criado automaticamente.'
+            : 'Você pode voltar para o checkout e tentar novamente com Pix ou cartão.'}
+        </p>
+
+        <div className={styles.successGrid}>
+          <div className={styles.successCard}>
+            <span className={styles.successLabel}>Método</span>
+            <strong>{paymentStatus.paymentMethodType === 'pix' ? 'Pix' : paymentStatus.paymentMethodType || 'Checkout Stripe'}</strong>
+          </div>
+          <div className={styles.successCard}>
+            <span className={styles.successLabel}>Valor</span>
+            <strong>{formatPrice(paymentStatus.amountCents)}</strong>
+          </div>
+          <div className={styles.successCard}>
+            <span className={styles.successLabel}>Status</span>
+            <strong>{isPending ? 'Aguardando confirmação' : isFailed ? 'Não concluído' : paymentStatus.status}</strong>
+          </div>
+        </div>
+
+        <div className={styles.successActions}>
+          {isPending ? (
+            <button
+              type="button"
+              className={styles.primaryButton}
+              onClick={async () => {
+                setIsCheckingPayment(true);
+                try {
+                  const { payment } = await getCheckoutSessionStatus(checkoutSessionId);
+                  setPaymentStatus(payment);
+                  if (payment.order) setCreatedOrder(payment.order);
+                } catch (err) {
+                  toast.error(err.message);
+                } finally {
+                  setIsCheckingPayment(false);
+                }
+              }}
+            >
+              {isCheckingPayment ? 'Atualizando...' : 'Atualizar status'}
+            </button>
+          ) : (
+            <button
+              type="button"
+              className={styles.primaryButton}
+              onClick={() => navigate(`/checkout/${service.id}?plan=${selectedPlan.id}`)}
+            >
+              Tentar novamente
+            </button>
+          )}
+
           <Link to={`/services/${service.id}`} className={styles.secondaryButton}>
             Voltar ao servico
           </Link>
@@ -393,6 +528,11 @@ function Checkout() {
               </div>
             </div>
 
+            <div className={styles.priceRow}>
+              <span>Pagamento</span>
+              <strong>Pix ou cartão</strong>
+            </div>
+
             <div className={styles.packageFeatures}>
               {(selectedPlanFeatures.length > 0 ? selectedPlanFeatures : ['Escopo conforme descrito no pacote']).map((item) => (
                 <div key={item} className={styles.packageFeature}>
@@ -408,7 +548,7 @@ function Checkout() {
               onClick={handleSubmit}
               disabled={isSubmitting}
             >
-              {isSubmitting ? 'Criando pedido...' : 'Confirmar e criar pedido'}
+              {isSubmitting ? 'Abrindo checkout...' : 'Ir para pagamento'}
             </button>
 
             <Link to={`/services/${service.id}`} className={styles.secondaryButton}>
