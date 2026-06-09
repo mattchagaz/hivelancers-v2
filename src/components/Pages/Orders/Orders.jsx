@@ -393,6 +393,7 @@ function Orders() {
   const selectedTone = getStatusTone(selectedOrder?.status);
   const selectedProgress = getFlowProgress(selectedOrder?.status);
   const selectedStageLabel = getCurrentStageLabel(selectedOrder?.status);
+  const isNewSellerPending = isSeller && selectedOrder?.status === 'PENDING';
 
   const submitReview = async () => {
     if (!selectedOrder || actionLoading === 'review') return;
@@ -623,19 +624,25 @@ function Orders() {
             </div>
           ) : (
             <>
-              <div className={`${styles.detailHero} ${styles[`detailHero${selectedTone}`]}`}>
+              <div className={`${styles.detailHero} ${styles[`detailHero${selectedTone}`]} ${isNewSellerPending ? styles.detailHeroNewOrder : ''}`}>
                 <div className={styles.detailHeroMain}>
                   <div className={styles.detailEyebrow}>
                     <span className={`${styles.statusBadge} ${styles[`status${selectedOrder.status}`]}`}>
-                      {STATUS_LABEL[selectedOrder.status] || selectedOrder.status}
+                      {isNewSellerPending ? 'Novo pedido recebido' : STATUS_LABEL[selectedOrder.status] || selectedOrder.status}
                     </span>
                     <span className={styles.detailId}>#{selectedOrder.id.slice(-8).toUpperCase()}</span>
                   </div>
 
-                  <h2>{selectedOrder.service?.title || selectedOrder.planTitle}</h2>
+                  <h2>{isNewSellerPending ? 'Revise o pedido antes de iniciar' : selectedOrder.service?.title || selectedOrder.planTitle}</h2>
                   <p className={styles.detailLead}>
-                    Plano {selectedOrder.planTitle} · {formatPrice(selectedOrder.priceCents)} ·{' '}
-                    {selectedOrder.deliveryDays} {selectedOrder.deliveryDays === 1 ? 'dia' : 'dias'} para entrega
+                    {isNewSellerPending
+                      ? `${getName(selectedOrder.client)} contratou ${selectedOrder.service?.title || selectedOrder.planTitle}. Confirme se o escopo, prazo e briefing estão claros antes de aceitar.`
+                      : (
+                        <>
+                          Plano {selectedOrder.planTitle} · {formatPrice(selectedOrder.priceCents)} ·{' '}
+                          {selectedOrder.deliveryDays} {selectedOrder.deliveryDays === 1 ? 'dia' : 'dias'} para entrega
+                        </>
+                      )}
                   </p>
 
                   <div className={styles.flowMeter}>
@@ -665,30 +672,103 @@ function Orders() {
                 </div>
 
                 <div className={styles.detailHeroSide}>
-                  <div className={styles.personCard}>
-                    <div className={`${styles.personAvatar} ${styles[`avatar${selectedTone}`]}`}>
-                      {getInitials(counterparty)}
-                    </div>
-                    <div>
-                      <span className={styles.personLabel}>
-                        {isSeller ? 'Cliente deste pedido' : 'Freelancer deste pedido'}
-                      </span>
-                      <strong>{getName(counterparty)}</strong>
-                      <p>{counterparty?.username ? `@${counterparty.username}` : 'Perfil ainda sem username'}</p>
-                    </div>
-                  </div>
+                  {isNewSellerPending ? (
+                    <div className={styles.decisionCard}>
+                      <div className={styles.personCard}>
+                        <div className={`${styles.personAvatar} ${styles[`avatar${selectedTone}`]}`}>
+                          {getInitials(selectedOrder.client)}
+                        </div>
+                        <div>
+                          <span className={styles.personLabel}>Cliente deste pedido</span>
+                          <strong>{getName(selectedOrder.client)}</strong>
+                          <p>{selectedOrder.client?.username ? `@${selectedOrder.client.username}` : 'Perfil ainda sem username'}</p>
+                        </div>
+                      </div>
 
-                  <div className={styles.nextActionCard}>
-                    <span>Próximo passo</span>
-                    <p className={styles.nextActionCopy}>
-                      {getNextActionCopy(selectedOrder, user?.id)}
-                    </p>
-                  </div>
+                      <div className={styles.decisionMetrics}>
+                        <div>
+                          <span>Valor protegido</span>
+                          <strong>{formatPrice(selectedOrder.priceCents)}</strong>
+                        </div>
+                        <div>
+                          <span>Prazo contratado</span>
+                          <strong>{selectedOrder.deliveryDays} {selectedOrder.deliveryDays === 1 ? 'dia' : 'dias'}</strong>
+                        </div>
+                      </div>
 
-                  {selectedOrder.conversationId && (
-                    <Link to={`/messages?chat=${selectedOrder.conversationId}`} className={styles.primaryLink}>
-                      Abrir conversa
-                    </Link>
+                      <textarea
+                        className={styles.textarea}
+                        rows={3}
+                        value={actionNote}
+                        onChange={(event) => setActionNote(event.target.value)}
+                        placeholder="Nota opcional para o cliente antes de aceitar ou recusar."
+                      />
+
+                      <div className={styles.decisionActions}>
+                        <button
+                          type="button"
+                          className={styles.primaryButton}
+                          disabled={actionLoading === 'accept'}
+                          onClick={() =>
+                            runAction(
+                              'accept',
+                              () => acceptOrder(selectedOrder.id, actionNote.trim() ? { note: actionNote.trim() } : {}),
+                              'Pedido aceito.'
+                            )
+                          }
+                        >
+                          {actionLoading === 'accept' ? 'Aceitando...' : 'Aceitar pedido'}
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.secondaryButton}
+                          disabled={actionLoading === 'reject'}
+                          onClick={() =>
+                            runAction(
+                              'reject',
+                              () => rejectOrder(selectedOrder.id, actionNote.trim() ? { note: actionNote.trim() } : {}),
+                              'Pedido recusado.'
+                            )
+                          }
+                        >
+                          {actionLoading === 'reject' ? 'Recusando...' : 'Recusar'}
+                        </button>
+                      </div>
+
+                      {selectedOrder.conversationId && (
+                        <Link to={`/messages?chat=${selectedOrder.conversationId}`} className={styles.primaryLink}>
+                          Abrir conversa
+                        </Link>
+                      )}
+                    </div>
+                  ) : (
+                    <>
+                      <div className={styles.personCard}>
+                        <div className={`${styles.personAvatar} ${styles[`avatar${selectedTone}`]}`}>
+                          {getInitials(counterparty)}
+                        </div>
+                        <div>
+                          <span className={styles.personLabel}>
+                            {isSeller ? 'Cliente deste pedido' : 'Freelancer deste pedido'}
+                          </span>
+                          <strong>{getName(counterparty)}</strong>
+                          <p>{counterparty?.username ? `@${counterparty.username}` : 'Perfil ainda sem username'}</p>
+                        </div>
+                      </div>
+
+                      <div className={styles.nextActionCard}>
+                        <span>Próximo passo</span>
+                        <p className={styles.nextActionCopy}>
+                          {getNextActionCopy(selectedOrder, user?.id)}
+                        </p>
+                      </div>
+
+                      {selectedOrder.conversationId && (
+                        <Link to={`/messages?chat=${selectedOrder.conversationId}`} className={styles.primaryLink}>
+                          Abrir conversa
+                        </Link>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
@@ -807,7 +887,7 @@ function Orders() {
                     </div>
                   </div>
 
-                  {isSeller && selectedOrder.status === 'PENDING' && (
+                  {isSeller && selectedOrder.status === 'PENDING' && !isNewSellerPending && (
                     <div className={styles.sideCard}>
                       <span className={styles.sideCardLabel}>Responder ao pedido</span>
                       <textarea

@@ -1,39 +1,89 @@
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { NavLink } from 'react-router-dom';
+import { listConversations } from '../../../services/messages';
+import { listOrders } from '../../../services/orders';
+import { connectSocket, getSocket } from '../../../services/socket';
 import styles from './Sidebar.module.css';
+
+const ACTIVE_ORDER_STATUSES = new Set(['PENDING', 'IN_PROGRESS', 'DELIVERED']);
 
 function Sidebar({ userRole = 'freelancer', collapsed, mobileOpen, onToggle, onMobileClose }) {
   const isAdmin = userRole === 'admin';
   const isFreelancer = userRole === 'freelancer';
+  const [badges, setBadges] = useState({ orders: 0, messages: 0 });
 
-  const mainNav = isAdmin
-    ? [
-        { label: 'Admin', path: '/admin', icon: 'admin', badge: 4 },
+  const orderRole = isAdmin ? 'all' : isFreelancer ? 'seller' : 'buyer';
+
+  const loadBadges = useCallback(async () => {
+    const [ordersResult, conversationsResult] = await Promise.allSettled([
+      listOrders({ role: orderRole, pageSize: 50 }),
+      listConversations(),
+    ]);
+
+    const orderItems = ordersResult.status === 'fulfilled' ? ordersResult.value?.items || [] : [];
+    const conversations = conversationsResult.status === 'fulfilled' ? conversationsResult.value || [] : [];
+
+    setBadges({
+      orders: orderItems.filter((order) => ACTIVE_ORDER_STATUSES.has(order.status)).length,
+      messages: conversations.reduce((sum, conversation) => sum + Number(conversation.unreadCount || 0), 0),
+    });
+  }, [orderRole]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => loadBadges(), 0);
+    return () => window.clearTimeout(timer);
+  }, [loadBadges]);
+
+  useEffect(() => {
+    const socket = connectSocket();
+    const refresh = () => loadBadges();
+    const events = ['order:new', 'order:updated', 'order:event', 'message:new', 'conversation:message', 'conversation:new'];
+
+    events.forEach((event) => socket.on(event, refresh));
+
+    return () => {
+      const current = getSocket();
+      events.forEach((event) => current.off(event, refresh));
+    };
+  }, [loadBadges]);
+
+  const attentionBadge = badges.orders + badges.messages;
+
+  const mainNav = useMemo(() => {
+    const ordersBadge = badges.orders || undefined;
+    const messagesBadge = badges.messages || undefined;
+
+    if (isAdmin) {
+      return [
+        { label: 'Admin', path: '/admin', icon: 'admin', badge: attentionBadge || undefined },
         { label: 'Dashboard', path: '/dashboard', icon: 'dashboard' },
-        { label: 'Pedidos', path: '/orders', icon: 'orders', badge: 3 },
-        { label: 'Mensagens', path: '/messages', icon: 'messages', badge: 5 },
+        { label: 'Pedidos', path: '/orders', icon: 'orders', badge: ordersBadge },
+        { label: 'Mensagens', path: '/messages', icon: 'messages', badge: messagesBadge },
         { label: 'Financeiro', path: '/finances', icon: 'finances' },
-      ]
-    : isFreelancer
-    ? [
+      ];
+    }
+
+    if (isFreelancer) {
+      return [
         { label: 'Dashboard', path: '/dashboard', icon: 'dashboard' },
         { label: 'Meus Serviços', path: '/services', icon: 'services' },
-        { label: 'Pedidos', path: '/orders', icon: 'orders', badge: 3 },
-        { label: 'Mensagens', path: '/messages', icon: 'messages', badge: 5 },
+        { label: 'Pedidos', path: '/orders', icon: 'orders', badge: ordersBadge },
+        { label: 'Mensagens', path: '/messages', icon: 'messages', badge: messagesBadge },
+        { label: 'Favoritos', path: '/favorites', icon: 'heart' },
         { label: 'Financeiro', path: '/finances', icon: 'finances' },
         { label: 'Recompensas', path: '/rewards', icon: 'rewards' },
-      ]
-    : [
-        { label: 'Dashboard', path: '/dashboard', icon: 'dashboard' },
-        { label: 'Explorar', path: '/explore', icon: 'explore' },
-        { label: 'Meus Pedidos', path: '/orders', icon: 'cart', badge: 2 },
-        { label: 'Mensagens', path: '/messages', icon: 'messages', badge: 1 },
-        { label: 'Favoritos', path: '/favorites', icon: 'heart' },
-        { label: 'Recompensas', path: '/rewards', icon: 'rewards' },
       ];
+    }
 
-  if (isFreelancer) {
-    mainNav.splice(4, 0, { label: 'Favoritos', path: '/favorites', icon: 'heart' });
-  }
+    return [
+      { label: 'Dashboard', path: '/dashboard', icon: 'dashboard' },
+      { label: 'Explorar', path: '/explore', icon: 'explore' },
+      { label: 'Meus Pedidos', path: '/orders', icon: 'cart', badge: ordersBadge },
+      { label: 'Mensagens', path: '/messages', icon: 'messages', badge: messagesBadge },
+      { label: 'Favoritos', path: '/favorites', icon: 'heart' },
+      { label: 'Recompensas', path: '/rewards', icon: 'rewards' },
+    ];
+  }, [attentionBadge, badges.messages, badges.orders, isAdmin, isFreelancer]);
 
   const icons = {
     dashboard: (

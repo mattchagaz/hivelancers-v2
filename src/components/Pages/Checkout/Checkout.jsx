@@ -147,6 +147,16 @@ function Checkout() {
     };
   }, [checkoutReturnStatus, checkoutSessionId]);
 
+  useEffect(() => {
+    if (!createdOrder?.id) return undefined;
+
+    const timer = window.setTimeout(() => {
+      navigate(`/orders?id=${createdOrder.id}`, { replace: true });
+    }, 1400);
+
+    return () => window.clearTimeout(timer);
+  }, [createdOrder?.id, navigate]);
+
   if (loading) {
     return (
       <div className={styles.emptyState}>
@@ -246,7 +256,7 @@ function Checkout() {
         <div className={styles.successBadge}>Pedido criado</div>
         <h1 className={styles.successTitle}>Pagamento confirmado e pedido criado.</h1>
         <p className={styles.successText}>
-          O briefing foi salvo, o valor ficou protegido no fluxo da plataforma e o freelancer já pode aceitar o pedido para iniciar a execução.
+          O briefing foi salvo, o valor ficou protegido no fluxo da plataforma e vamos abrir o pedido para você acompanhar o aceite do freelancer.
         </p>
 
         <div className={styles.successGrid}>
@@ -260,7 +270,7 @@ function Checkout() {
           </div>
           <div className={styles.successCard}>
             <span className={styles.successLabel}>Próximo passo</span>
-            <strong>Freelancer confirma o início</strong>
+            <strong>Abrindo pedido</strong>
           </div>
         </div>
 

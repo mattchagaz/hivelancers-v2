@@ -608,6 +608,11 @@
     linear-gradient(180deg, var(--bg-primary, #fff), var(--bg-subtle, #fafbff));
 }
 
+.detailHeroNewOrder {
+  border-color: rgba(245, 158, 11, 0.28);
+  box-shadow: 0 22px 58px rgba(146, 64, 14, 0.1);
+}
+
 .detailHeroBlue {
   background:
     radial-gradient(circle at top left, rgba(14, 165, 233, 0.16), transparent 36%),
@@ -762,6 +767,60 @@
   font-size: 0.74rem;
   font-weight: 850;
   text-transform: uppercase;
+}
+
+.decisionCard {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid rgba(245, 158, 11, 0.22);
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at top right, rgba(245, 158, 11, 0.12), transparent 38%),
+    var(--bg-primary, #fff);
+}
+
+.decisionCard .personCard {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.decisionMetrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.decisionMetrics div {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--border-light, #eef0f6);
+  border-radius: 15px;
+  background: var(--bg-subtle, #fafbff);
+}
+
+.decisionMetrics span {
+  display: block;
+  color: var(--text-muted, #a0a0ab);
+  font-size: 0.72rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.decisionMetrics strong {
+  display: block;
+  margin-top: 6px;
+  color: var(--text-primary, #1a1a2e);
+  font-size: 0.95rem;
+}
+
+.decisionActions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
 }
 
 .personLabel {
@@ -1048,6 +1107,8 @@
   .progressTrack,
   .statGrid,
   .detailContentGrid,
+  .decisionMetrics,
+  .decisionActions,
   .orderList {
     grid-template-columns: 1fr;
   }
