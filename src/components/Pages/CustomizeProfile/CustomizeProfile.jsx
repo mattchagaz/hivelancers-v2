@@ -10,7 +10,7 @@ import {
   FaLocationDot,
   FaMedal,
 } from 'react-icons/fa6';
-import { toast } from 'sonner';
+import { toast, Toaster } from 'sonner';
 import { useAuth } from '../../../contexts/AuthContext';
 import {
   getMyProfileCustomization,
@@ -161,12 +161,14 @@ function CustomizeProfile() {
   const profilePath = useMemo(() => getPublicProfilePath({ ...user, username: profile.username }), [user, profile.username]);
   const previewSkills = useMemo(() => skills.slice(0, 4), [skills]);
   const featuredProject = useMemo(() => getFeaturedProject(previewProfile), [previewProfile]);
-  const bioPreview = profile.bio.trim() || 'Adicione uma bio curta para explicar sua especialidade, seu estilo de trabalho e o tipo de projeto que voce mais resolve.';
+  const bioPreview = profile.bio.trim() || 'Adicione uma bio curta para explicar sua especialidade, seu estilo de trabalho e o tipo de projeto que você mais resolve.';
   const validation = useMemo(
     () => buildCustomizeProfileErrors({ profile, socialLinks, projects }),
     [profile, socialLinks, projects]
   );
+  
   const inputClassName = (hasError) => `${styles.input} ${hasError ? styles.inputError : ''}`;
+  
   const skillSuggestions = useMemo(() => {
     const query = skillInput.trim().toLowerCase();
     return SKILL_SUGGESTIONS.filter(
@@ -192,7 +194,7 @@ function CustomizeProfile() {
       return;
     }
     if (skills.length >= 12) {
-      toast.error('Voce pode adicionar ate 12 habilidades.');
+      toast.error('Você pode adicionar até 12 habilidades.');
       return;
     }
     setSkills((prev) => [...prev, next]);
@@ -205,7 +207,7 @@ function CustomizeProfile() {
 
   const addProject = () => {
     if (projects.length >= 6) {
-      toast.error('Voce pode destacar ate 6 projetos.');
+      toast.error('Você pode destacar até 6 projetos.');
       return;
     }
     setProjects((prev) => {
@@ -285,7 +287,7 @@ function CustomizeProfile() {
   const handleAvatarUpload = async (file) => {
     if (!file || uploadingAvatar) return;
     if (!file.type.startsWith('image/')) {
-      toast.error('Selecione uma imagem valida.');
+      toast.error('Selecione uma imagem válida.');
       return;
     }
     setUploadingAvatar(true);
@@ -298,7 +300,7 @@ function CustomizeProfile() {
         setProfile((prev) => ({ ...prev, avatarUrl: updated.avatarUrl || url }));
         toast.success('Foto de perfil atualizada.');
       } catch (err) {
-        toast.error(err.message || 'A foto foi enviada, mas nao conseguimos salvar no perfil agora.');
+        toast.error('A foto foi enviada, mas não conseguimos salvar no perfil agora.');
       }
     } catch (err) {
       toast.error(err.message);
@@ -310,7 +312,7 @@ function CustomizeProfile() {
   const handleProjectCoverUpload = async (projectId, file) => {
     if (!file || uploadingProjectId) return;
     if (!file.type.startsWith('image/')) {
-      toast.error('Selecione uma imagem valida.');
+      toast.error('Selecione uma imagem válida.');
       return;
     }
     setUploadingProjectId(projectId);
@@ -319,11 +321,7 @@ function CustomizeProfile() {
       setProjects((prev) =>
         prev.map((project) =>
           project.id === projectId
-            ? {
-                ...project,
-                coverImageUrl: url,
-                imageUrl: url,
-              }
+            ? { ...project, coverImageUrl: url, imageUrl: url }
             : project
         )
       );
@@ -339,7 +337,7 @@ function CustomizeProfile() {
     const list = Array.from(files || []);
     if (list.length === 0 || uploadingProjectId) return;
     if (list.some((file) => !file.type.startsWith('image/'))) {
-      toast.error('Selecione apenas imagens validas.');
+      toast.error('Selecione apenas imagens válidas.');
       return;
     }
     setUploadingProjectId(projectId);
@@ -390,7 +388,7 @@ function CustomizeProfile() {
   const handleSave = async () => {
     if (isSaving) return;
     if (validation.hasErrors) {
-      toast.error('Revise os campos destacados antes de salvar.');
+      toast.error('Revise os campos destacados (em vermelho) antes de salvar.');
       return;
     }
     setIsSaving(true);
@@ -443,7 +441,7 @@ function CustomizeProfile() {
       setProjects(merged.portfolioProjects || []);
       setFeaturedProjectId(merged.featuredProjectId || null);
 
-      toast.success('Perfil personalizado salvo com sucesso.');
+      toast.success('Perfil atualizado com sucesso!');
     } catch (err) {
       toast.error(err.message);
     } finally {
@@ -451,53 +449,45 @@ function CustomizeProfile() {
     }
   };
 
-  const goToPublicProfile = () => {
-    navigate(profilePath);
-  };
-
-  const fullName =
-    `${profile.firstName || ''} ${profile.lastName || ''}`.trim() ||
-    'Seu nome';
-  const initials = fullName
-    .split(' ')
-    .map((part) => part[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join('')
-    .toUpperCase();
+  const fullName = `${profile.firstName || ''} ${profile.lastName || ''}`.trim() || 'Seu Nome';
+  const initials = fullName.split(' ').map((part) => part[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
 
   return (
     <div className={styles.page}>
+      
+      {/* Hero / Header Section */}
       <section className={styles.hero}>
         <div className={styles.heroMain}>
-          <div className={styles.heroBadge}>Personalizar perfil</div>
-          <h1 className={styles.heroTitle}>Monte uma vitrine forte para quando alguem abrir o seu perfil.</h1>
+          <span className={styles.heroBadge}>Personalizar Perfil</span>
+          <h1 className={styles.heroTitle}>Monte uma vitrine forte para o seu trabalho.</h1>
           <p className={styles.heroText}>
-            Organize sua identidade, links, habilidades e projetos em destaque. Essa base tambem prepara a missao de perfil 80% completo.
+            Organize sua identidade, links, habilidades e projetos em destaque. Deixe seu perfil profissional e preparado para receber novos clientes.
           </p>
 
           <div className={styles.heroActions}>
             <button type="button" className={styles.primaryButton} onClick={handleSave} disabled={isSaving || loadingCustomization}>
-              {loadingCustomization ? 'Carregando...' : isSaving ? 'Salvando...' : 'Salvar perfil'}
+              {loadingCustomization ? 'Carregando...' : isSaving ? 'Salvando Alterações...' : 'Salvar Alterações'}
             </button>
-            <button type="button" className={styles.secondaryButton} onClick={goToPublicProfile}>
-              Ver perfil publico
+            <button type="button" className={styles.secondaryButton} onClick={() => navigate(profilePath)}>
+              Ver Perfil Público
             </button>
           </div>
 
           <div className={styles.progressCard}>
             <div className={styles.progressHead}>
               <div>
-                <span className={styles.progressLabel}>Forca do perfil</span>
-                <strong>{completion.percent}% completo</strong>
+                <span className={styles.progressLabel}>Força do Perfil</span>
+                <strong>{completion.percent}% Completo</strong>
               </div>
               <span className={`${styles.progressPill} ${completion.isReadyForMission ? styles.progressPillReady : ''}`}>
-                {completion.isReadyForMission ? 'Pronto para a missao' : 'Meta: 80%'}
+                {completion.isReadyForMission ? 'Missão Atingida!' : 'Meta: 80%'}
               </span>
             </div>
+            
             <div className={styles.progressTrack}>
               <div className={styles.progressFill} style={{ width: `${completion.percent}%` }} />
             </div>
+            
             <div className={styles.checkList}>
               {completion.items.map((item) => (
                 <div key={item.id} className={`${styles.checkItem} ${item.done ? styles.checkDone : ''}`}>
@@ -506,75 +496,58 @@ function CustomizeProfile() {
                 </div>
               ))}
             </div>
+            
             <div className={styles.milestoneRow}>
               {milestones.map((milestone) => (
-                <div
-                  key={milestone.id}
-                  className={`${styles.milestoneCard} ${milestone.unlocked ? styles.milestoneCardUnlocked : ''}`}
-                >
+                <div key={milestone.id} className={`${styles.milestoneCard} ${milestone.unlocked ? styles.milestoneCardUnlocked : ''}`}>
                   <div className={styles.milestoneHead}>
-                    <span className={styles.milestoneIcon}>
-                      <FaMedal />
-                    </span>
+                    <span className={styles.milestoneIcon}><FaMedal /></span>
                     <strong>{milestone.title}</strong>
                   </div>
                   <p>{milestone.reward}</p>
-                  <span>{milestone.unlocked ? 'Desbloqueado' : `${milestone.threshold}% necessario`}</span>
+                  <span>{milestone.unlocked ? 'Desbloqueado ✓' : `Faltam ${milestone.threshold}%`}</span>
                 </div>
               ))}
             </div>
           </div>
         </div>
 
+        {/* Live Preview Card */}
         <aside className={styles.previewCard}>
           <div className={styles.previewCover} />
+          
           <div className={styles.previewTopBar}>
-            <span className={styles.previewBadge}>
-              <FaStar />
-              Preview publico
-            </span>
+            <span className={styles.previewBadge}><FaStar /> Preview</span>
             <button
               type="button"
               className={styles.previewPhotoButton}
               onClick={() => avatarInputRef.current?.click()}
               disabled={uploadingAvatar}
             >
-              <FaCamera />
-              {uploadingAvatar ? 'Enviando...' : 'Atualizar foto'}
+              <FaCamera /> {uploadingAvatar ? 'Enviando...' : 'Trocar Foto'}
             </button>
           </div>
+          
           <div className={styles.previewAvatar}>
-            {profile.avatarUrl ? <img src={profile.avatarUrl} alt="" className={styles.previewAvatarImg} /> : initials || 'U'}
+            {profile.avatarUrl ? <img src={profile.avatarUrl} alt="Avatar" className={styles.previewAvatarImg} /> : initials || 'U'}
           </div>
+          
           <div className={styles.previewBody}>
             <strong>{fullName}</strong>
-            <span>{profile.username ? `@${profile.username}` : 'usuario-publico'}</span>
-            <p>{profile.headline || 'Seu titulo profissional aparece aqui.'}</p>
+            <span>@{profile.username || 'usuario'}</span>
+            <p>{profile.headline || 'Seu título profissional aparece aqui.'}</p>
             <div className={styles.previewMetaRow}>
-              <span className={styles.previewMetaPill}>
-                <FaLocationDot />
-                {profile.location || 'Adicione sua cidade'}
-              </span>
-              <span className={styles.previewMetaPill}>
-                <FaLink />
-                {visibleLinks.length} link{visibleLinks.length === 1 ? '' : 's'} ativo{visibleLinks.length === 1 ? '' : 's'}
-              </span>
+              <span className={styles.previewMetaPill}><FaLocationDot /> {profile.location || 'Sua Cidade'}</span>
+              <span className={styles.previewMetaPill}><FaLink /> {visibleLinks.length} links</span>
             </div>
           </div>
+          
           <div className={styles.previewStats}>
-            <div>
-              <span>Forca</span>
-              <strong>{completion.percent}%</strong>
-            </div>
-            <div>
-              <span>Links</span>
-              <strong>{visibleLinks.length}</strong>
-            </div>
-            <div>
-              <span>Projetos</span>
-              <strong>{projects.length}</strong>
-            </div>
+            <div><span>Força</span><strong>{completion.percent}%</strong></div>
+            <div><span>Links</span><strong>{visibleLinks.length}</strong></div>
+            <div><span>Projetos</span><strong>{projects.length}</strong></div>
           </div>
+          
           <div className={styles.previewSections}>
             <section className={styles.previewSection}>
               <div className={styles.previewSectionHead}>
@@ -590,45 +563,9 @@ function CustomizeProfile() {
               </div>
               <div className={styles.previewSkillList}>
                 {previewSkills.length > 0 ? (
-                  previewSkills.map((skill) => (
-                    <span key={skill} className={styles.previewSkillChip}>
-                      {skill}
-                    </span>
-                  ))
+                  previewSkills.map((skill) => <span key={skill} className={styles.previewSkillChip}>{skill}</span>)
                 ) : (
-                  <span className={styles.previewEmpty}>Suas principais skills vao aparecer aqui.</span>
-                )}
-              </div>
-            </section>
-
-            <section className={styles.previewSection}>
-              <div className={styles.previewSectionHead}>
-                <span>Links visiveis</span>
-                <strong>{visibleLinks.length}</strong>
-              </div>
-              <div className={styles.previewLinks}>
-                {visibleLinks.length > 0 ? (
-                  visibleLinks.slice(0, 3).map((link) => {
-                    const meta = getProfileLinkMeta(link.key);
-                    const Icon = meta.icon;
-                    return (
-                    <a
-                      key={link.key}
-                      className={styles.previewLinkItem}
-                      href={link.href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      <span className={styles.previewLinkLabel}>
-                        <Icon />
-                        {meta.shortLabel || link.label}
-                      </span>
-                      <FaArrowUpRightFromSquare />
-                    </a>
-                    );
-                  })
-                ) : (
-                  <span className={styles.previewEmpty}>Adicione ao menos um link para passar mais confianca.</span>
+                  <span className={styles.previewEmpty}>Suas principais skills vão aparecer aqui.</span>
                 )}
               </div>
             </section>
@@ -636,62 +573,38 @@ function CustomizeProfile() {
             <section className={styles.previewSection}>
               <div className={styles.previewSectionHead}>
                 <span>Projeto em destaque</span>
-                <strong>{featuredProject ? '1 pronto' : 'vazio'}</strong>
               </div>
               {featuredProject ? (
                 <div className={styles.previewProjectCard}>
                   {featuredProject.imageUrl ? (
-                    <img src={featuredProject.imageUrl} alt="" className={styles.previewProjectImage} />
+                    <img src={featuredProject.imageUrl} alt="Capa" className={styles.previewProjectImage} />
                   ) : (
                     <div className={styles.previewProjectFallback}>Sem capa</div>
                   )}
                   <div className={styles.previewProjectBody}>
-                    <strong>{featuredProject.title || 'Projeto sem titulo'}</strong>
-                    <p>
-                      {featuredProject.description || 'Adicione uma descricao curta para dar contexto ao trabalho mostrado no perfil.'}
-                    </p>
-                    {featuredProject.projectUrl ? (
-                      <a
-                        href={normalizeExternalUrl(featuredProject.projectUrl)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className={styles.previewProjectLink}
-                      >
-                        Ver projeto
-                        <FaArrowUpRightFromSquare />
-                      </a>
-                    ) : null}
-                    {featuredProject.images?.length > 0 ? (
-                      <span className={styles.previewGalleryCount}>
-                        +{featuredProject.images.length} foto{featuredProject.images.length === 1 ? '' : 's'} na galeria
-                      </span>
-                    ) : null}
+                    <strong>{featuredProject.title || 'Projeto sem título'}</strong>
+                    <p>{featuredProject.description || 'Adicione uma descrição curta para dar contexto.'}</p>
                   </div>
                 </div>
               ) : (
-                <span className={styles.previewEmpty}>Seu melhor projeto pode virar a prova visual principal do perfil.</span>
+                <span className={styles.previewEmpty}>Seu melhor projeto pode virar a prova visual principal.</span>
               )}
             </section>
           </div>
         </aside>
       </section>
 
+      {/* Main Form Layout */}
       <div className={styles.layout}>
         <div className={styles.mainColumn}>
+          
+          {/* Identidade */}
           <section className={styles.card}>
             <div className={styles.sectionHead}>
               <div>
-                <h2>Identidade do perfil</h2>
-                <p>Os elementos principais que aparecem primeiro para visitantes e clientes.</p>
+                <h2>Identidade do Perfil</h2>
+                <p>Informações básicas que aparecem primeiro para quem visita a sua página.</p>
               </div>
-              <button
-                type="button"
-                className={styles.ghostButton}
-                onClick={() => avatarInputRef.current?.click()}
-                disabled={uploadingAvatar}
-              >
-                {uploadingAvatar ? 'Enviando foto...' : 'Trocar foto'}
-              </button>
               <input
                 ref={avatarInputRef}
                 type="file"
@@ -712,7 +625,7 @@ function CustomizeProfile() {
               <Field label="Sobrenome" error={validation.profile.lastName}>
                 <input className={inputClassName(validation.profile.lastName)} value={profile.lastName} onChange={(e) => updateProfileField('lastName', e.target.value)} />
               </Field>
-              <Field label="Usuario publico" error={validation.profile.username}>
+              <Field label="Usuário público (URL)" error={validation.profile.username}>
                 <div className={`${styles.inputWithPrefix} ${validation.profile.username ? styles.inputWithPrefixError : ''}`}>
                   <span className={styles.inputPrefix}>hivelancers.com/</span>
                   <input
@@ -723,43 +636,39 @@ function CustomizeProfile() {
                   />
                 </div>
               </Field>
-              <Field label="Titulo profissional">
-                <input className={styles.input} value={profile.headline} onChange={(e) => updateProfileField('headline', e.target.value)} />
+              <Field label="Título profissional">
+                <input className={styles.input} placeholder="Ex: Desenvolvedor Front-end" value={profile.headline} onChange={(e) => updateProfileField('headline', e.target.value)} />
               </Field>
-              <Field label="Localizacao">
+              <Field label="Localização">
                 <CityAutocomplete
                   value={profile.location}
                   onChange={(value) => updateProfileField('location', value)}
-                  placeholder="Ex: Sao Paulo"
+                  placeholder="Ex: São Paulo, SP"
                   inputClassName={styles.input}
                 />
               </Field>
               <Field label="Website principal" error={validation.profile.website}>
-                <input
-                  className={inputClassName(validation.profile.website)}
-                  type="text"
-                  placeholder="https://seusite.com"
-                  value={profile.website}
-                  onChange={(e) => updateProfileField('website', e.target.value)}
-                />
+                <input className={inputClassName(validation.profile.website)} type="text" placeholder="https://seusite.com" value={profile.website} onChange={(e) => updateProfileField('website', e.target.value)} />
               </Field>
-              <Field label="Bio" fullWidth hint={`${profile.bio.length}/280 caracteres`}>
+              <Field label="Resumo (Bio)" fullWidth hint={`${profile.bio.length}/280 caracteres`}>
                 <textarea
-                  className={`${styles.input} ${styles.textarea}`}
-                  rows={5}
+                  className={styles.textarea}
+                  rows={4}
                   maxLength={280}
                   value={profile.bio}
                   onChange={(e) => updateProfileField('bio', e.target.value)}
+                  placeholder="Conte um pouco sobre sua experiência, especialidades e no que você pode ajudar..."
                 />
               </Field>
             </div>
           </section>
 
+          {/* Links e Redes Sociais */}
           <section className={styles.card}>
             <div className={styles.sectionHead}>
               <div>
-                <h2>Links e presenca online</h2>
-                <p>Centralize os lugares onde seu trabalho pode ser validado por quem visita seu perfil.</p>
+                <h2>Presença Online</h2>
+                <p>Centralize os lugares onde seu trabalho pode ser validado e acompanhado.</p>
               </div>
             </div>
 
@@ -785,11 +694,12 @@ function CustomizeProfile() {
             </div>
           </section>
 
+          {/* Habilidades */}
           <section className={styles.card}>
             <div className={styles.sectionHead}>
               <div>
-                <h2>Habilidades em destaque</h2>
-                <p>Essas tags ajudam a contar rapidamente o que voce faz melhor.</p>
+                <h2>Habilidades (Tags)</h2>
+                <p>Adicione até 12 palavras-chave que definem as tecnologias e áreas que você domina.</p>
               </div>
             </div>
 
@@ -797,7 +707,7 @@ function CustomizeProfile() {
               <input
                 className={styles.input}
                 value={skillInput}
-                placeholder="Digite uma habilidade e pressione Enter"
+                placeholder="Ex: React, Figma, Copywriting (Pressione Enter para adicionar)"
                 onChange={(e) => setSkillInput(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ',') {
@@ -806,59 +716,51 @@ function CustomizeProfile() {
                   }
                 }}
               />
-              <button type="button" className={styles.primaryButton} onClick={addSkill}>
+              <button type="button" className={styles.primaryButton} onClick={() => addSkill()}>
                 Adicionar
               </button>
             </div>
 
-            {skillSuggestions.length > 0 ? (
+            {skillSuggestions.length > 0 && (
               <div className={styles.suggestionRow}>
                 {skillSuggestions.map((suggestion) => (
-                  <button
-                    key={suggestion}
-                    type="button"
-                    className={styles.suggestionChip}
-                    onClick={() => {
-                      addSkill(suggestion);
-                    }}
-                  >
-                    {suggestion}
+                  <button key={suggestion} type="button" className={styles.suggestionChip} onClick={() => addSkill(suggestion)}>
+                    + {suggestion}
                   </button>
                 ))}
               </div>
-            ) : null}
+            )}
 
             <div className={styles.skillList}>
               {skills.length === 0 ? (
-                <p className={styles.emptyText}>Adicione pelo menos 3 habilidades para fortalecer o perfil.</p>
+                <p className={styles.emptyText}>Nenhuma habilidade adicionada ainda.</p>
               ) : (
                 skills.map((skill) => (
                   <span key={skill} className={styles.skillChip}>
                     {skill}
-                    <button type="button" onClick={() => removeSkill(skill)}>
-                      ×
-                    </button>
+                    <button type="button" onClick={() => removeSkill(skill)}>×</button>
                   </span>
                 ))
               )}
             </div>
           </section>
 
+          {/* Portfólio / Projetos */}
           <section className={styles.card}>
             <div className={styles.sectionHead}>
               <div>
-                <h2>Projetos e portfolio</h2>
-                <p>Monte uma pequena galeria dos melhores trabalhos para dar contexto e prova visual.</p>
+                <h2>Portfólio em Destaque</h2>
+                <p>Crie uma vitrine com até 6 projetos que representem o seu melhor trabalho.</p>
               </div>
-              <button type="button" className={styles.ghostButton} onClick={addProject}>
-                Novo projeto
+              <button type="button" className={styles.primaryButton} onClick={addProject}>
+                + Adicionar Projeto
               </button>
             </div>
 
             {projects.length === 0 ? (
               <div className={styles.emptyBox}>
-                <strong>Seu perfil ainda nao tem projetos em destaque.</strong>
-                <p>Adicione ao menos um projeto com imagem para ficar elegivel ao marco de perfil 80%.</p>
+                <strong>Você ainda não adicionou nenhum projeto.</strong>
+                <p>Use este espaço para dar prova visual da sua capacidade técnica e encantar clientes.</p>
               </div>
             ) : (
               <div className={styles.projectStack}>
@@ -869,167 +771,82 @@ function CustomizeProfile() {
                     draggable
                     onDragStart={() => setDraggingProjectId(project.id)}
                     onDragOver={(e) => e.preventDefault()}
-                    onDrop={() => {
-                      reorderProjects(draggingProjectId, project.id);
-                      setDraggingProjectId('');
-                    }}
+                    onDrop={() => { reorderProjects(draggingProjectId, project.id); setDraggingProjectId(''); }}
                     onDragEnd={() => setDraggingProjectId('')}
                   >
                     <div className={styles.projectPreview}>
                       {project.coverImageUrl || project.imageUrl ? (
-                        <img src={project.coverImageUrl || project.imageUrl} alt="" className={styles.projectImage} />
+                        <img src={project.coverImageUrl || project.imageUrl} alt="Capa" className={styles.projectImage} />
                       ) : (
-                        <div className={styles.projectFallback}>Projeto</div>
+                        <div className={styles.projectFallback} onClick={() => projectCoverFileRefs.current[project.id]?.click()}>
+                          <FaImage size={24} />
+                          <span>Adicionar Capa</span>
+                        </div>
                       )}
                     </div>
 
                     <div className={styles.projectForm}>
                       <div className={styles.projectCardHead}>
                         <div className={styles.projectDragHandle}>
-                          <FaGripVertical />
-                          <span>Arraste para ordenar</span>
+                          <FaGripVertical /> Mover
                         </div>
+                        <div className={styles.projectActions}>
+                          <button type="button" className={styles.ghostButton} onClick={() => moveProject(project.id, 'up')} disabled={index === 0}>↑</button>
+                          <button type="button" className={styles.ghostButton} onClick={() => moveProject(project.id, 'down')} disabled={index === projects.length - 1}>↓</button>
+                          <button type="button" className={styles.dangerButton} onClick={() => setProjectRemoveConfirm({ id: project.id, title: project.title })}>Remover</button>
+                        </div>
+                      </div>
+
+                      <div className={styles.projectControls}>
                         <button
                           type="button"
                           className={`${styles.featuredButton} ${featuredProjectId === project.id ? styles.featuredButtonActive : ''}`}
                           onClick={() => setFeaturedProjectId(project.id)}
                         >
-                          <FaStar />
-                          {featuredProjectId === project.id ? 'Projeto em destaque' : 'Definir destaque'}
+                          <FaStar /> {featuredProjectId === project.id ? 'Destaque Principal' : 'Marcar como Destaque'}
                         </button>
-                      </div>
-
-                      <div className={styles.projectActions}>
-                        <button
-                          type="button"
-                          className={styles.ghostButton}
-                          onClick={() => projectCoverFileRefs.current[project.id]?.click()}
-                          disabled={uploadingProjectId === project.id}
-                        >
-                          {uploadingProjectId === project.id ? 'Enviando capa...' : 'Trocar capa'}
+                        <button type="button" className={styles.secondaryButton} onClick={() => projectCoverFileRefs.current[project.id]?.click()}>
+                          {uploadingProjectId === project.id ? 'Carregando...' : 'Trocar Capa'}
                         </button>
-                        <button
-                          type="button"
-                          className={styles.ghostButton}
-                          onClick={() => projectGalleryFileRefs.current[project.id]?.click()}
-                          disabled={uploadingProjectId === project.id}
-                        >
-                          <FaImage />
-                          Adicionar fotos
+                        <button type="button" className={styles.secondaryButton} onClick={() => projectGalleryFileRefs.current[project.id]?.click()}>
+                          + Galeria (Fotos)
                         </button>
-                        <button
-                          type="button"
-                          className={styles.ghostButton}
-                          onClick={() => moveProject(project.id, 'up')}
-                          disabled={index === 0}
-                        >
-                          Subir
-                        </button>
-                        <button
-                          type="button"
-                          className={styles.ghostButton}
-                          onClick={() => moveProject(project.id, 'down')}
-                          disabled={index === projects.length - 1}
-                        >
-                          Descer
-                        </button>
-                        <button
-                          type="button"
-                          className={styles.dangerButton}
-                          onClick={() => setProjectRemoveConfirm({ id: project.id, title: project.title })}
-                        >
-                          Remover
-                        </button>
+                        
                         <input
-                          ref={(node) => {
-                            projectCoverFileRefs.current[project.id] = node;
-                          }}
-                          type="file"
-                          accept="image/*"
-                          className={styles.hiddenInput}
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) handleProjectCoverUpload(project.id, file);
-                            e.target.value = '';
-                          }}
+                          ref={(node) => { projectCoverFileRefs.current[project.id] = node; }}
+                          type="file" accept="image/*" className={styles.hiddenInput}
+                          onChange={(e) => { const file = e.target.files?.[0]; if (file) handleProjectCoverUpload(project.id, file); e.target.value = ''; }}
                         />
                         <input
-                          ref={(node) => {
-                            projectGalleryFileRefs.current[project.id] = node;
-                          }}
-                          type="file"
-                          multiple
-                          accept="image/*"
-                          className={styles.hiddenInput}
-                          onChange={(e) => {
-                            if (e.target.files?.length) handleProjectGalleryUpload(project.id, e.target.files);
-                            e.target.value = '';
-                          }}
+                          ref={(node) => { projectGalleryFileRefs.current[project.id] = node; }}
+                          type="file" multiple accept="image/*" className={styles.hiddenInput}
+                          onChange={(e) => { if (e.target.files?.length) handleProjectGalleryUpload(project.id, e.target.files); e.target.value = ''; }}
                         />
                       </div>
 
-                      {project.images?.length > 0 ? (
+                      {project.images?.length > 0 && (
                         <div className={styles.galleryStrip}>
                           {project.images.map((image) => (
                             <div key={image.id} className={styles.galleryThumb}>
                               <img src={image.url} alt="" className={styles.galleryThumbImg} />
-                              <button
-                                type="button"
-                                className={styles.galleryThumbRemove}
-                                onClick={() =>
-                                  setGalleryImageRemoveConfirm({
-                                    projectId: project.id,
-                                    imageId: image.id,
-                                    projectTitle: project.title,
-                                  })
-                                }
-                              >
-                                ×
-                              </button>
+                              <button type="button" className={styles.galleryThumbRemove} onClick={() => setGalleryImageRemoveConfirm({ projectId: project.id, imageId: image.id })}>×</button>
                             </div>
                           ))}
-                        </div>
-                      ) : (
-                        <div className={styles.galleryEmpty}>
-                          Adicione fotos extras para mostrar mais detalhes alem da capa.
                         </div>
                       )}
 
                       <div className={styles.formGrid}>
-                        <Field label="Titulo do projeto" error={validation.projects[project.id]?.title}>
+                        <Field label="Nome do Projeto" error={validation.projects[project.id]?.title} fullWidth>
                           <input className={inputClassName(validation.projects[project.id]?.title)} value={project.title} onChange={(e) => updateProject(project.id, 'title', e.target.value)} />
                         </Field>
-                        <Field label="Link do projeto" error={validation.projects[project.id]?.projectUrl}>
+                        <Field label="Link Externo (Behance, GitHub, Site)" error={validation.projects[project.id]?.projectUrl}>
                           <input className={inputClassName(validation.projects[project.id]?.projectUrl)} value={project.projectUrl} placeholder="https://..." onChange={(e) => updateProject(project.id, 'projectUrl', e.target.value)} />
                         </Field>
-                        <Field label="Tags" hint="Separe por virgula" fullWidth>
-                          <input
-                            className={styles.input}
-                            value={project.tags.join(', ')}
-                            placeholder="Branding, Figma, Landing page"
-                            onChange={(e) => updateProject(project.id, 'tags', e.target.value)}
-                          />
+                        <Field label="Tags de Tecnologia/Estilo" hint="Separadas por vírgula">
+                          <input className={styles.input} value={project.tags.join(', ')} placeholder="Figma, React, UX" onChange={(e) => updateProject(project.id, 'tags', e.target.value)} />
                         </Field>
-                        <Field
-                          label="Capa principal"
-                          error={validation.projects[project.id]?.coverImageUrl}
-                          fullWidth
-                          hint="A capa aparece no card e no projeto em destaque."
-                        >
-                          <input
-                            className={inputClassName(validation.projects[project.id]?.coverImageUrl)}
-                            value={project.coverImageUrl || ''}
-                            placeholder="https://..."
-                            onChange={(e) => updateProject(project.id, 'coverImageUrl', e.target.value)}
-                          />
-                        </Field>
-                        <Field label="Descricao" fullWidth>
-                          <textarea
-                            className={`${styles.input} ${styles.textarea}`}
-                            rows={4}
-                            value={project.description}
-                            onChange={(e) => updateProject(project.id, 'description', e.target.value)}
-                          />
+                        <Field label="Descrição Curta" fullWidth>
+                          <textarea className={styles.textarea} rows={3} value={project.description} onChange={(e) => updateProject(project.id, 'description', e.target.value)} />
                         </Field>
                       </div>
                     </div>
@@ -1040,83 +857,60 @@ function CustomizeProfile() {
           </section>
         </div>
 
+        {/* Sidebar Lateral */}
         <aside className={styles.sideColumn}>
-          <section className={styles.sideCard}>
-            <h3>Como o perfil vai aparecer</h3>
-            <p>Use esta referencia para pensar no que um cliente ou parceiro vai perceber nos primeiros segundos.</p>
-
-            <div className={styles.miniProfile}>
-              <div className={styles.miniProfileHead}>
-                <div className={styles.miniAvatar}>
-                  {profile.avatarUrl ? <img src={profile.avatarUrl} alt="" className={styles.previewAvatarImg} /> : initials || 'U'}
-                </div>
-                <div>
-                  <strong>{fullName}</strong>
-                  <span>{profile.headline || 'Seu titulo entra aqui'}</span>
-                </div>
-              </div>
-              <div className={styles.miniMeta}>
-                {profile.location ? <span>{profile.location}</span> : <span>Adicione sua cidade</span>}
-                <span>{visibleLinks.length} links ativos</span>
-              </div>
-            </div>
-          </section>
-
-          <section className={styles.sideCard}>
-            <h3>Checklist da missao</h3>
-            <div className={styles.missionList}>
-              {completion.items.map((item) => (
-                <div key={item.id} className={styles.missionItem}>
-                  <span className={`${styles.missionState} ${item.done ? styles.missionStateDone : ''}`} />
-                  <div>
-                    <strong>{item.label}</strong>
-                    <span>{item.weight}% da completude</span>
+          <div className={styles.sideSticky}>
+            <section className={styles.sideCard}>
+              <h3>Próximos Passos</h3>
+              <p>O preenchimento do perfil é crucial para ganhar confiança na plataforma.</p>
+              
+              <div className={styles.missionList}>
+                {completion.items.map((item) => (
+                  <div key={item.id} className={styles.missionItem}>
+                    <div className={`${styles.missionState} ${item.done ? styles.missionStateDone : ''}`}>
+                      {item.done && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><polyline points="20 6 9 17 4 12"></polyline></svg>}
+                    </div>
+                    <div>
+                      <strong>{item.label}</strong>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-            <div className={styles.missionMilestones}>
-              {milestones.map((milestone) => (
-                <div key={milestone.id} className={`${styles.missionMilestone} ${milestone.unlocked ? styles.missionMilestoneUnlocked : ''}`}>
-                  <strong>{milestone.title}</strong>
-                  <span>{milestone.unlocked ? 'Liberado' : `${milestone.threshold}%`}</span>
-                </div>
-              ))}
-            </div>
-          </section>
+                ))}
+              </div>
+            </section>
 
-          <section className={styles.sideCard}>
-            <h3>Atalhos</h3>
-            <div className={styles.linkStack}>
-              <Link to={profilePath} className={styles.sideLink}>Abrir meu perfil publico</Link>
-              <Link to="/settings" className={styles.sideLink}>Voltar para configuracoes</Link>
-            </div>
-          </section>
+            <section className={styles.sideCard}>
+              <h3>Ações Rápidas</h3>
+              <div className={styles.linkStack}>
+                <button type="button" className={styles.primaryButton} onClick={handleSave} disabled={isSaving}>
+                  {isSaving ? 'Salvando...' : 'Salvar Alterações'}
+                </button>
+                <Link to={profilePath} className={styles.sideLink}>Visualizar Perfil Público</Link>
+                <Link to="/settings" className={styles.sideLink}>Configurações de Conta</Link>
+              </div>
+            </section>
+          </div>
         </aside>
       </div>
 
       <ConfirmDialog
         isOpen={Boolean(projectRemoveConfirm)}
-        title="Remover projeto?"
-        description={`O projeto "${projectRemoveConfirm?.title || 'selecionado'}" será removido do seu portfólio.`}
-        confirmLabel="Remover projeto"
+        title="Remover Projeto"
+        description={`Tem certeza que deseja remover "${projectRemoveConfirm?.title || 'este projeto'}"?`}
+        confirmLabel="Remover"
         onCancel={() => setProjectRemoveConfirm(null)}
-        onConfirm={() => {
-          if (projectRemoveConfirm) removeProject(projectRemoveConfirm.id);
-        }}
+        onConfirm={() => { if (projectRemoveConfirm) removeProject(projectRemoveConfirm.id); }}
       />
+      
       <ConfirmDialog
         isOpen={Boolean(galleryImageRemoveConfirm)}
-        title="Remover foto do projeto?"
-        description={`Esta foto será removida da galeria de "${galleryImageRemoveConfirm?.projectTitle || 'projeto'}".`}
-        confirmLabel="Remover foto"
+        title="Remover Foto"
+        description="Esta foto será removida da galeria do projeto."
+        confirmLabel="Remover"
         onCancel={() => setGalleryImageRemoveConfirm(null)}
-        onConfirm={() => {
-          if (galleryImageRemoveConfirm) {
-            removeProjectGalleryImage(galleryImageRemoveConfirm.projectId, galleryImageRemoveConfirm.imageId);
-          }
-        }}
+        onConfirm={() => { if (galleryImageRemoveConfirm) removeProjectGalleryImage(galleryImageRemoveConfirm.projectId, galleryImageRemoveConfirm.imageId); }}
       />
+      
+      <Toaster position="top-center" richColors />
     </div>
   );
 }
@@ -1126,10 +920,10 @@ function Field({ label, hint, error, fullWidth = false, children }) {
     <label className={`${styles.field} ${fullWidth ? styles.fieldFull : ''}`}>
       <div className={styles.fieldMetaRow}>
         <span className={styles.fieldLabel}>{label}</span>
-        {error ? <span className={styles.fieldError}>{error}</span> : null}
+        {error && <span className={styles.fieldError}>{error}</span>}
       </div>
       {children}
-      {hint ? <span className={styles.fieldHint}>{hint}</span> : null}
+      {hint && <span className={styles.fieldHint}>{hint}</span>}
     </label>
   );
 }
