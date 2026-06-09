@@ -53,3 +53,30 @@ export const createMyStripeConnectDashboardLink = async () => {
     throw new Error(extractMessage(error, 'Não foi possível abrir o painel da Stripe.'));
   }
 };
+
+export const getMyFinancialOverview = async () => {
+  try {
+    const { data } = await api.get('/payments/me/financial-overview');
+    return data;
+  } catch (error) {
+    throw new Error(extractMessage(error, 'Não foi possível carregar a central financeira.'));
+  }
+};
+
+export const listAdminPayments = async (params = {}) => {
+  try {
+    const { data } = await api.get('/payments/admin/payments', { params });
+    return data;
+  } catch (error) {
+    throw new Error(extractMessage(error, 'Não foi possível carregar pagamentos administrativos.'));
+  }
+};
+
+export const retryAdminPaymentTransfer = async (paymentId) => {
+  try {
+    const { data } = await api.post(`/payments/admin/payments/${paymentId}/retry-transfer`);
+    return data.payment;
+  } catch (error) {
+    throw new Error(extractMessage(error, 'Não foi possível reprocessar o repasse.'));
+  }
+};

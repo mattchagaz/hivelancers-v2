@@ -20,6 +20,7 @@ import CustomizeProfile from './components/Pages/CustomizeProfile/CustomizeProfi
 import ProfileProjectDetails from './components/Pages/ProfileProjectDetails/ProfileProjectDetails';
 import Favorites from './components/Pages/Favorites/Favorites';
 import ComingSoon from './components/Pages/ComingSoon/ComingSoon';
+import Finances from './components/Pages/Finances/Finances';
 import Admin from './components/Pages/Admin/Admin';
 import './App.css';
 
@@ -64,7 +65,7 @@ function App() {
             <Route path="/explore" element={<ExploreServices />} />
             <Route path="/messages" element={<Messages />} />
             <Route path="/favorites" element={<Favorites />} />
-            <Route path="/finances" element={<ComingSoon variant="finances" />} />
+            <Route path="/finances" element={<Finances />} />
             <Route path="/rewards" element={<ComingSoon variant="rewards" />} />
             <Route path="/profile/customize" element={<CustomizeProfile />} />
             <Route path="/profile/:handle/projects/:projectId" element={<ProfileProjectDetails />} />

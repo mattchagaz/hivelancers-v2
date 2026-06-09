@@ -138,3 +138,21 @@ export const trackProjectExternalClick = async (handle, projectId) => {
     throw new Error(extractMessage(error, 'Não foi possível registrar o clique no projeto.'));
   }
 };
+
+export const listAdminUsers = async (params = {}) => {
+  try {
+    const { data } = await api.get('/users/admin', { params });
+    return data;
+  } catch (error) {
+    throw new Error(extractMessage(error, 'Não foi possível carregar usuários.'));
+  }
+};
+
+export const updateAdminUser = async (id, payload) => {
+  try {
+    const { data } = await api.patch(`/users/admin/${id}`, payload);
+    return data.user;
+  } catch (error) {
+    throw new Error(extractMessage(error, 'Não foi possível atualizar o usuário.'));
+  }
+};

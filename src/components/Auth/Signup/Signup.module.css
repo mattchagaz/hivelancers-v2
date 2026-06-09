@@ -414,9 +414,14 @@
   height: 50px;
 }
 
-.backBtn:hover {
+.backBtn:hover:not(:disabled) {
   background: var(--bg-tertiary);
   border-color: var(--text-muted);
+}
+
+.backBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .btnRow {
@@ -477,9 +482,14 @@
   transition: all 0.2s ease;
 }
 
-.socialBtn:hover {
+.socialBtn:hover:not(:disabled) {
   background: var(--bg-tertiary);
   border-color: var(--text-muted);
+}
+
+.socialBtn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
 }
 
 /* ===== Footer ===== */

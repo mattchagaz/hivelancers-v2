@@ -148,6 +148,14 @@ function ServiceDetails() {
   const sellerName = `${service.owner?.firstName || ''} ${service.owner?.lastName || ''}`.trim() || 'Vendedor';
   const sellerInitial = (sellerName[0] || '?').toUpperCase();
   const isOwner = user?.id === service.ownerId;
+  const tags = Array.isArray(service.tags) ? service.tags : [];
+  const subcategoryName = service.subcategoryName || '';
+  const minPriceCents = Math.min(...service.plans.map((plan) => plan.priceCents || 0));
+  const minDeliveryDays = Math.min(...service.plans.map((plan) => plan.deliveryDays || 0));
+  const maxRevisions = Math.max(...service.plans.map((plan) => plan.revisions || 0));
+  const reviews = service.reviews || [];
+  const averageRating = service.reviewSummary?.averageRating;
+  const reviewCount = service.reviewSummary?.count || reviews.length;
 
   const handleOrder = () => {
     if (isOwner) {
@@ -212,6 +220,12 @@ function ServiceDetails() {
         <Link to="/explore">Serviços</Link>
         <span>/</span>
         <span>{service.category?.name}</span>
+        {subcategoryName && (
+          <>
+            <span>/</span>
+            <span>{subcategoryName}</span>
+          </>
+        )}
       </div>
 
       <section className={styles.hero}>
@@ -220,6 +234,9 @@ function ServiceDetails() {
             <span className={styles.badgePrimary}>
               <CategoryIcon category={service.category} /> {service.category?.name}
             </span>
+            {subcategoryName && (
+              <span className={styles.badgeSoft}>{subcategoryName}</span>
+            )}
             {service.status !== 'PUBLISHED' && (
               <span className={styles.badgeSoft}>{STATUS_LABEL[service.status]}</span>
             )}
@@ -231,7 +248,43 @@ function ServiceDetails() {
           <div className={styles.metaRow}>
             <span>{service.plans.length} {service.plans.length === 1 ? 'pacote' : 'pacotes'}</span>
             <span className={styles.metaDivider} />
-            <span>A partir de {formatPrice(service.plans[0]?.priceCents)}</span>
+            <span>A partir de {formatPrice(minPriceCents)}</span>
+            {minDeliveryDays > 0 && (
+              <>
+                <span className={styles.metaDivider} />
+                <span>Entrega desde {minDeliveryDays} {minDeliveryDays === 1 ? 'dia' : 'dias'}</span>
+              </>
+            )}
+          </div>
+
+          {tags.length > 0 && (
+            <div className={styles.tagList}>
+              {tags.slice(0, 12).map((tag) => (
+                <span key={tag} className={styles.tag}>{tag}</span>
+              ))}
+              {tags.length > 12 && <span className={styles.tag}>+{tags.length - 12}</span>}
+            </div>
+          )}
+
+          <div className={styles.heroStats}>
+            <div className={styles.heroStat}>
+              <span className={styles.heroStatLabel}>Preço inicial</span>
+              <strong className={styles.heroStatValue}>{formatPrice(minPriceCents)}</strong>
+            </div>
+            <div className={styles.heroStat}>
+              <span className={styles.heroStatLabel}>Menor prazo</span>
+              <strong className={styles.heroStatValue}>
+                {minDeliveryDays} {minDeliveryDays === 1 ? 'dia' : 'dias'}
+              </strong>
+            </div>
+            <div className={styles.heroStat}>
+              <span className={styles.heroStatLabel}>Revisões</span>
+              <strong className={styles.heroStatValue}>até {maxRevisions}</strong>
+            </div>
+            <div className={styles.heroStat}>
+              <span className={styles.heroStatLabel}>Planos</span>
+              <strong className={styles.heroStatValue}>{service.plans.length}</strong>
+            </div>
           </div>
         </div>
 
@@ -250,6 +303,20 @@ function ServiceDetails() {
               <span>@{service.owner.username}</span>
             </div>
           )}
+          <div className={styles.sellerStats}>
+            <div className={styles.sellerStat}>
+              <strong>{service.category?.name || 'Categoria'}</strong>
+              <span>Área principal</span>
+            </div>
+            <div className={styles.sellerStat}>
+              <strong>{subcategoryName || 'Geral'}</strong>
+              <span>Especialidade</span>
+            </div>
+            <div className={styles.sellerStat}>
+              <strong>{tags.length}</strong>
+              <span>Tags</span>
+            </div>
+          </div>
         </aside>
       </section>
 
@@ -352,6 +419,120 @@ function ServiceDetails() {
                 <p key={i}>{paragraph}</p>
               ))}
             </div>
+
+            <div className={styles.infoGrid}>
+              <div className={styles.infoPanel}>
+                <h3>Classificação no marketplace</h3>
+                <div className={styles.bulletList}>
+                  <div className={styles.bulletItem}>
+                    <span className={styles.bulletIcon}><CategoryIcon category={service.category} /></span>
+                    <span>{service.category?.name || 'Categoria não informada'}</span>
+                  </div>
+                  {subcategoryName && (
+                    <div className={styles.bulletItem}>
+                      <span className={styles.bulletIcon}>•</span>
+                      <span>{subcategoryName}</span>
+                    </div>
+                  )}
+                  {tags.length > 0 && (
+                    <div className={styles.skillList}>
+                      {tags.slice(0, 10).map((tag) => (
+                        <span key={tag} className={styles.skillChip}>{tag}</span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className={styles.infoPanel}>
+                <h3>Resumo para contratar</h3>
+                <div className={styles.quickFacts}>
+                  <div className={styles.quickFact}>
+                    <span>A partir de</span>
+                    <strong>{formatPrice(minPriceCents)}</strong>
+                  </div>
+                  <div className={styles.quickFact}>
+                    <span>Menor prazo</span>
+                    <strong>{minDeliveryDays} {minDeliveryDays === 1 ? 'dia' : 'dias'}</strong>
+                  </div>
+                  <div className={styles.quickFact}>
+                    <span>Revisões</span>
+                    <strong>até {maxRevisions}</strong>
+                  </div>
+                  <div className={styles.quickFact}>
+                    <span>Pacotes</span>
+                    <strong>{service.plans.length}</strong>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section className={styles.card}>
+            <div className={styles.sectionHeader}>
+              <div>
+                <h2 className={styles.sectionTitle}>Avaliações</h2>
+                <p className={styles.sectionText}>
+                  Feedbacks de clientes após pedidos concluídos e aprovados dentro da plataforma.
+                </p>
+              </div>
+            </div>
+
+            {reviewCount > 0 ? (
+              <>
+                <div className={styles.reviewSummary}>
+                  <div className={styles.reviewScore}>
+                    <strong>{averageRating?.toFixed ? averageRating.toFixed(1) : averageRating}</strong>
+                    <span>{reviewCount} {reviewCount === 1 ? 'avaliação' : 'avaliações'}</span>
+                    <small>{'★'.repeat(Math.round(averageRating || 0))}{'☆'.repeat(5 - Math.round(averageRating || 0))}</small>
+                  </div>
+                  <div className={styles.reviewBars}>
+                    {[5, 4, 3, 2, 1].map((rating) => {
+                      const count = reviews.filter((review) => review.rating === rating).length;
+                      const percent = reviewCount ? Math.round((count / reviewCount) * 100) : 0;
+                      return (
+                        <div key={rating} className={styles.reviewBarRow}>
+                          <span>{rating} estrelas</span>
+                          <div className={styles.reviewBarTrack}>
+                            <div className={styles.reviewBarFill} style={{ width: `${percent}%` }} />
+                          </div>
+                          <strong>{count}</strong>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className={styles.reviewList}>
+                  {reviews.slice(0, 6).map((review) => {
+                    const clientName = `${review.client?.firstName || ''} ${review.client?.lastName || ''}`.trim() || review.client?.username || 'Cliente';
+                    return (
+                      <article key={review.id} className={styles.reviewCard}>
+                        <div className={styles.reviewHead}>
+                          <div className={styles.reviewAuthor}>
+                            <div className={styles.reviewAvatar}>{clientName.slice(0, 2).toUpperCase()}</div>
+                            <div>
+                              <h3>{clientName}</h3>
+                              <span>Cliente verificado</span>
+                            </div>
+                          </div>
+                          <div className={styles.reviewMeta}>
+                            <div className={styles.reviewStars}>{'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}</div>
+                            <span>{new Date(review.createdAt).toLocaleDateString('pt-BR')}</span>
+                          </div>
+                        </div>
+                        <p>{review.comment || 'Cliente avaliou este pedido sem comentário.'}</p>
+                      </article>
+                    );
+                  })}
+                </div>
+              </>
+            ) : (
+              <div className={styles.infoPanel}>
+                <h3>Ainda sem avaliações</h3>
+                <p className={styles.sectionText}>As avaliações aparecem aqui depois que clientes concluem pedidos deste serviço.</p>
+              </div>
+            )}
           </section>
         </div>
 

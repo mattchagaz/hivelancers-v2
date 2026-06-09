@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
+import { FaBell, FaPalette, FaShieldHalved, FaUserCheck } from 'react-icons/fa6';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useSettings } from '../../../contexts/SettingsContext';
 import { updateProfile as apiUpdateProfile, updateUserType } from '../../../services/users';
@@ -13,6 +14,8 @@ import { uploadImageToCloudinary } from '../../../services/cloudinary';
 import CityAutocomplete from '../../CityAutocomplete/CityAutocomplete';
 import { toRoleSlug, toUserType } from '../../../utils/authFlow';
 import { formatPhoneBR } from '../../../utils/formatters';
+import SpotlightCard from '../../UI/SpotlightCard/SpotlightCard';
+import ConfirmDialog from '../../UI/ConfirmDialog/ConfirmDialog';
 import styles from './Settings.module.css';
 
 const PROFILE_FIELDS = ['firstName', 'lastName', 'username', 'headline', 'location', 'bio', 'website'];
@@ -26,16 +29,40 @@ const THEME_LABEL = {
 
 const DENSITY_LABEL = {
   compact: 'Compacta',
-  comfortable: 'Confortavel',
-  spacious: 'Espacosa',
+  comfortable: 'Confortável',
+  spacious: 'Espaçosa',
 };
 
 const DIGEST_LABEL = {
   realtime: 'Tempo real',
-  daily: 'Diario',
+  daily: 'Diário',
   weekly: 'Semanal',
   never: 'Desativado',
 };
+
+const STRIPE_REQUIREMENT_LABELS = {
+  external_account: 'Conta bancária para repasse',
+  'business_profile.url': 'Site, perfil público ou rede social',
+  'business_profile.product_description': 'Descrição dos serviços',
+  'individual.id_number': 'CPF',
+  'individual.dob.day': 'Data de nascimento',
+  'individual.dob.month': 'Data de nascimento',
+  'individual.dob.year': 'Data de nascimento',
+  'individual.address.line1': 'Endereço',
+  'individual.address.city': 'Cidade',
+  'individual.address.state': 'Estado',
+  'individual.address.postal_code': 'CEP',
+  'individual.verification.document': 'Documento de identidade',
+  'individual.verification.additional_document': 'Documento complementar',
+};
+
+const formatStripeRequirement = (item) =>
+  STRIPE_REQUIREMENT_LABELS[item] ||
+  item
+    .split('.')
+    .filter(Boolean)
+    .map((part) => part.replace(/_/g, ' '))
+    .join(' · ');
 
 const profileFromUser = (user) => ({
   firstName: user?.firstName || '',
@@ -90,6 +117,7 @@ function Settings() {
   const [profile, setProfile] = useState(() => profileFromUser(user));
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [showRemoveAvatarConfirm, setShowRemoveAvatarConfirm] = useState(false);
   const avatarInputRef = useRef(null);
 
   const serverProfile = useMemo(() => profileFromUser(user), [user]);
@@ -99,7 +127,7 @@ function Settings() {
     setProfile(serverProfile);
   }, [serverProfile]);
 
-  const fullName = `${profile.firstName} ${profile.lastName}`.trim() || 'Usuario';
+  const fullName = `${profile.firstName} ${profile.lastName}`.trim() || 'Usuário';
   const initials = getInitials(profile.firstName, profile.lastName);
 
   const getDirtyForFields = (fields) =>
@@ -147,23 +175,23 @@ function Settings() {
         id: 'profile',
         label: 'Perfil',
         icon: 'user',
-        description: 'Dados publicos e apresentacao',
+        description: 'Dados públicos e apresentação',
       },
       {
         id: 'account',
         label: 'Conta',
         icon: 'shield',
-        description: 'Login, telefone e seguranca',
+        description: 'Login, telefone e segurança',
       },
       {
         id: 'notifications',
-        label: 'Notificacoes',
+        label: 'Notificações',
         icon: 'bell',
         description: 'Email, push e resumos',
       },
       {
         id: 'appearance',
-        label: 'Aparencia',
+        label: 'Aparência',
         icon: 'palette',
         description: 'Tema, densidade e movimento',
       },
@@ -266,6 +294,7 @@ function Settings() {
     try {
       const updated = await apiUpdateProfile({ avatarUrl: '' });
       setUser(updated);
+      setShowRemoveAvatarConfirm(false);
       toast.success('Foto removida.');
     } catch (err) {
       toast.error(err.message);
@@ -299,29 +328,37 @@ function Settings() {
 
   const restorePreferences = () => {
     resetSettings();
-    toast.success('Preferencias restauradas para o padrao.');
+    toast.success('Preferências restauradas para o padrão.');
   };
 
   const heroStats = [
     {
-      label: 'Perfil publico',
+      label: 'Perfil público',
       value: `${profileCompletion}%`,
       helper: profileCompletion >= 80 ? 'Quase la' : 'Vale completar mais campos',
+      icon: <FaUserCheck />,
+      tone: 'blue',
     },
     {
       label: 'Tema ativo',
       value: THEME_LABEL[appearance.theme] || 'Claro',
-      helper: `${DENSITY_LABEL[appearance.density] || 'Confortavel'} na interface`,
+      helper: `${DENSITY_LABEL[appearance.density] || 'Confortável'} na interface`,
+      icon: <FaPalette />,
+      tone: 'purple',
     },
     {
       label: 'Privacidade',
-      value: privacy.profilePublic ? 'Publico' : 'Privado',
+      value: privacy.profilePublic ? 'Público' : 'Privado',
       helper: privacy.allowDm === 'everyone' ? 'DM aberto' : 'Mensagens filtradas',
+      icon: <FaShieldHalved />,
+      tone: 'green',
     },
     {
       label: 'Alertas',
       value: `${emailEnabledCount + pushEnabledCount} ativos`,
-      helper: `${DIGEST_LABEL[notifications.emailDigest] || 'Diario'} por email`,
+      helper: `${DIGEST_LABEL[notifications.emailDigest] || 'Diário'} por email`,
+      icon: <FaBell />,
+      tone: 'orange',
     },
   ];
 
@@ -331,7 +368,7 @@ function Settings() {
       done: Boolean(profile.avatarUrl),
     },
     {
-      label: 'Headline estrategica',
+      label: 'Headline estratégica',
       done: Boolean(profile.headline),
     },
     {
@@ -350,16 +387,16 @@ function Settings() {
         <div className={styles.heroGlow} />
 
         <div className={styles.heroMain}>
-          <span className={styles.heroEyebrow}>Personalizar experiencia</span>
-          <h1 className={styles.heroTitle}>Uma central completa para ajustar seu perfil, sua conta e a forma como a Hivelancers aparece para voce.</h1>
+          <span className={styles.heroEyebrow}>Personalizar experiência</span>
+          <h1 className={styles.heroTitle}>Uma central completa para ajustar seu perfil, sua conta e a forma como a Hivelancers aparece para você.</h1>
           <p className={styles.heroText}>
-            Aqui voce organiza a vitrine publica, controla notificacoes, escolhe aparencia, ajusta privacidade e deixa sua conta com cara de produto pronto.
+            Aqui você organiza a vitrine pública, controla notificações, escolhe aparência, ajusta privacidade e deixa sua conta com cara de produto pronto.
           </p>
 
           <div className={styles.heroActions}>
             {publicProfileHref ? (
               <Link to={publicProfileHref} className={styles.primaryAction}>
-                Ver perfil publico
+                Ver perfil público
               </Link>
             ) : (
               <button type="button" className={styles.primaryAction} onClick={() => setActiveTab('profile')}>
@@ -368,7 +405,7 @@ function Settings() {
             )}
 
             <button type="button" className={styles.secondaryAction} onClick={restorePreferences}>
-              Restaurar preferencias
+              Restaurar preferências
             </button>
 
             <Link to="/profile/customize" className={styles.secondaryAction}>
@@ -376,15 +413,6 @@ function Settings() {
             </Link>
           </div>
 
-          <div className={styles.heroStats}>
-            {heroStats.map((item) => (
-              <div key={item.label} className={styles.heroStat}>
-                <span>{item.label}</span>
-                <strong>{item.value}</strong>
-                <small>{item.helper}</small>
-              </div>
-            ))}
-          </div>
         </div>
 
         <aside className={styles.heroSide}>
@@ -410,7 +438,7 @@ function Settings() {
 
             <div className={styles.completionBlock}>
               <div className={styles.completionHead}>
-                <span>Forca do perfil</span>
+                <span>Força do perfil</span>
                 <strong>{profileCompletion}%</strong>
               </div>
               <div className={styles.progressTrack}>
@@ -455,7 +483,7 @@ function Settings() {
                 <button
                   type="button"
                   className={styles.identityGhost}
-                  onClick={handleAvatarRemove}
+                  onClick={() => setShowRemoveAvatarConfirm(true)}
                   disabled={isUploadingAvatar}
                 >
                   Remover
@@ -466,12 +494,23 @@ function Settings() {
         </aside>
       </section>
 
+      <section className={styles.statGrid}>
+        {heroStats.map((item) => (
+          <SpotlightCard key={item.label} className={`${styles.statCard} ${styles[item.tone]}`}>
+            <div className={styles.statIcon}>{item.icon}</div>
+            <span>{item.label}</span>
+            <strong>{item.value}</strong>
+            <p>{item.helper}</p>
+          </SpotlightCard>
+        ))}
+      </section>
+
       <div className={styles.workspace}>
         <aside className={styles.sidebar}>
           <div className={styles.sidebarHeader}>
-            <span className={styles.sidebarEyebrow}>Navegacao</span>
+            <span className={styles.sidebarEyebrow}>Navegação</span>
             <h2>Ajustes da conta</h2>
-            <p>Troque de secao sem sair da pagina.</p>
+            <p>Troque de seção sem sair da página.</p>
           </div>
 
           <nav className={styles.tabNav}>
@@ -494,11 +533,11 @@ function Settings() {
 
           <div className={styles.sidebarCard}>
             <span className={styles.sidebarCardTag}>Visibilidade</span>
-            <strong>{privacy.profilePublic ? 'Perfil publico' : 'Perfil privado'}</strong>
+            <strong>{privacy.profilePublic ? 'Perfil público' : 'Perfil privado'}</strong>
             <p>
               {privacy.profilePublic
-                ? 'Sua vitrine esta visivel para outros usuarios.'
-                : 'Seu perfil esta restrito fora dos fluxos principais.'}
+                ? 'Sua vitrine está visível para outros usuários.'
+                : 'Seu perfil está restrito fora dos fluxos principais.'}
             </p>
           </div>
         </aside>
@@ -509,7 +548,7 @@ function Settings() {
               <span className={styles.panelEyebrow}>{activeTabData.label}</span>
               <h2>{activeTabData.description}</h2>
             </div>
-            <div className={styles.panelBadge}>{activeTabData.value}</div>
+            <div className={styles.panelBadge}>Em edição</div>
           </section>
 
           {activeTab === 'profile' && (
@@ -586,6 +625,16 @@ function Settings() {
           {activeTab === 'danger' && <DangerPanel />}
         </main>
       </div>
+
+      <ConfirmDialog
+        isOpen={showRemoveAvatarConfirm}
+        title="Remover foto de perfil?"
+        description="Sua foto atual será removida do perfil público. Você poderá adicionar outra depois."
+        confirmLabel="Remover foto"
+        isLoading={isUploadingAvatar}
+        onCancel={() => setShowRemoveAvatarConfirm(false)}
+        onConfirm={handleAvatarRemove}
+      />
     </div>
   );
 }
@@ -683,15 +732,15 @@ function ProfilePanel({
     {
       title: 'Clareza da proposta',
       text: isFreelancer
-        ? 'Explique o que voce entrega, para quem e por que sua abordagem e diferente.'
+        ? 'Explique o que você entrega, para quem e por que sua abordagem é diferente.'
         : 'Use a headline para explicar sua empresa, setor ou contexto de compra.',
     },
     {
       title: 'Contexto visual',
-      text: 'Uma boa foto e um username consistente deixam seu perfil mais memoravel.',
+      text: 'Uma boa foto e um username consistente deixam seu perfil mais memorável.',
     },
     {
-      title: 'Conversao melhor',
+      title: 'Conversão melhor',
       text: 'Bio com nicho, resultado e prova social tende a gerar conversas mais qualificadas.',
     },
   ];
@@ -700,8 +749,8 @@ function ProfilePanel({
     <>
       <section className={styles.card}>
         <SectionHeader
-          title="Informacoes publicas"
-          subtitle="Esses campos aparecem na sua vitrine e ajudam outras pessoas a entender rapido quem voce e."
+          title="Informações públicas"
+          subtitle="Esses campos aparecem na sua vitrine e ajudam outras pessoas a entender rápido quem você é."
           extra={<span className={styles.inlineBadge}>{profileCompletion}% completo</span>}
         />
 
@@ -734,8 +783,8 @@ function ProfilePanel({
           </Field>
 
           <Field
-            label="Nome de usuario"
-            hint="Aparece na URL do seu perfil. Use letras, numeros, ponto e underline."
+            label="Nome de usuário"
+            hint="Aparece na URL do seu perfil. Use letras, números, ponto e underline."
             full
           >
             <div className={styles.inputWithPrefix}>
@@ -750,12 +799,12 @@ function ProfilePanel({
             </div>
           </Field>
 
-          <Field label={isFreelancer ? 'Titulo profissional' : 'Empresa ou cargo'}>
+          <Field label={isFreelancer ? 'Título profissional' : 'Empresa ou cargo'}>
             <input
               type="text"
               className={styles.input}
               value={profile.headline}
-              placeholder={isFreelancer ? 'Ex: Designer de interfaces e branding' : 'Ex: Lider de produto na Acme'}
+              placeholder={isFreelancer ? 'Ex: Designer de interfaces e branding' : 'Ex: Líder de produto na Acme'}
               onChange={(event) => updateProfile('headline', event.target.value)}
             />
           </Field>
@@ -770,7 +819,7 @@ function ProfilePanel({
             />
           </Field>
 
-          <Field label="Localizacao" hint="Comece digitando e selecione a cidade correta.">
+          <Field label="Localização" hint="Comece digitando e selecione a cidade correta.">
             <CityAutocomplete
               value={profile.location}
               onChange={(value) => updateProfile('location', value)}
@@ -787,8 +836,8 @@ function ProfilePanel({
               rows={5}
               placeholder={
                 isFreelancer
-                  ? 'Conte sua especialidade, os tipos de projeto em que voce se destaca e o que seu cliente pode esperar.'
-                  : 'Descreva sua empresa, time ou contexto para facilitar conexoes mais alinhadas.'
+                  ? 'Conte sua especialidade, os tipos de projeto em que você se destaca e o que seu cliente pode esperar.'
+                  : 'Descreva sua empresa, time ou contexto para facilitar conexões mais alinhadas.'
               }
               onChange={(event) => updateProfile('bio', event.target.value)}
             />
@@ -801,7 +850,7 @@ function ProfilePanel({
       <section className={styles.card}>
         <SectionHeader
           title="Checklist de qualidade"
-          subtitle="Pequenos ajustes que deixam seu perfil mais forte e passam mais confianca."
+          subtitle="Pequenos ajustes que deixam seu perfil mais forte e passam mais confiança."
           extra={(
             <Link to="/profile/customize" className={styles.inlineAction}>
               Editor completo
@@ -933,11 +982,11 @@ function AccountPanel({ profile, updateProfile, userRole, isSaving, dirty, onSav
       <section className={styles.card}>
         <SectionHeader
           title="Contato principal"
-          subtitle="Informacoes basicas usadas para acesso, recuperacao e avisos importantes."
+          subtitle="Informações básicas usadas para acesso, recuperação e avisos importantes."
         />
 
         <div className={styles.formGrid}>
-          <Field label="Email principal" hint="A alteracao de email ainda e feita com suporte.">
+          <Field label="Email principal" hint="A alteração de email ainda é feita com suporte.">
             <input type="email" className={styles.input} value={profile.email} readOnly disabled />
           </Field>
 
@@ -1016,7 +1065,7 @@ function AccountPanel({ profile, updateProfile, userRole, isSaving, dirty, onSav
         />
 
         <FormActions
-          primaryLabel="Atualizar seguranca"
+          primaryLabel="Atualizar segurança"
           onSave={() => toast.message('Fluxo de senha em breve conectado ao backend.')}
         />
       </section>
@@ -1095,63 +1144,63 @@ function NotificationsPanel({ notifications, toggleNotification, setNotification
           </div>
           <div className={styles.infoCard}>
             <strong>Resumo</strong>
-            <p>{DIGEST_LABEL[notifications.emailDigest] || 'Diario'}</p>
+            <p>{DIGEST_LABEL[notifications.emailDigest] || 'Diário'}</p>
           </div>
         </div>
       </section>
 
       <section className={styles.card}>
-        <SectionHeader title="Notificacoes por email" subtitle="Escolha quais acontecimentos merecem um email." />
+        <SectionHeader title="Notificações por email" subtitle="Escolha quais acontecimentos merecem um email." />
 
         <ToggleRow
-          title="Atualizacoes de pedidos"
-          description="Status, mensagens, aprovacoes e entregas dos seus pedidos."
+          title="Atualizações de pedidos"
+          description="Status, mensagens, aprovações e entregas dos seus pedidos."
           checked={notifications.orderUpdates}
           onChange={() => toggleNotification('orderUpdates')}
         />
         <ToggleRow
           title="Novas mensagens"
-          description="Avisos quando alguem iniciar ou responder uma conversa."
+          description="Avisos quando alguém iniciar ou responder uma conversa."
           checked={notifications.messages}
           onChange={() => toggleNotification('messages')}
         />
         <ToggleRow
-          title="Avaliacoes e feedback"
-          description="Receba um lembrete sempre que uma nova avaliacao chegar."
+          title="Avaliações e feedback"
+          description="Receba um lembrete sempre que uma nova avaliação chegar."
           checked={notifications.reviews}
           onChange={() => toggleNotification('reviews')}
         />
         <ToggleRow
-          title="Dicas e promocoes"
+          title="Dicas e promoções"
           description="Novidades da plataforma, recursos e oportunidades comerciais."
           checked={notifications.marketing}
           onChange={() => toggleNotification('marketing')}
         />
         <ToggleRow
           title="Newsletter semanal"
-          description="Resumo editorial com tendencias, destaques e boas praticas."
+          description="Resumo editorial com tendências, destaques e boas práticas."
           checked={notifications.newsletter}
           onChange={() => toggleNotification('newsletter')}
         />
       </section>
 
       <section className={styles.card}>
-        <SectionHeader title="Notificacoes push" subtitle="Alertas de alta prioridade no navegador e no app mobile." />
+        <SectionHeader title="Notificações push" subtitle="Alertas de alta prioridade no navegador e no app mobile." />
 
         <ToggleRow
           title="Mensagens"
-          description="Ideal para nao deixar conversas esfriarem."
+          description="Ideal para não deixar conversas esfriarem."
           checked={notifications.pushMessages}
           onChange={() => toggleNotification('pushMessages')}
         />
         <ToggleRow
           title="Pedidos"
-          description="Aprovacoes, novos pedidos, entregas e alteracoes importantes."
+          description="Aprovações, novos pedidos, entregas e alterações importantes."
           checked={notifications.pushOrders}
           onChange={() => toggleNotification('pushOrders')}
         />
         <ToggleRow
-          title="Promocoes e missões"
+          title="Promoções e missões"
           description="Campanhas, recompensas e incentivos de crescimento."
           checked={notifications.pushPromos}
           onChange={() => toggleNotification('pushPromos')}
@@ -1159,14 +1208,14 @@ function NotificationsPanel({ notifications, toggleNotification, setNotification
       </section>
 
       <section className={styles.card}>
-        <SectionHeader title="Frequencia dos resumos" subtitle="Defina o ritmo ideal de consolidacao por email." />
+        <SectionHeader title="Frequência dos resumos" subtitle="Defina o ritmo ideal de consolidação por email." />
 
         <div className={styles.optionGrid}>
           {[
             { id: 'realtime', label: 'Tempo real', desc: 'Cada evento relevante chega individualmente.' },
-            { id: 'daily', label: 'Diario', desc: 'Um resumo objetivo no fim do dia.' },
+            { id: 'daily', label: 'Diário', desc: 'Um resumo objetivo no fim do dia.' },
             { id: 'weekly', label: 'Semanal', desc: 'Apenas uma curadoria por semana.' },
-            { id: 'never', label: 'Nunca', desc: 'Sem consolidacoes por email.' },
+            { id: 'never', label: 'Nunca', desc: 'Sem consolidações por email.' },
           ].map((option) => (
             <button
               key={option.id}
@@ -1187,11 +1236,11 @@ function NotificationsPanel({ notifications, toggleNotification, setNotification
       </section>
 
       <section className={styles.card}>
-        <SectionHeader title="Horario silencioso" subtitle="Segure notificacoes fora do seu horario preferido." />
+        <SectionHeader title="Horário silencioso" subtitle="Segure notificações fora do seu horário preferido." />
 
         <ToggleRow
-          title="Ativar horario silencioso"
-          description="Mensagens nao criticas ficam pausadas durante a janela abaixo."
+          title="Ativar horário silencioso"
+          description="Mensagens não críticas ficam pausadas durante a janela abaixo."
           checked={quietHours.enabled}
           onChange={() => setQuietHours((prev) => ({ ...prev, enabled: !prev.enabled }))}
         />
@@ -1239,7 +1288,7 @@ function AppearancePanel({ appearance, setAppearance }) {
   return (
     <>
       <section className={styles.card}>
-        <SectionHeader title="Tema" subtitle="Escolha o clima visual principal da aplicacao." />
+        <SectionHeader title="Tema" subtitle="Escolha o clima visual principal da aplicação." />
 
         <div className={styles.themeGrid}>
           {themes.map((theme) => (
@@ -1265,7 +1314,7 @@ function AppearancePanel({ appearance, setAppearance }) {
       </section>
 
       <section className={styles.card}>
-        <SectionHeader title="Cor de destaque" subtitle="Afeta botoes, links, estados ativos e superficies em destaque." />
+        <SectionHeader title="Cor de destaque" subtitle="Afeta botões, links, estados ativos e superfícies em destaque." />
 
         <div className={styles.accentRow}>
           {accents.map((accent) => (
@@ -1284,13 +1333,13 @@ function AppearancePanel({ appearance, setAppearance }) {
       </section>
 
       <section className={styles.card}>
-        <SectionHeader title="Densidade da interface" subtitle="Mais conteudo visivel ou mais respiro visual entre os blocos." />
+        <SectionHeader title="Densidade da interface" subtitle="Mais conteúdo visível ou mais respiro visual entre os blocos." />
 
         <div className={styles.optionGrid}>
           {[
             { id: 'compact', label: 'Compacta', desc: 'Mais elementos por tela.' },
-            { id: 'comfortable', label: 'Confortavel', desc: 'Equilibrio entre foco e leitura.' },
-            { id: 'spacious', label: 'Espacosa', desc: 'Mais ar e mais separacao visual.' },
+            { id: 'comfortable', label: 'Confortável', desc: 'Equilíbrio entre foco e leitura.' },
+            { id: 'spacious', label: 'Espaçosa', desc: 'Mais ar e mais separação visual.' },
           ].map((option) => (
             <button
               key={option.id}
@@ -1358,39 +1407,39 @@ function PrivacyPanel({ privacy, togglePrivacy, setPrivacy }) {
         <SectionHeader title="Visibilidade do perfil" subtitle="Controle quem consegue te encontrar e o que pode ser exibido." />
 
         <ToggleRow
-          title="Perfil publico"
-          description="Seu perfil fica acessivel para navegacao dentro da Hivelancers."
+          title="Perfil público"
+          description="Seu perfil fica acessível para navegação dentro da Hivelancers."
           checked={privacy.profilePublic}
           onChange={() => togglePrivacy('profilePublic')}
         />
         <ToggleRow
           title="Mostrar status online"
-          description="Outras pessoas podem saber quando voce esta ativo."
+          description="Outras pessoas podem saber quando você está ativo."
           checked={privacy.showOnline}
           onChange={() => togglePrivacy('showOnline')}
         />
         <ToggleRow
           title="Aparecer na busca"
-          description="Seu perfil e servicos podem surgir em resultados e recomendacoes."
+          description="Seu perfil e serviços podem surgir em resultados e recomendações."
           checked={privacy.searchable}
           onChange={() => togglePrivacy('searchable')}
         />
         <ToggleRow
-          title="Mostrar ganhos publicos"
-          description="Exibe faturamento acumulado na sua vitrine publica."
+          title="Mostrar ganhos públicos"
+          description="Exibe faturamento acumulado na sua vitrine pública."
           checked={privacy.showEarnings}
           onChange={() => togglePrivacy('showEarnings')}
         />
       </section>
 
       <section className={styles.card}>
-        <SectionHeader title="Mensagens diretas" subtitle="Defina quem pode iniciar conversas com voce na plataforma." />
+        <SectionHeader title="Mensagens diretas" subtitle="Defina quem pode iniciar conversas com você na plataforma." />
 
         <div className={styles.optionGrid}>
           {[
-            { id: 'everyone', label: 'Todos', desc: 'Qualquer usuario pode te escrever.' },
-            { id: 'connections', label: 'Apenas conexoes', desc: 'Somente quem ja interagiu com voce.' },
-            { id: 'noone', label: 'Ninguem', desc: 'Bloqueia novas conversas diretas.' },
+            { id: 'everyone', label: 'Todos', desc: 'Qualquer usuário pode te escrever.' },
+            { id: 'connections', label: 'Apenas conexões', desc: 'Somente quem já interagiu com você.' },
+            { id: 'noone', label: 'Ninguém', desc: 'Bloqueia novas conversas diretas.' },
           ].map((option) => (
             <button
               key={option.id}
@@ -1499,6 +1548,11 @@ function BillingPanel({ isFreelancer }) {
 
   const account = connectState.account;
   const stripeReady = Boolean(account?.detailsSubmitted && account?.payoutsEnabled);
+  const stripeRequirements = [
+    ...(account?.requirementsPastDue || []),
+    ...(account?.requirementsCurrentlyDue || []),
+  ];
+  const visibleStripeRequirements = [...new Set(stripeRequirements)].slice(0, 5);
 
   return (
     <>
@@ -1554,12 +1608,12 @@ function BillingPanel({ isFreelancer }) {
                     {isLoadingConnect
                       ? 'Carregando conta Stripe...'
                       : !connectState.configured
-                      ? 'Stripe ainda nao configurada'
+                      ? 'Stripe ainda não configurada'
                       : !account
-                      ? 'Conta Stripe nao conectada'
+                      ? 'Conta Stripe não conectada'
                       : stripeReady
                       ? 'Conta Stripe pronta para repasses'
-                      : 'Conta Stripe precisa de revisao'}
+                      : 'Conta Stripe precisa de revisão'}
                   </strong>
                   <span>
                     {isLoadingConnect
@@ -1570,6 +1624,8 @@ function BillingPanel({ isFreelancer }) {
                       ? 'Conecte sua conta Stripe para receber pedidos pagos com Pix ou cartao.'
                       : stripeReady
                       ? `Conta ${account.country || 'BR'} conectada. Dashboard pronto para acompanhar recebimentos.`
+                      : visibleStripeRequirements.length
+                      ? 'A Stripe retornou pendências para liberar os repasses da sua conta.'
                       : 'Complete o onboarding da Stripe para liberar os repasses do marketplace.'}
                   </span>
                 </div>
@@ -1586,6 +1642,24 @@ function BillingPanel({ isFreelancer }) {
                 </span>
               </div>
             </div>
+
+            {account && !stripeReady && (
+              <div className={styles.requirementsNotice}>
+                <strong>Pendências de verificação</strong>
+                {visibleStripeRequirements.length ? (
+                  <div className={styles.requirementPills}>
+                    {visibleStripeRequirements.map((item) => (
+                      <span key={item}>{formatStripeRequirement(item)}</span>
+                    ))}
+                  </div>
+                ) : (
+                  <p>Nenhuma pendência específica foi retornada. Continue o onboarding para concluir.</p>
+                )}
+                {account.requirementsDisabledReason && (
+                  <small>Motivo informado pela Stripe: {account.requirementsDisabledReason}</small>
+                )}
+              </div>
+            )}
 
             <div className={styles.formActions}>
               <button
@@ -1728,7 +1802,7 @@ function LanguagePanel({ language, setLanguage }) {
               onChange={(event) => setLanguage((prev) => ({ ...prev, currency: event.target.value }))}
             >
               <option value="BRL">Real (R$)</option>
-              <option value="USD">Dolar (US$)</option>
+              <option value="USD">Dólar (US$)</option>
               <option value="EUR">Euro (€)</option>
             </select>
           </Field>
@@ -1736,7 +1810,7 @@ function LanguagePanel({ language, setLanguage }) {
       </section>
 
       <section className={styles.card}>
-        <SectionHeader title="Preview local" subtitle="Como datas, valores e horarios vao aparecer para voce." />
+        <SectionHeader title="Preview local" subtitle="Como datas, valores e horários vão aparecer para você." />
 
         <div className={styles.miniChecklistGrid}>
           <div className={styles.checkCard}>

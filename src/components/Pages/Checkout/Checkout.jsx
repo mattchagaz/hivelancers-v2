@@ -244,9 +244,9 @@ function Checkout() {
     return (
       <div className={styles.successState}>
         <div className={styles.successBadge}>Pedido criado</div>
-        <h1 className={styles.successTitle}>Seu projeto já entrou no fluxo da Hivelancers.</h1>
+        <h1 className={styles.successTitle}>Pagamento confirmado e pedido criado.</h1>
         <p className={styles.successText}>
-          O pedido foi registrado com o briefing salvo. Agora o próximo passo é o freelancer aceitar o pedido e iniciar a execução.
+          O briefing foi salvo, o valor ficou protegido no fluxo da plataforma e o freelancer já pode aceitar o pedido para iniciar a execução.
         </p>
 
         <div className={styles.successGrid}>
@@ -256,12 +256,26 @@ function Checkout() {
           </div>
           <div className={styles.successCard}>
             <span className={styles.successLabel}>Status atual</span>
-            <strong>Aguardando aceite do freelancer</strong>
+            <strong>Valor protegido</strong>
           </div>
           <div className={styles.successCard}>
             <span className={styles.successLabel}>Próximo passo</span>
-            <strong>Você pode acompanhar tudo na área de pedidos</strong>
+            <strong>Freelancer confirma o início</strong>
           </div>
+        </div>
+
+        <div className={styles.successFlow}>
+          {[
+            ['Pagamento', 'Confirmado pela Stripe'],
+            ['Pedido', 'Briefing registrado'],
+            ['Repasse', 'Liberado só após aprovação'],
+          ].map(([title, text]) => (
+            <div key={title}>
+              <span />
+              <strong>{title}</strong>
+              <p>{text}</p>
+            </div>
+          ))}
         </div>
 
         <div className={styles.successActions}>
@@ -314,6 +328,20 @@ function Checkout() {
             <span className={styles.successLabel}>Status</span>
             <strong>{isPending ? 'Aguardando confirmação' : isFailed ? 'Não concluído' : paymentStatus.status}</strong>
           </div>
+        </div>
+
+        <div className={styles.successFlow}>
+          {[
+            ['Checkout', 'Sessão registrada'],
+            ['Confirmação', isPending ? 'Aguardando Stripe/Pix' : 'Não concluída'],
+            ['Pedido', isPending ? 'Será criado automaticamente' : 'Ainda não foi criado'],
+          ].map(([title, text]) => (
+            <div key={title}>
+              <span />
+              <strong>{title}</strong>
+              <p>{text}</p>
+            </div>
+          ))}
         </div>
 
         <div className={styles.successActions}>

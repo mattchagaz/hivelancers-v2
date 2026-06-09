@@ -529,6 +529,42 @@
   max-width: 480px;
 }
 
+.successFlow {
+  display: grid;
+  width: 100%;
+  max-width: 860px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.successFlow div {
+  padding: 16px;
+  border: 1px solid var(--border-light);
+  border-radius: 18px;
+  background: var(--bg-subtle);
+  text-align: left;
+}
+
+.successFlow span {
+  display: block;
+  width: 30px;
+  height: 6px;
+  margin-bottom: 14px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+}
+
+.successFlow strong {
+  display: block;
+  color: var(--text-primary);
+}
+
+.successFlow p {
+  margin-top: 4px;
+  color: var(--text-secondary);
+  font-size: 0.84rem;
+}
+
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
@@ -547,6 +583,10 @@
 @media (max-width: 860px) {
   .formGrid,
   .successGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .successFlow {
     grid-template-columns: 1fr;
   }
 

@@ -18,6 +18,41 @@ export const listCategories = async () => {
   }
 };
 
+export const listAdminCategories = async () => {
+  try {
+    const { data } = await api.get('/categories/admin');
+    return data.categories;
+  } catch (error) {
+    throw new Error(extractMessage(error, 'Não foi possível carregar a taxonomia.'));
+  }
+};
+
+export const createCategory = async (payload) => {
+  try {
+    const { data } = await api.post('/categories/admin', payload);
+    return data.category;
+  } catch (error) {
+    throw new Error(extractMessage(error, 'Não foi possível criar a categoria.'));
+  }
+};
+
+export const updateCategory = async (id, payload) => {
+  try {
+    const { data } = await api.patch(`/categories/admin/${id}`, payload);
+    return data.category;
+  } catch (error) {
+    throw new Error(extractMessage(error, 'Não foi possível salvar a categoria.'));
+  }
+};
+
+export const deleteCategory = async (id) => {
+  try {
+    await api.delete(`/categories/admin/${id}`);
+  } catch (error) {
+    throw new Error(extractMessage(error, 'Não foi possível excluir a categoria.'));
+  }
+};
+
 export const listPublicServices = async (params = {}) => {
   try {
     const { data } = await api.get('/services', { params });

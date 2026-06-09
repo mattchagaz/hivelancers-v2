@@ -80,3 +80,12 @@ export const approveOrder = async (id, payload = {}) => {
     throw new Error(extractMessage(error, 'Nao foi possivel aprovar o pedido.'));
   }
 };
+
+export const reviewOrder = async (id, payload) => {
+  try {
+    const { data } = await api.post(`/orders/${id}/review`, payload);
+    return data;
+  } catch (error) {
+    throw new Error(extractMessage(error, 'Nao foi possivel enviar a avaliacao.'));
+  }
+};

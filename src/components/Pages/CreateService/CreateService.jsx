@@ -5,6 +5,7 @@ import styles from './CreateService.module.css';
 import { listCategories, createService, getMyService, updateService, archiveService } from '../../../services/services';
 import { uploadImageToCloudinary } from '../../../services/cloudinary';
 import { CategoryIcon } from '../../../utils/categoryIcons';
+import ConfirmDialog from '../../UI/ConfirmDialog/ConfirmDialog';
 
 const TIER_BY_INDEX = ['BASIC', 'STANDARD', 'PREMIUM'];
 const TIER_NAME = { BASIC: 'Básico', STANDARD: 'Padrão', PREMIUM: 'Premium' };
@@ -15,6 +16,9 @@ const featuresFromDescription = (desc = '') =>
     .map((line) => line.replace(/^•\s*/, '').trim())
     .filter(Boolean);
 
+const normalizeSubcategories = (category) =>
+  Array.isArray(category?.subcategories) ? category.subcategories : [];
+
 function CreateService() {
   const navigate = useNavigate();
   const { id: editId } = useParams();
@@ -24,6 +28,7 @@ function CreateService() {
   const [isPublishing, setIsPublishing] = useState(false);
   const [isLoading, setIsLoading] = useState(isEditMode);
   const [isArchiving, setIsArchiving] = useState(false);
+  const [archiveConfirmOpen, setArchiveConfirmOpen] = useState(false);
   const [existingStatus, setExistingStatus] = useState(null);
 
   // Step 0 — Info básica
@@ -46,6 +51,7 @@ function CreateService() {
   const [images, setImages] = useState([]);
   const [dragActive, setDragActive] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [imageRemoveConfirm, setImageRemoveConfirm] = useState(null);
 
   // Step 3 — FAQ
   const [faqs, setFaqs] = useState([{ question: '', answer: '' }]);
@@ -70,6 +76,8 @@ function CreateService() {
         setTitle(svc.title || '');
         setDescription(svc.description || '');
         setCategory(svc.categoryId || '');
+        setSubCategory(svc.subcategorySlug || '');
+        setTags(Array.isArray(svc.tags) ? svc.tags : []);
         setExistingStatus(svc.status || 'DRAFT');
 
         const loadedPlans = [...plans];
@@ -114,15 +122,51 @@ function CreateService() {
   ];
 
   const selectedCat = categories.find((c) => c.id === category);
+  const selectedSubcategories = normalizeSubcategories(selectedCat);
+  const selectedSubcategory = selectedSubcategories.find((item) => item.slug === subCategory);
+  const suggestedTags = selectedSubcategory?.tags || [];
+
+  const handleCategorySelect = (categoryId) => {
+    if (categoryId === category) return;
+    setCategory(categoryId);
+    setSubCategory('');
+    setTags([]);
+    setTagInput('');
+  };
+
+  const handleSubcategorySelect = (subcategorySlug) => {
+    if (subcategorySlug === subCategory) return;
+    setSubCategory(subcategorySlug);
+    setTags([]);
+    setTagInput('');
+  };
 
   // ===== Tag handlers =====
+  const addTagValue = (value) => {
+    const incomingTags = value
+      .split(',')
+      .map((tag) => tag.trim().slice(0, 40))
+      .filter(Boolean);
+    if (incomingTags.length === 0) return;
+
+    setTags((current) => {
+      const seen = new Set(current.map((item) => item.toLowerCase()));
+      const next = [...current];
+      incomingTags.forEach((tag) => {
+        const key = tag.toLowerCase();
+        if (!seen.has(key)) {
+          seen.add(key);
+          next.push(tag);
+        }
+      });
+      return next;
+    });
+  };
+
   const addTag = (e) => {
     if ((e.key === 'Enter' || e.key === ',') && tagInput.trim()) {
       e.preventDefault();
-      const tag = tagInput.trim().replace(',', '');
-      if (tag && !tags.includes(tag) && tags.length < 5) {
-        setTags([...tags, tag]);
-      }
+      addTagValue(tagInput);
       setTagInput('');
     }
   };
@@ -190,7 +234,10 @@ function CreateService() {
     handleFiles(e.dataTransfer.files);
   };
 
-  const removeImage = (idx) => setImages(images.filter((_, i) => i !== idx));
+  const removeImage = (idx) => {
+    setImages((prev) => prev.filter((_, i) => i !== idx));
+    setImageRemoveConfirm(null);
+  };
   const setCover = (idx) => {
     const moved = [...images];
     const [item] = moved.splice(idx, 1);
@@ -216,6 +263,7 @@ function CreateService() {
       if (title.trim().length < 10) { toast.error('O título precisa ter pelo menos 10 caracteres.'); return false; }
       if (!description.trim() || description.trim().length < 30) { toast.error('A descrição precisa ter pelo menos 30 caracteres.'); return false; }
       if (!category) { toast.error('Selecione uma categoria.'); return false; }
+      if (selectedSubcategories.length > 0 && !selectedSubcategory) { toast.error('Selecione uma subcategoria.'); return false; }
       return true;
     }
     if (s === 1) {
@@ -262,6 +310,9 @@ function CreateService() {
         title: title.trim(),
         description: description.trim(),
         categoryId: category,
+        subcategorySlug: selectedSubcategory?.slug || null,
+        subcategoryName: selectedSubcategory?.name || null,
+        tags: tags.map((tag) => tag.trim()).filter(Boolean),
         plans: planPayload,
         images: images.map((img) => ({ url: img.url })),
       };
@@ -296,12 +347,7 @@ function CreateService() {
 
   const handleArchive = () => {
     if (!isEditMode || isArchiving) return;
-    toast('Arquivar este serviço?', {
-      description: 'Ele deixará de aparecer na listagem pública. Você pode republicar depois.',
-      duration: 8000,
-      action: { label: 'Arquivar', onClick: doArchive },
-      cancel: { label: 'Cancelar', onClick: () => {} },
-    });
+    setArchiveConfirmOpen(true);
   };
 
   const handleRepublish = async () => {
@@ -440,20 +486,72 @@ function CreateService() {
                     key={cat.id}
                     type="button"
                     className={`${styles.catCard} ${category === cat.id ? styles.catActive : ''}`}
-                    onClick={() => { setCategory(cat.id); setSubCategory(''); }}
+                    onClick={() => handleCategorySelect(cat.id)}
                   >
                     <span className={styles.catIcon}>
                       <CategoryIcon category={cat} />
                     </span>
-                    <span className={styles.catLabel}>{cat.name}</span>
+                    <span className={styles.catText}>
+                      <span className={styles.catLabel}>{cat.name}</span>
+                      <small>{normalizeSubcategories(cat).length} especialidades</small>
+                    </span>
                   </button>
                 ))}
               </div>
             </section>
 
+            {selectedSubcategories.length > 0 && (
+              <section className={styles.section}>
+                <h2 className={styles.sectionTitle}>Subcategoria</h2>
+                <p className={styles.sectionSub}>Escolha o recorte que melhor descreve seu serviço.</p>
+                <div className={styles.subCatGrid}>
+                  {selectedSubcategories.map((item) => (
+                    <button
+                      key={item.slug}
+                      type="button"
+                      className={`${styles.subCatChip} ${subCategory === item.slug ? styles.subCatActive : ''}`}
+                      onClick={() => handleSubcategorySelect(item.slug)}
+                    >
+                      <span>{item.name}</span>
+                      <small>{Array.isArray(item.tags) ? item.tags.length : 0} tags</small>
+                    </button>
+                  ))}
+                </div>
+                {selectedSubcategory && (
+                  <div className={styles.taxonomyGuide}>
+                    <span className={styles.taxonomyGuideIcon}>
+                      <CategoryIcon category={selectedCat} />
+                    </span>
+                    <div>
+                      <span>Você está publicando em</span>
+                      <strong>{selectedCat?.name} / {selectedSubcategory.name}</strong>
+                      <p>As tags abaixo ajudam o cliente a encontrar este serviço na busca e nos filtros.</p>
+                    </div>
+                  </div>
+                )}
+              </section>
+            )}
+
             <section className={styles.section}>
               <h2 className={styles.sectionTitle}>Tags</h2>
-              <p className={styles.sectionSub}>Adicione até 5 tags para seu serviço ser encontrado mais facilmente.</p>
+              <p className={styles.sectionSub}>Adicione tags para seu serviço ser encontrado mais facilmente.</p>
+              {suggestedTags.length > 0 && (
+                <div className={styles.suggestedTags}>
+                  <span>Tags sugeridas</span>
+                  <div className={styles.subCatGrid}>
+                    {suggestedTags.map((tag) => (
+                      <button
+                        key={tag}
+                        type="button"
+                        className={styles.tagSuggestion}
+                        onClick={() => addTagValue(tag)}
+                      >
+                        + {tag}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
               <div className={styles.tagInputWrap}>
                 {tags.map((tag, i) => (
                   <span key={i} className={styles.tag}>
@@ -461,17 +559,22 @@ function CreateService() {
                     <button type="button" className={styles.tagRemove} onClick={() => removeTag(i)}>×</button>
                   </span>
                 ))}
-                {tags.length < 5 && (
-                  <input
-                    className={styles.tagInput}
-                    type="text"
-                    placeholder={tags.length === 0 ? 'Digite e pressione Enter...' : 'Adicionar tag...'}
-                    value={tagInput}
-                    onChange={(e) => setTagInput(e.target.value)}
-                    onKeyDown={addTag}
-                  />
-                )}
+                <input
+                  className={styles.tagInput}
+                  type="text"
+                  placeholder={tags.length === 0 ? 'Digite e pressione Enter...' : 'Adicionar tag...'}
+                  value={tagInput}
+                  onChange={(e) => setTagInput(e.target.value)}
+                  onKeyDown={addTag}
+                  onBlur={() => {
+                    if (tagInput.trim()) {
+                      addTagValue(tagInput);
+                      setTagInput('');
+                    }
+                  }}
+                />
               </div>
+              <span className={styles.hint}>Você também pode colar uma lista separada por vírgulas.</span>
             </section>
           </div>
         )}
@@ -631,7 +734,12 @@ function CreateService() {
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
                           </button>
                         )}
-                        <button type="button" className={`${styles.imageBtn} ${styles.imageBtnDanger}`} onClick={() => removeImage(i)} title="Remover">
+                        <button
+                          type="button"
+                          className={`${styles.imageBtn} ${styles.imageBtnDanger}`}
+                          onClick={() => setImageRemoveConfirm({ index: i, isCover: i === 0 })}
+                          title="Remover"
+                        >
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
                         </button>
                       </div>
@@ -694,7 +802,7 @@ function CreateService() {
                   <div className={styles.previewMeta}>
                     <span className={styles.previewCat}>
                       <CategoryIcon category={selectedCat} /> {selectedCat?.name}
-                      {subCategory && ` — ${subCategory}`}
+                      {selectedSubcategory?.name && ` — ${selectedSubcategory.name}`}
                     </span>
                   </div>
                   <h3 className={styles.previewTitle}>{title || 'Sem título'}</h3>
@@ -808,6 +916,29 @@ function CreateService() {
       </div>
 
       <Toaster position="top-center" richColors />
+      <ConfirmDialog
+        isOpen={Boolean(imageRemoveConfirm)}
+        title={imageRemoveConfirm?.isCover ? 'Remover imagem de capa?' : 'Remover imagem?'}
+        description={
+          imageRemoveConfirm?.isCover
+            ? 'Esta imagem deixará de ser a capa do serviço. Se houver outra imagem na lista, ela será usada como capa.'
+            : 'Esta imagem será removida do portfólio do serviço.'
+        }
+        confirmLabel="Remover imagem"
+        onCancel={() => setImageRemoveConfirm(null)}
+        onConfirm={() => {
+          if (imageRemoveConfirm) removeImage(imageRemoveConfirm.index);
+        }}
+      />
+      <ConfirmDialog
+        isOpen={archiveConfirmOpen}
+        title="Arquivar serviço?"
+        description="Ele deixará de aparecer na listagem pública. Você pode republicar depois."
+        confirmLabel="Arquivar serviço"
+        isLoading={isArchiving}
+        onCancel={() => setArchiveConfirmOpen(false)}
+        onConfirm={doArchive}
+      />
     </div>
   );
 }

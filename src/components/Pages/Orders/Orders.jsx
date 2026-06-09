@@ -16,6 +16,7 @@ import {
   getOrder,
   listOrders,
   rejectOrder,
+  reviewOrder,
   requestOrderRevision,
 } from '../../../services/orders';
 import { connectSocket, getSocket } from '../../../services/socket';
@@ -150,6 +151,25 @@ const getOrderStageState = (orderStatus, stageKey) => {
   return 'Idle';
 };
 
+const getFlowProgress = (orderStatus) => {
+  if (orderStatus === 'COMPLETED') return 100;
+  if (orderStatus === 'DELIVERED') return 72;
+  if (orderStatus === 'IN_PROGRESS') return 48;
+  if (orderStatus === 'PENDING') return 18;
+  if (orderStatus === 'REJECTED' || orderStatus === 'CANCELED') return 12;
+  return 0;
+};
+
+const getCurrentStageLabel = (orderStatus) => {
+  if (orderStatus === 'COMPLETED') return 'Aprovação concluída';
+  if (orderStatus === 'DELIVERED') return 'Aguardando revisão';
+  if (orderStatus === 'IN_PROGRESS') return 'Execução em andamento';
+  if (orderStatus === 'PENDING') return 'Aguardando aceite';
+  if (orderStatus === 'REJECTED') return 'Pedido recusado';
+  if (orderStatus === 'CANCELED') return 'Pedido cancelado';
+  return 'Fluxo do pedido';
+};
+
 const getNextActionCopy = (order, userId) => {
   if (!order) return '';
 
@@ -219,6 +239,8 @@ function Orders() {
   const [deliveryNote, setDeliveryNote] = useState('');
   const [deliveryAssets, setDeliveryAssets] = useState('');
   const [revisionNote, setRevisionNote] = useState('');
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState('');
 
   useEffect(() => {
     setRole(defaultRole);
@@ -357,6 +379,7 @@ function Orders() {
       setDeliveryNote('');
       setDeliveryAssets('');
       setRevisionNote('');
+      setReviewComment('');
     } catch (err) {
       toast.error(err.message);
     } finally {
@@ -368,6 +391,30 @@ function Orders() {
   const isBuyer = selectedOrder?.clientId === user?.id;
   const counterparty = getOrderCounterparty(selectedOrder, user?.id);
   const selectedTone = getStatusTone(selectedOrder?.status);
+  const selectedProgress = getFlowProgress(selectedOrder?.status);
+  const selectedStageLabel = getCurrentStageLabel(selectedOrder?.status);
+
+  const submitReview = async () => {
+    if (!selectedOrder || actionLoading === 'review') return;
+
+    setActionLoading('review');
+    try {
+      const result = await reviewOrder(selectedOrder.id, {
+        rating: reviewRating,
+        ...(reviewComment.trim() ? { comment: reviewComment.trim() } : {}),
+      });
+      if (result.order) {
+        setSelectedOrder(result.order);
+        setOrders((current) => current.map((order) => (order.id === result.order.id ? result.order : order)));
+      }
+      setReviewComment('');
+      toast.success('Avaliação enviada.');
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setActionLoading('');
+    }
+  };
 
   const metrics = useMemo(() => {
     const pending = orders.filter((order) => order.status === 'PENDING').length;
@@ -548,6 +595,10 @@ function Orders() {
                         Atualizado {formatRelativeDate(order.updatedAt)}
                       </span>
                     </div>
+
+                    <div className={styles.orderMiniProgress} aria-hidden="true">
+                      <span style={{ width: `${getFlowProgress(order.status)}%` }} />
+                    </div>
                   </button>
                 );
               })
@@ -587,6 +638,16 @@ function Orders() {
                     {selectedOrder.deliveryDays} {selectedOrder.deliveryDays === 1 ? 'dia' : 'dias'} para entrega
                   </p>
 
+                  <div className={styles.flowMeter}>
+                    <div className={styles.flowMeterHeader}>
+                      <span>{selectedStageLabel}</span>
+                      <strong>{selectedProgress}%</strong>
+                    </div>
+                    <div className={styles.flowRail}>
+                      <span style={{ width: `${selectedProgress}%` }} />
+                    </div>
+                  </div>
+
                   <div className={styles.progressTrack}>
                     {ORDER_STAGES.map((stage) => {
                       const state = getOrderStageState(selectedOrder.status, stage.key);
@@ -617,9 +678,12 @@ function Orders() {
                     </div>
                   </div>
 
-                  <p className={styles.nextActionCopy}>
-                    {getNextActionCopy(selectedOrder, user?.id)}
-                  </p>
+                  <div className={styles.nextActionCard}>
+                    <span>Próximo passo</span>
+                    <p className={styles.nextActionCopy}>
+                      {getNextActionCopy(selectedOrder, user?.id)}
+                    </p>
+                  </div>
 
                   {selectedOrder.conversationId && (
                     <Link to={`/messages?chat=${selectedOrder.conversationId}`} className={styles.primaryLink}>
@@ -878,6 +942,50 @@ function Orders() {
                       <Link to={`/profile/${counterparty.username}`} className={styles.profileLink}>
                         Ver perfil de @{counterparty.username}
                       </Link>
+                    </div>
+                  )}
+
+                  {isBuyer && selectedOrder.status === 'COMPLETED' && (
+                    <div className={styles.sideCard}>
+                      <span className={styles.sideCardLabel}>Avaliação</span>
+                      {selectedOrder.review ? (
+                        <div className={styles.reviewResult}>
+                          <strong>{'★'.repeat(selectedOrder.review.rating)}{'☆'.repeat(5 - selectedOrder.review.rating)}</strong>
+                          <p>{selectedOrder.review.comment || 'Pedido avaliado sem comentário.'}</p>
+                          <span>{formatDateTime(selectedOrder.review.createdAt)}</span>
+                        </div>
+                      ) : (
+                        <>
+                          <div className={styles.ratingPicker}>
+                            {[1, 2, 3, 4, 5].map((value) => (
+                              <button
+                                key={value}
+                                type="button"
+                                className={value <= reviewRating ? styles.starActive : styles.starButton}
+                                onClick={() => setReviewRating(value)}
+                                aria-label={`${value} estrelas`}
+                              >
+                                ★
+                              </button>
+                            ))}
+                          </div>
+                          <textarea
+                            className={styles.textarea}
+                            rows={4}
+                            value={reviewComment}
+                            onChange={(event) => setReviewComment(event.target.value)}
+                            placeholder="Conte como foi trabalhar com este freelancer."
+                          />
+                          <button
+                            type="button"
+                            className={styles.primaryButton}
+                            disabled={actionLoading === 'review'}
+                            onClick={submitReview}
+                          >
+                            {actionLoading === 'review' ? 'Enviando...' : 'Enviar avaliação'}
+                          </button>
+                        </>
+                      )}
                     </div>
                   )}
                 </aside>

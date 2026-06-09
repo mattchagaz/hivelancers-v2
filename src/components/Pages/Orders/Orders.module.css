@@ -223,6 +223,58 @@
   transform: none;
 }
 
+.ratingPicker {
+  display: flex;
+  gap: 4px;
+}
+
+.starButton,
+.starActive {
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
+  color: var(--text-muted, #a0a0ab);
+  font-size: 1.05rem;
+  transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease;
+}
+
+.starActive {
+  background: var(--warning-bg, #fffbeb);
+  color: var(--warning-color, #d97706);
+}
+
+.starButton:hover,
+.starActive:hover {
+  transform: translateY(-1px);
+}
+
+.reviewResult {
+  padding: 14px;
+  border: 1px solid var(--border-color, #e8e8ef);
+  border-radius: 16px;
+  background: var(--bg-subtle, #fbfcfe);
+}
+
+.reviewResult strong {
+  display: block;
+  color: var(--warning-color, #d97706);
+  letter-spacing: 0.05em;
+}
+
+.reviewResult p {
+  margin: 8px 0 0;
+  color: var(--text-secondary, #6c6d72);
+  line-height: 1.55;
+}
+
+.reviewResult span {
+  display: block;
+  margin-top: 8px;
+  color: var(--text-muted, #a0a0ab);
+  font-size: 0.78rem;
+  font-weight: 750;
+}
+
 .statGrid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -452,6 +504,22 @@
   margin-top: 14px;
 }
 
+.orderMiniProgress {
+  width: 100%;
+  height: 7px;
+  margin-top: 14px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--bg-tertiary, #eef0f6);
+}
+
+.orderMiniProgress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--primary-color, #3e73e6), var(--secondary-color, #6393fc));
+}
+
 .orderIdentity,
 .personCard {
   display: flex;
@@ -588,6 +656,47 @@
   overflow-wrap: anywhere;
 }
 
+.flowMeter {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--border-light, #eef0f6);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.68);
+}
+
+.flowMeterHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.flowMeterHeader span {
+  color: var(--text-secondary, #6c6d72);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.flowMeterHeader strong {
+  color: var(--text-primary, #1a1a2e);
+  font-size: 1rem;
+}
+
+.flowRail {
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--bg-tertiary, #eef0f6);
+}
+
+.flowRail span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--primary-color, #3e73e6), var(--secondary-color, #6393fc));
+}
+
 .progressTrack {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -635,6 +744,24 @@
   border: 1px solid rgba(var(--primary-color-rgb, 62, 115, 230), 0.12);
   border-radius: 18px;
   background: var(--bg-primary, #fff);
+}
+
+.nextActionCard {
+  padding: 16px;
+  border: 1px solid rgba(var(--primary-color-rgb, 62, 115, 230), 0.12);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at top right, rgba(var(--primary-color-rgb, 62, 115, 230), 0.1), transparent 34%),
+    var(--bg-primary, #fff);
+}
+
+.nextActionCard span {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--primary-color, #3e73e6);
+  font-size: 0.74rem;
+  font-weight: 850;
+  text-transform: uppercase;
 }
 
 .personLabel {

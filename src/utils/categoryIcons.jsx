@@ -10,10 +10,12 @@ import {
   FaLanguage,
   FaLeaf,
   FaLaptopCode,
+  FaMagic,
   FaMusic,
   FaPalette,
   FaPenNib,
   FaPaintBrush,
+  FaRobot,
   FaUserTie,
   FaVideo,
 } from 'react-icons/fa';
@@ -29,7 +31,9 @@ const CATEGORY_ICON_MAP = {
   'marketing-digital': FaChartLine,
   pen: FaPenNib,
   redacao: FaPenNib,
+  escrita: FaPenNib,
   'redacao-e-traducao': FaLanguage,
+  'redacao-traducao': FaLanguage,
   traducao: FaLanguage,
   video: FaVideo,
   'video-e-animacao': FaVideo,
@@ -45,6 +49,10 @@ const CATEGORY_ICON_MAP = {
   lifestyle: FaLeaf,
   'estilo-de-vida': FaLeaf,
   globe: FaGlobeAmericas,
+  ia: FaRobot,
+  ai: FaRobot,
+  robot: FaRobot,
+  magic: FaMagic,
 };
 
 const normalizeIconKey = (value = '') =>

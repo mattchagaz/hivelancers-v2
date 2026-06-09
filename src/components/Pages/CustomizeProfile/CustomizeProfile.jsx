@@ -31,6 +31,7 @@ import {
 import { getProfileLinkMeta } from '../../../utils/profileLinks';
 import { buildCustomizeProfileErrors, normalizeExternalUrl } from '../../../utils/profileValidation';
 import { SKILL_SUGGESTIONS } from '../../../utils/skillSuggestions';
+import ConfirmDialog from '../../UI/ConfirmDialog/ConfirmDialog';
 import styles from './CustomizeProfile.module.css';
 
 const profileFromUser = (user) => ({
@@ -69,6 +70,8 @@ function CustomizeProfile() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [uploadingProjectId, setUploadingProjectId] = useState('');
   const [draggingProjectId, setDraggingProjectId] = useState('');
+  const [projectRemoveConfirm, setProjectRemoveConfirm] = useState(null);
+  const [galleryImageRemoveConfirm, setGalleryImageRemoveConfirm] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -276,6 +279,7 @@ function CustomizeProfile() {
       }
       return next;
     });
+    setProjectRemoveConfirm(null);
   };
 
   const handleAvatarUpload = async (file) => {
@@ -380,6 +384,7 @@ function CustomizeProfile() {
           : project
       )
     );
+    setGalleryImageRemoveConfirm(null);
   };
 
   const handleSave = async () => {
@@ -928,7 +933,11 @@ function CustomizeProfile() {
                         >
                           Descer
                         </button>
-                        <button type="button" className={styles.dangerButton} onClick={() => removeProject(project.id)}>
+                        <button
+                          type="button"
+                          className={styles.dangerButton}
+                          onClick={() => setProjectRemoveConfirm({ id: project.id, title: project.title })}
+                        >
                           Remover
                         </button>
                         <input
@@ -967,7 +976,13 @@ function CustomizeProfile() {
                               <button
                                 type="button"
                                 className={styles.galleryThumbRemove}
-                                onClick={() => removeProjectGalleryImage(project.id, image.id)}
+                                onClick={() =>
+                                  setGalleryImageRemoveConfirm({
+                                    projectId: project.id,
+                                    imageId: image.id,
+                                    projectTitle: project.title,
+                                  })
+                                }
                               >
                                 ×
                               </button>
@@ -1079,6 +1094,29 @@ function CustomizeProfile() {
           </section>
         </aside>
       </div>
+
+      <ConfirmDialog
+        isOpen={Boolean(projectRemoveConfirm)}
+        title="Remover projeto?"
+        description={`O projeto "${projectRemoveConfirm?.title || 'selecionado'}" será removido do seu portfólio.`}
+        confirmLabel="Remover projeto"
+        onCancel={() => setProjectRemoveConfirm(null)}
+        onConfirm={() => {
+          if (projectRemoveConfirm) removeProject(projectRemoveConfirm.id);
+        }}
+      />
+      <ConfirmDialog
+        isOpen={Boolean(galleryImageRemoveConfirm)}
+        title="Remover foto do projeto?"
+        description={`Esta foto será removida da galeria de "${galleryImageRemoveConfirm?.projectTitle || 'projeto'}".`}
+        confirmLabel="Remover foto"
+        onCancel={() => setGalleryImageRemoveConfirm(null)}
+        onConfirm={() => {
+          if (galleryImageRemoveConfirm) {
+            removeProjectGalleryImage(galleryImageRemoveConfirm.projectId, galleryImageRemoveConfirm.imageId);
+          }
+        }}
+      />
     </div>
   );
 }

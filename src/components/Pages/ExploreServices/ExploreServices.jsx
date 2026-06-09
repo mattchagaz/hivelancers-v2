@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { toast, Toaster } from 'sonner';
-import { FaMagnifyingGlass } from 'react-icons/fa6';
+import {
+  FaMagnifyingGlass,
+  FaSliders,
+} from 'react-icons/fa6';
 import { SERVICE_GRADIENTS } from '../../../data/services';
 import { listCategories, listPublicServices } from '../../../services/services';
 import { addFavoriteService, getMyFavorites, removeFavoriteService } from '../../../services/users';
@@ -15,6 +18,9 @@ const formatPrice = (cents) =>
     currency: 'BRL',
   }).format((cents || 0) / 100);
 
+const normalizeSubcategories = (category) =>
+  Array.isArray(category?.subcategories) ? category.subcategories : [];
+
 function ExploreServices() {
   const [searchParams] = useSearchParams();
   const [categories, setCategories] = useState([]);
@@ -26,6 +32,7 @@ function ExploreServices() {
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [activeCategorySlug, setActiveCategorySlug] = useState('all');
+  const [activeSubcategorySlug, setActiveSubcategorySlug] = useState('');
   const [priceRange, setPriceRange] = useState([0, 10000]);
   const [debouncedPrice, setDebouncedPrice] = useState([0, 10000]);
   const [deliveryMax, setDeliveryMax] = useState(0);
@@ -70,10 +77,20 @@ function ExploreServices() {
 
   useEffect(() => {
     const categoryFromUrl = searchParams.get('category');
+    const subcategoryFromUrl = searchParams.get('subcategory');
+    const queryFromUrl = searchParams.get('q');
     if (categoryFromUrl) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setActiveCategorySlug(categoryFromUrl);
     }
+    if (subcategoryFromUrl) {
+      setActiveSubcategorySlug(subcategoryFromUrl);
+    }
+    if (queryFromUrl) {
+      const timer = setTimeout(() => setSearch(queryFromUrl), 0);
+      return () => clearTimeout(timer);
+    }
+    return undefined;
   }, [searchParams]);
 
   useEffect(() => {
@@ -89,7 +106,7 @@ function ExploreServices() {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setPage(1);
-  }, [debouncedSearch, activeCategorySlug, debouncedPrice, deliveryMax, sort]);
+  }, [debouncedSearch, activeCategorySlug, activeSubcategorySlug, debouncedPrice, deliveryMax, sort]);
 
   useEffect(() => {
     let cancelled = false;
@@ -99,6 +116,7 @@ function ExploreServices() {
     const params = { page, pageSize, sort };
     if (debouncedSearch) params.q = debouncedSearch;
     if (activeCategorySlug !== 'all') params.category = activeCategorySlug;
+    if (activeSubcategorySlug) params.subcategory = activeSubcategorySlug;
     if (debouncedPrice[0] > 0) params.minPrice = debouncedPrice[0] * 100;
     if (debouncedPrice[1] < 10000) params.maxPrice = debouncedPrice[1] * 100;
     if (deliveryMax > 0) params.deliveryMax = deliveryMax;
@@ -118,18 +136,21 @@ function ExploreServices() {
       });
 
     return () => { cancelled = true; };
-  }, [page, debouncedSearch, activeCategorySlug, debouncedPrice, deliveryMax, sort]);
+  }, [page, debouncedSearch, activeCategorySlug, activeSubcategorySlug, debouncedPrice, deliveryMax, sort]);
 
   const clearFilters = () => {
     setSearch('');
     setActiveCategorySlug('all');
+    setActiveSubcategorySlug('');
     setPriceRange([0, 10000]);
     setDeliveryMax(0);
     setSort('newest');
   };
 
   const hasActiveFilters =
+    Boolean(search.trim()) ||
     activeCategorySlug !== 'all' ||
+    Boolean(activeSubcategorySlug) ||
     priceRange[0] > 0 ||
     priceRange[1] < 10000 ||
     deliveryMax > 0 ||
@@ -140,24 +161,80 @@ function ExploreServices() {
     [categories]
   );
 
+  const activeCategory = useMemo(
+    () => categoryChips.find((cat) => cat.slug === activeCategorySlug) || categoryChips[0],
+    [activeCategorySlug, categoryChips]
+  );
+
+  const subcategoryChips = useMemo(
+    () => normalizeSubcategories(activeCategory),
+    [activeCategory]
+  );
+
+  const activeSubcategory = useMemo(
+    () => subcategoryChips.find((item) => item.slug === activeSubcategorySlug),
+    [activeSubcategorySlug, subcategoryChips]
+  );
+
+  const activeFilterChips = useMemo(() => {
+    const chips = [];
+    if (search.trim()) chips.push({ key: 'search', label: `Busca: ${search.trim()}` });
+    if (activeCategorySlug !== 'all') chips.push({ key: 'category', label: activeCategory?.name || 'Categoria' });
+    if (activeSubcategorySlug) chips.push({ key: 'subcategory', label: activeSubcategory?.name || 'Subcategoria' });
+    if (priceRange[0] > 0 || priceRange[1] < 10000) {
+      chips.push({ key: 'price', label: `${formatPrice(priceRange[0] * 100)} - ${formatPrice(priceRange[1] * 100)}` });
+    }
+    if (deliveryMax > 0) chips.push({ key: 'delivery', label: `Até ${deliveryMax} ${deliveryMax === 1 ? 'dia' : 'dias'}` });
+    if (sort !== 'newest') chips.push({ key: 'sort', label: sort === 'price_asc' ? 'Menor preço' : 'Maior preço' });
+    return chips;
+  }, [activeCategory?.name, activeCategorySlug, activeSubcategory?.name, activeSubcategorySlug, deliveryMax, priceRange, search, sort]);
+
   return (
     <div className={styles.page}>
-      <div className={styles.header}>
-        <div className={styles.headerText}>
-          <h1 className={styles.title}>Explorar serviços</h1>
+      <section className={styles.hero}>
+        <div className={styles.heroMain}>
+          <span className={styles.eyebrow}>Marketplace Hivelancers</span>
+          <h1 className={styles.title}>Encontre o serviço certo com filtros claros e comparação rápida.</h1>
           <p className={styles.subtitle}>
-            Descubra profissionais incríveis para seu próximo projeto.
+            Explore categorias, compare preço e prazo, salve favoritos e avance para contratação com mais confiança.
+          </p>
+          <div className={styles.heroActions}>
+            <button type="button" className={styles.primaryAction} onClick={() => setShowFilters(true)}>
+              <FaSliders /> Ajustar filtros
+            </button>
+            <button type="button" className={styles.secondaryAction} onClick={clearFilters}>
+              Ver todos
+            </button>
+          </div>
+        </div>
+        <div className={styles.heroSearchCard}>
+          <span>Busca assistida</span>
+          <strong>{activeCategorySlug === 'all' ? 'Todas as categorias' : activeCategory?.name}</strong>
+          <p>
+            {hasActiveFilters
+              ? 'Filtros ativos refinam os resultados em tempo real.'
+              : 'Comece por uma categoria ou termo para montar uma shortlist.'}
           </p>
         </div>
-      </div>
+      </section>
 
       <div className={styles.catBar}>
+        <div className={styles.catBarHeader}>
+          <div>
+            <span className={styles.sectionKicker}>Categorias</span>
+            <h2>Escolha uma área</h2>
+          </div>
+          <span className={styles.catCount}>{categories.length} categorias</span>
+        </div>
         <div className={styles.catScroll}>
           {categoryChips.map((cat) => (
             <button
               key={cat.id}
               className={`${styles.catChip} ${activeCategorySlug === cat.slug ? styles.catChipActive : ''}`}
-              onClick={() => setActiveCategorySlug(cat.slug)}
+              onClick={() => {
+                setActiveCategorySlug(cat.slug);
+                setActiveSubcategorySlug('');
+              }}
             >
               <span className={styles.catIcon}>
                 <CategoryIcon category={cat} />
@@ -167,6 +244,36 @@ function ExploreServices() {
           ))}
         </div>
       </div>
+
+      {activeCategorySlug !== 'all' && subcategoryChips.length > 0 && (
+        <div className={styles.subcategoryBar}>
+          <div className={styles.catBarHeader}>
+            <div>
+              <span className={styles.sectionKicker}>Subcategorias</span>
+              <h2>{activeCategory?.name}</h2>
+            </div>
+            <button
+              type="button"
+              className={styles.clearInline}
+              onClick={() => setActiveSubcategorySlug('')}
+            >
+              Todas
+            </button>
+          </div>
+          <div className={styles.catScroll}>
+            {subcategoryChips.map((item) => (
+              <button
+                key={item.slug}
+                type="button"
+                className={`${styles.catChip} ${activeSubcategorySlug === item.slug ? styles.catChipActive : ''}`}
+                onClick={() => setActiveSubcategorySlug(item.slug)}
+              >
+                {item.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className={styles.toolbar}>
         <div className={styles.searchBox}>
@@ -190,14 +297,7 @@ function ExploreServices() {
 
         <div className={styles.toolbarRight}>
           <button className={styles.filterToggle} onClick={() => setShowFilters(!showFilters)}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <line x1="4" y1="6" x2="20" y2="6" />
-              <line x1="8" y1="12" x2="20" y2="12" />
-              <line x1="12" y1="18" x2="20" y2="18" />
-              <circle cx="6" cy="12" r="2" fill="currentColor" />
-              <circle cx="10" cy="18" r="2" fill="currentColor" />
-              <circle cx="18" cy="6" r="2" fill="currentColor" />
-            </svg>
+            <FaSliders />
             Filtros
             {hasActiveFilters && <span className={styles.filterDot} />}
           </button>
@@ -319,15 +419,32 @@ function ExploreServices() {
 
         <div className={styles.content}>
           <div className={styles.resultsBar}>
-            <span className={styles.resultsCount}>
-              {loading ? 'Buscando...' : `${total} ${total === 1 ? 'serviço encontrado' : 'serviços encontrados'}`}
-            </span>
+            <div>
+              <span className={styles.resultsCount}>
+                {loading ? 'Buscando...' : `${total} ${total === 1 ? 'serviço encontrado' : 'serviços encontrados'}`}
+              </span>
+              <p className={styles.resultsHint}>
+                {activeSubcategory?.name
+                  ? `${activeCategory?.name} / ${activeSubcategory.name}`
+                  : activeCategorySlug === 'all'
+                  ? 'Todos os serviços publicados'
+                  : `Categoria: ${activeCategory?.name}`}
+              </p>
+            </div>
             {hasActiveFilters && (
               <button className={styles.clearInline} onClick={clearFilters}>
                 Limpar filtros ×
               </button>
             )}
           </div>
+
+          {activeFilterChips.length > 0 && (
+            <div className={styles.activeFilters}>
+              {activeFilterChips.map((chip) => (
+                <span key={chip.key} className={styles.activeChip}>{chip.label}</span>
+              ))}
+            </div>
+          )}
 
           {!loading && services.length === 0 ? (
             <EmptyState
@@ -367,6 +484,12 @@ function ExploreServices() {
                             : SERVICE_GRADIENTS[index % SERVICE_GRADIENTS.length],
                         }}
                       >
+                        {service.category?.name && (
+                          <span className={styles.categoryBadge}>
+                            <CategoryIcon category={service.category} />
+                            {service.subcategoryName || service.category.name}
+                          </span>
+                        )}
                         <button
                           className={`${styles.favBtn} ${favorites.includes(service.id) ? styles.favBtnActive : ''}`}
                           onClick={(event) => {
@@ -401,6 +524,9 @@ function ExploreServices() {
                         </div>
 
                         <h3 className={styles.cardTitle}>{service.title}</h3>
+                        {service.description && (
+                          <p className={styles.cardDescription}>{service.description}</p>
+                        )}
 
                         <div className={styles.cardFooter}>
                           {minDelivery !== undefined && (

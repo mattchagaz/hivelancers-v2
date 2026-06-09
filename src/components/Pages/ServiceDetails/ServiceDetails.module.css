@@ -251,18 +251,19 @@
 
 .sellerStats {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
+  grid-template-columns: 1fr;
+  gap: 8px;
 }
 
 .sellerStat {
-  padding: 14px;
+  min-width: 0;
+  padding: 12px 14px;
   border-radius: 16px;
   background: var(--bg-subtle);
   border: 1px solid var(--border-light);
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
 
 .sellerStat strong,
@@ -272,6 +273,12 @@
 .checkoutTop strong,
 .relatedBody strong {
   color: var(--text-primary);
+}
+
+.sellerStat strong {
+  font-size: 0.95rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
 .sellerStat span,
@@ -284,6 +291,10 @@
 .relatedSeller,
 .relatedMeta {
   color: var(--text-secondary);
+}
+
+.sellerStat span {
+  font-size: 0.78rem;
 }
 
 .mainGrid {

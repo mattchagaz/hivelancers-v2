@@ -82,16 +82,25 @@ export const getMe = async () => {
   return data.user;
 };
 
-export const getGoogleLoginUrl = () => {
+export const getGoogleLoginUrl = (redirectPath = '/login') => {
+  const redirectTo = `${window.location.origin}${redirectPath}`;
   const configuredUrl = import.meta.env.VITE_GOOGLE_AUTH_URL;
-  if (configuredUrl) return configuredUrl;
+  if (configuredUrl) {
+    try {
+      const url = new URL(configuredUrl);
+      url.searchParams.set('redirectTo', redirectTo);
+      return url.toString();
+    } catch {
+      return configuredUrl;
+    }
+  }
 
   const url = new URL('/auth/google', apiBaseURL);
-  url.searchParams.set('redirectTo', `${window.location.origin}/login`);
+  url.searchParams.set('redirectTo', redirectTo);
   return url.toString();
 };
 
-export const completeGoogleLogin = async (search) => {
+export const completeGoogleLogin = async (search, redirectPath = '/login') => {
   const params = new URLSearchParams(search);
   const error = params.get('error') || params.get('error_description');
   if (error) {
@@ -122,7 +131,7 @@ export const completeGoogleLogin = async (search) => {
   try {
     const response = await api.post('/auth/google/callback', {
       code,
-      redirectTo: `${window.location.origin}/login`,
+      redirectTo: `${window.location.origin}${redirectPath}`,
     });
     const data = persistAuthData(response.data);
     if (!data.user) {
