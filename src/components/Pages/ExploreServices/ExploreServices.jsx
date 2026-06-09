@@ -468,6 +468,7 @@ function ExploreServices() {
                   );
                   const sellerName = `${service.owner?.firstName || ''} ${service.owner?.lastName || ''}`.trim() || 'Vendedor';
                   const sellerInitial = (sellerName[0] || '?').toUpperCase();
+                  const sellerAvatarUrl = service.owner?.avatarUrl;
 
                   return (
                     <Link
@@ -514,7 +515,13 @@ function ExploreServices() {
 
                       <div className={viewMode === 'grid' ? styles.cardBody : styles.listCardBody}>
                         <div className={styles.sellerRow}>
-                          <div className={styles.sellerAvatar}>{sellerInitial}</div>
+                          <div className={styles.sellerAvatar}>
+                            {sellerAvatarUrl ? (
+                              <img src={sellerAvatarUrl} alt={sellerName} />
+                            ) : (
+                              sellerInitial
+                            )}
+                          </div>
                           <div className={styles.sellerInfo}>
                             <span className={styles.sellerName}>{sellerName}</span>
                             {service.owner?.headline && (

@@ -420,7 +420,7 @@ function Checkout() {
               <div className={styles.sellerChip}>
                 <div className={styles.avatar}>
                   {service.owner?.avatarUrl ? (
-                    <img src={service.owner.avatarUrl} alt="" className={styles.avatarImg} />
+                    <img src={service.owner.avatarUrl} alt={sellerName} className={styles.avatarImg} />
                   ) : (
                     sellerInitials
                   )}
@@ -484,7 +484,7 @@ function Checkout() {
               <span className={styles.label}>Briefing do projeto</span>
               <textarea
                 className={styles.textarea}
-                rows={7}
+                rows={5}
                 value={briefing}
                 onChange={(e) => setBriefing(e.target.value)}
                 placeholder="Descreva objetivo, público, referências, tom de voz, entregáveis esperados e qualquer detalhe que ajude o freelancer a produzir melhor."
@@ -495,7 +495,7 @@ function Checkout() {
               <span className={styles.label}>Links, arquivos e referências</span>
               <textarea
                 className={styles.textarea}
-                rows={4}
+                rows={3}
                 value={attachments}
                 onChange={(e) => setAttachments(e.target.value)}
                 placeholder="Cole links de drive, Figma, Pinterest, site atual, exemplos visuais ou notas adicionais."

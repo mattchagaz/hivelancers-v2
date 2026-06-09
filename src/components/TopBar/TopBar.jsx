@@ -29,6 +29,40 @@ const formatRelativeTime = (value) => {
   return new Date(value).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
 };
 
+const playNotificationSound = () => {
+  try {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+
+    const context = new AudioContext();
+    const gain = context.createGain();
+    const firstTone = context.createOscillator();
+    const secondTone = context.createOscillator();
+    const now = context.currentTime;
+
+    gain.connect(context.destination);
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.08, now + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.34);
+
+    firstTone.type = 'sine';
+    firstTone.frequency.setValueAtTime(740, now);
+    firstTone.connect(gain);
+    firstTone.start(now);
+    firstTone.stop(now + 0.16);
+
+    secondTone.type = 'sine';
+    secondTone.frequency.setValueAtTime(980, now + 0.14);
+    secondTone.connect(gain);
+    secondTone.start(now + 0.14);
+    secondTone.stop(now + 0.34);
+
+    setTimeout(() => context.close().catch(() => {}), 520);
+  } catch {
+    // Browsers can block audio before user interaction. The visual badge still updates.
+  }
+};
+
 const getOrderNotification = (order, userId) => {
   if (!order?.id) return null;
 
@@ -218,13 +252,29 @@ function TopBar({ userName = '', userRole = 'freelancer', avatarUrl = '', onMenu
 
     const socket = connectSocket();
     const refresh = () => loadNotifications();
-    const events = ['order:new', 'order:updated', 'order:event', 'message:new', 'conversation:message', 'conversation:new'];
+    const handleNewOrder = (payload) => {
+      const order = payload?.order;
+      const isSeller = toId(order?.freelancerId) === toId(user.id);
 
-    events.forEach((event) => socket.on(event, refresh));
+      if (isSeller && order?.status === 'PENDING') {
+        playNotificationSound();
+        toast.success('Novo pedido recebido.', {
+          description: `${getPersonName(order.client)} contratou ${order.service?.title || order.planTitle || 'um serviço'}.`,
+        });
+      }
+
+      loadNotifications();
+    };
+
+    const refreshEvents = ['order:updated', 'order:event', 'message:new', 'conversation:message', 'conversation:new'];
+
+    socket.on('order:new', handleNewOrder);
+    refreshEvents.forEach((event) => socket.on(event, refresh));
 
     return () => {
       const current = getSocket();
-      events.forEach((event) => current.off(event, refresh));
+      current.off('order:new', handleNewOrder);
+      refreshEvents.forEach((event) => current.off(event, refresh));
     };
   }, [loadNotifications, user?.id]);
 

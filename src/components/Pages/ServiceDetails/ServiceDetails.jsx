@@ -147,6 +147,7 @@ function ServiceDetails() {
     service.plans.find((p) => p.id === selectedPlanId) || service.plans[0];
   const sellerName = `${service.owner?.firstName || ''} ${service.owner?.lastName || ''}`.trim() || 'Vendedor';
   const sellerInitial = (sellerName[0] || '?').toUpperCase();
+  const sellerAvatarUrl = service.owner?.avatarUrl;
   const isOwner = user?.id === service.ownerId;
   const tags = Array.isArray(service.tags) ? service.tags : [];
   const subcategoryName = service.subcategoryName || '';
@@ -290,7 +291,13 @@ function ServiceDetails() {
 
         <aside className={styles.heroSeller}>
           <div className={styles.sellerHeader}>
-            <div className={styles.sellerAvatar}>{sellerInitial}</div>
+            <div className={styles.sellerAvatar}>
+              {sellerAvatarUrl ? (
+                <img src={sellerAvatarUrl} alt={sellerName} />
+              ) : (
+                sellerInitial
+              )}
+            </div>
             <div>
               <h2 className={styles.sellerName}>{sellerName}</h2>
               {service.owner?.headline && (
