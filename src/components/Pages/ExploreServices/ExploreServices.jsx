@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { toast, Toaster } from 'sonner';
+import { FaMagnifyingGlass } from 'react-icons/fa6';
 import { SERVICE_GRADIENTS } from '../../../data/services';
 import { listCategories, listPublicServices } from '../../../services/services';
 import { addFavoriteService, getMyFavorites, removeFavoriteService } from '../../../services/users';
 import { CategoryIcon } from '../../../utils/categoryIcons';
+import EmptyState from '../../UI/EmptyState/EmptyState';
 import styles from './ExploreServices.module.css';
 
 const formatPrice = (cents) =>
@@ -69,6 +71,7 @@ function ExploreServices() {
   useEffect(() => {
     const categoryFromUrl = searchParams.get('category');
     if (categoryFromUrl) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setActiveCategorySlug(categoryFromUrl);
     }
   }, [searchParams]);
@@ -84,11 +87,13 @@ function ExploreServices() {
   }, [priceRange]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPage(1);
   }, [debouncedSearch, activeCategorySlug, debouncedPrice, deliveryMax, sort]);
 
   useEffect(() => {
     let cancelled = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
 
     const params = { page, pageSize, sort };
@@ -325,21 +330,16 @@ function ExploreServices() {
           </div>
 
           {!loading && services.length === 0 ? (
-            <div className={styles.empty}>
-              <div className={styles.emptyIcon}>
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round">
-                  <circle cx="11" cy="11" r="8" />
-                  <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                </svg>
-              </div>
-              <h3 className={styles.emptyTitle}>Nenhum serviço encontrado</h3>
-              <p className={styles.emptySub}>Tente ajustar os filtros ou buscar por outro termo.</p>
-              {hasActiveFilters && (
-                <button className={styles.emptyBtn} onClick={clearFilters}>
-                  Limpar filtros
-                </button>
-              )}
-            </div>
+            <EmptyState
+              icon={<FaMagnifyingGlass />}
+              eyebrow="Busca sem resultado"
+              title="Nenhum serviço encontrado"
+              description="Ajuste filtros, faixa de preço ou termo de busca para ampliar as opções disponíveis."
+              actionLabel={hasActiveFilters ? 'Limpar filtros' : undefined}
+              actionOnClick={hasActiveFilters ? clearFilters : undefined}
+              secondaryActionLabel={hasActiveFilters ? 'Ver todos' : undefined}
+              secondaryActionTo={hasActiveFilters ? '/explore' : undefined}
+            />
           ) : (
             <>
               <div className={viewMode === 'grid' ? styles.grid : styles.list}>

@@ -3,9 +3,9 @@ import LoginP from './components/Auth/Login/Login';
 import SignupP from './components/Auth/Signup/Signup';
 import VerifyOtp from './components/Auth/VerifyOtp/VerifyOtp';
 import ForgetPassword from './components/Auth/ForgetPassword/ForgetPassword';
-import { ProtectedRoute, PublicOnlyRoute } from './components/Auth/ProtectedRoute';
+import { AdminRoute, ProtectedRoute, PublicOnlyRoute } from './components/Auth/ProtectedRoute';
 import UserSelection from './components/Pages/UserSelection/UserSelection';
-import WelcomeUser from './components/Pages/WelcomeUser/Welcomeuser';
+import WelcomeUser from './components/Pages/WelcomeUser/WelcomeUser';
 import AppLayout from './components/Layout/AppLayout';
 import Dashboard from './components/Pages/Dashboard/Dashboard';
 import CreateService from './components/Pages/CreateService/CreateService';
@@ -19,6 +19,8 @@ import Messages from './components/Pages/Messages/Messages';
 import CustomizeProfile from './components/Pages/CustomizeProfile/CustomizeProfile';
 import ProfileProjectDetails from './components/Pages/ProfileProjectDetails/ProfileProjectDetails';
 import Favorites from './components/Pages/Favorites/Favorites';
+import ComingSoon from './components/Pages/ComingSoon/ComingSoon';
+import Admin from './components/Pages/Admin/Admin';
 import './App.css';
 
 function App() {
@@ -45,6 +47,14 @@ function App() {
           {/* App principal */}
           <Route element={<AppLayout />}>
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route
+              path="/admin"
+              element={(
+                <AdminRoute>
+                  <Admin />
+                </AdminRoute>
+              )}
+            />
             <Route path="/services/new" element={<CreateService />} />
             <Route path="/services" element={<ExploreServices />} />
             <Route path="/services/:id/edit" element={<CreateService />} />
@@ -54,6 +64,8 @@ function App() {
             <Route path="/explore" element={<ExploreServices />} />
             <Route path="/messages" element={<Messages />} />
             <Route path="/favorites" element={<Favorites />} />
+            <Route path="/finances" element={<ComingSoon variant="finances" />} />
+            <Route path="/rewards" element={<ComingSoon variant="rewards" />} />
             <Route path="/profile/customize" element={<CustomizeProfile />} />
             <Route path="/profile/:handle/projects/:projectId" element={<ProfileProjectDetails />} />
             <Route path="/profile/:handle" element={<UserProfile />} />

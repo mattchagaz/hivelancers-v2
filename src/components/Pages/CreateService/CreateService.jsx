@@ -4,6 +4,7 @@ import { toast, Toaster } from 'sonner';
 import styles from './CreateService.module.css';
 import { listCategories, createService, getMyService, updateService, archiveService } from '../../../services/services';
 import { uploadImageToCloudinary } from '../../../services/cloudinary';
+import { CategoryIcon } from '../../../utils/categoryIcons';
 
 const TIER_BY_INDEX = ['BASIC', 'STANDARD', 'PREMIUM'];
 const TIER_NAME = { BASIC: 'Básico', STANDARD: 'Padrão', PREMIUM: 'Premium' };
@@ -441,7 +442,9 @@ function CreateService() {
                     className={`${styles.catCard} ${category === cat.id ? styles.catActive : ''}`}
                     onClick={() => { setCategory(cat.id); setSubCategory(''); }}
                   >
-                    <span className={styles.catIcon}>{cat.icon || '📦'}</span>
+                    <span className={styles.catIcon}>
+                      <CategoryIcon category={cat} />
+                    </span>
                     <span className={styles.catLabel}>{cat.name}</span>
                   </button>
                 ))}
@@ -690,7 +693,7 @@ function CreateService() {
                 <div className={styles.previewBody}>
                   <div className={styles.previewMeta}>
                     <span className={styles.previewCat}>
-                      {selectedCat?.icon || '📦'} {selectedCat?.name}
+                      <CategoryIcon category={selectedCat} /> {selectedCat?.name}
                       {subCategory && ` — ${subCategory}`}
                     </span>
                   </div>

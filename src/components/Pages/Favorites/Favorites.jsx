@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toast, Toaster } from 'sonner';
+import { FaBriefcase, FaHeart, FaUserFriends } from 'react-icons/fa';
 import { CategoryIcon } from '../../../utils/categoryIcons';
+import EmptyState from '../../UI/EmptyState/EmptyState';
 import {
   getMyFavorites,
   removeFavoriteFreelancer,
@@ -23,6 +25,7 @@ function Favorites() {
 
   useEffect(() => {
     let cancelled = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
 
     getMyFavorites()
@@ -106,19 +109,22 @@ function Favorites() {
       </section>
 
       {loading ? (
-        <div className={styles.emptyState}>
-          <h2>Carregando favoritos...</h2>
-        </div>
+        <EmptyState
+          compact
+          icon={<FaHeart />}
+          eyebrow="Shortlist"
+          title="Carregando favoritos..."
+          description="Estamos buscando seus serviços e talentos salvos."
+        />
       ) : totalSaved === 0 ? (
-        <div className={styles.emptyState}>
-          <h2>Nada salvo ainda</h2>
-          <p>Explore serviços e perfis para começar sua shortlist.</p>
-          <div className={styles.emptyActions}>
-            <Link to="/explore" className={styles.primaryAction}>
-              Explorar serviços
-            </Link>
-          </div>
-        </div>
+        <EmptyState
+          icon={<FaHeart />}
+          eyebrow="Nada salvo"
+          title="Monte sua primeira shortlist"
+          description="Salve serviços e freelancers promissores para comparar opções, retomar conversas e decidir com mais confiança."
+          actionLabel="Explorar serviços"
+          actionTo="/explore"
+        />
       ) : (
         <div className={styles.sections}>
           <section className={styles.section}>
@@ -127,7 +133,14 @@ function Favorites() {
               <span>{services.length}</span>
             </div>
             {services.length === 0 ? (
-              <div className={styles.emptyBox}>Você ainda não salvou serviços.</div>
+              <EmptyState
+                compact
+                icon={<FaBriefcase />}
+                title="Nenhum serviço salvo"
+                description="Quando um serviço fizer sentido para um projeto futuro, salve aqui para comparar depois."
+                actionLabel="Encontrar serviços"
+                actionTo="/explore"
+              />
             ) : (
               <div className={styles.serviceGrid}>
                 {services.map((service) => (
@@ -174,7 +187,14 @@ function Favorites() {
               <span>{favoriteFreelancerCards.length}</span>
             </div>
             {favoriteFreelancerCards.length === 0 ? (
-              <div className={styles.emptyBox}>Você ainda não salvou freelancers.</div>
+              <EmptyState
+                compact
+                icon={<FaUserFriends />}
+                title="Nenhum freelancer salvo"
+                description="Perfis salvos aparecem aqui com portfólio, habilidades e acesso rápido ao perfil."
+                actionLabel="Explorar talentos"
+                actionTo="/explore"
+              />
             ) : (
               <div className={styles.freelancerGrid}>
                 {favoriteFreelancerCards.map((freelancer) => (

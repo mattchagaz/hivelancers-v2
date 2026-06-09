@@ -1,6 +1,6 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { nextRouteAfterAuth } from '../../utils/authFlow';
+import { isAdminUser, nextRouteAfterAuth } from '../../utils/authFlow';
 
 function AuthSplash() {
   return (
@@ -33,6 +33,21 @@ export function ProtectedRoute({ children }) {
   const gatedPaths = ['/user-selection', '/welcome-user'];
   if (gatedPaths.includes(expected) && location.pathname !== expected) {
     return <Navigate to={expected} replace />;
+  }
+
+  return children ?? <Outlet />;
+}
+
+export function AdminRoute({ children }) {
+  const { isAuthenticated, isInitializing, user } = useAuth();
+  const location = useLocation();
+
+  if (isInitializing) return <AuthSplash />;
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+  }
+  if (!isAdminUser(user)) {
+    return <Navigate to="/dashboard" replace />;
   }
 
   return children ?? <Outlet />;

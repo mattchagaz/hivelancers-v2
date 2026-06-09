@@ -194,13 +194,13 @@ function Checkout() {
     },
     {
       title: 'Aprovação e liberação',
-      text: 'Voce aprova a entrega final ou pede revisao dentro do fluxo do pedido.',
+      text: 'Você aprova a entrega final ou pede revisão dentro do fluxo do pedido.',
     },
   ];
 
   const protections = [
-    'Todo o historico do pedido fica salvo na plataforma',
-    'Entregas e revisoes ficam centralizadas no mesmo fluxo',
+    'Todo o histórico do pedido fica salvo na plataforma',
+    'Entregas e revisões ficam centralizadas no mesmo fluxo',
     'Cliente e freelancer acompanham o status em tempo real pela plataforma',
   ];
 
@@ -214,10 +214,10 @@ function Checkout() {
 
     try {
       const requirements = [
-        orderTitle.trim() ? `Titulo interno: ${orderTitle.trim()}` : null,
+        orderTitle.trim() ? `Título interno: ${orderTitle.trim()}` : null,
         briefing.trim() ? `Briefing:\n${briefing.trim()}` : null,
         deliveryNote.trim() ? `Prazo ou contexto importante: ${deliveryNote.trim()}` : null,
-        attachments.trim() ? `Links e referencias:\n${attachments.trim()}` : null,
+        attachments.trim() ? `Links e referências:\n${attachments.trim()}` : null,
       ]
         .filter(Boolean)
         .join('\n\n');
@@ -246,7 +246,7 @@ function Checkout() {
         <div className={styles.successBadge}>Pedido criado</div>
         <h1 className={styles.successTitle}>Seu projeto já entrou no fluxo da Hivelancers.</h1>
         <p className={styles.successText}>
-          O pedido foi registrado com o briefing salvo. Agora o proximo passo e o freelancer aceitar o pedido e iniciar a execucao.
+          O pedido foi registrado com o briefing salvo. Agora o próximo passo é o freelancer aceitar o pedido e iniciar a execução.
         </p>
 
         <div className={styles.successGrid}>
@@ -260,7 +260,7 @@ function Checkout() {
           </div>
           <div className={styles.successCard}>
             <span className={styles.successLabel}>Próximo passo</span>
-            <strong>Voce pode acompanhar tudo na area de pedidos</strong>
+            <strong>Você pode acompanhar tudo na área de pedidos</strong>
           </div>
         </div>
 
@@ -276,7 +276,7 @@ function Checkout() {
             Abrir conversa
           </button>
           <Link to={`/services/${service.id}`} className={styles.secondaryButton}>
-            Voltar ao servico
+            Voltar ao serviço
           </Link>
         </div>
 
@@ -347,7 +347,7 @@ function Checkout() {
           )}
 
           <Link to={`/services/${service.id}`} className={styles.secondaryButton}>
-            Voltar ao servico
+            Voltar ao serviço
           </Link>
         </div>
 
@@ -368,7 +368,7 @@ function Checkout() {
 
       <section className={styles.header}>
         <div>
-          <div className={styles.headerBadge}>Criacao formal de pedido</div>
+          <div className={styles.headerBadge}>Criação formal de pedido</div>
           <h1 className={styles.title}>Finalizar pedido</h1>
           <p className={styles.subtitle}>
             Monte o briefing e confirme o escopo antes de iniciar o projeto com {sellerName}.
@@ -519,7 +519,7 @@ function Checkout() {
                 <strong>{selectedPlan.deliveryDays} {selectedPlan.deliveryDays === 1 ? 'dia' : 'dias'}</strong>
               </div>
               <div className={styles.priceRow}>
-                <span>Revisoes</span>
+                <span>Revisões</span>
                 <strong>{selectedPlan.revisions}</strong>
               </div>
               <div className={`${styles.priceRow} ${styles.priceTotal}`}>
@@ -552,7 +552,7 @@ function Checkout() {
             </button>
 
             <Link to={`/services/${service.id}`} className={styles.secondaryButton}>
-              Voltar ao servico
+              Voltar ao serviço
             </Link>
           </section>
 

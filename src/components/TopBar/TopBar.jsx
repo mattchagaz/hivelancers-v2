@@ -31,6 +31,8 @@ function TopBar({ userName = '', userRole = 'freelancer', avatarUrl = '', onMenu
   const initials = displayName.split(' ').map((n) => n[0]).filter(Boolean).join('').slice(0, 2).toUpperCase();
   const firstName = displayName.split(' ')[0];
   const profilePath = getPublicProfilePath(user);
+  const roleLabel = userRole === 'admin' ? 'Administrador' : userRole === 'freelancer' ? 'Freelancer' : 'Cliente';
+  const panelLabel = userRole === 'admin' ? 'Painel Administrativo' : userRole === 'freelancer' ? 'Painel do Freelancer' : 'Painel do Cliente';
 
   const handleLogout = async () => {
     try {
@@ -56,9 +58,7 @@ function TopBar({ userName = '', userRole = 'freelancer', avatarUrl = '', onMenu
         <h1 className={styles.greetText}>
           {getGreeting()}, <span className={styles.greetName}>{firstName}</span>
         </h1>
-        <p className={styles.greetSub}>
-          {userRole === 'freelancer' ? 'Painel do Freelancer' : 'Painel do Cliente'}
-        </p>
+        <p className={styles.greetSub}>{panelLabel}</p>
       </div>
 
       <div className={`${styles.search} ${searchFocused ? styles.searchActive : ''}`}>
@@ -102,9 +102,7 @@ function TopBar({ userName = '', userRole = 'freelancer', avatarUrl = '', onMenu
             </div>
             <div className={styles.userInfo}>
               <span className={styles.userName}>{displayName}</span>
-              <span className={styles.userRole}>
-                {userRole === 'freelancer' ? 'Freelancer' : 'Cliente'}
-              </span>
+              <span className={styles.userRole}>{roleLabel}</span>
             </div>
             <svg className={styles.chevron} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
               <polyline points="6 9 12 15 18 9" />

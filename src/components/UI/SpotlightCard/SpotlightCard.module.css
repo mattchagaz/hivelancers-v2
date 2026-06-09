@@ -1,0 +1,50 @@
+.card {
+  --spotlight-x: 50%;
+  --spotlight-y: 50%;
+  --spotlight-color: rgba(62, 115, 230, 0.16);
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.24s ease;
+  background:
+    radial-gradient(
+      circle at var(--spotlight-x) var(--spotlight-y),
+      var(--spotlight-color),
+      transparent 34%
+    );
+}
+
+.card:hover::before {
+  opacity: 1;
+}
+
+.soft::before {
+  background:
+    radial-gradient(
+      circle at var(--spotlight-x) var(--spotlight-y),
+      var(--spotlight-color),
+      transparent 38%
+    );
+}
+
+.strong::before {
+  background:
+    radial-gradient(
+      circle at var(--spotlight-x) var(--spotlight-y),
+      var(--spotlight-color),
+      transparent 46%
+    );
+}
+
+[data-reduced-motion="true"] .card::before {
+  transition: none;
+}

@@ -4,7 +4,7 @@ import { Toaster } from 'sonner';
 import Sidebar from './Sidebar/Sidebar';
 import TopBar from '../TopBar/TopBar';
 import { useAuth } from '../../contexts/AuthContext';
-import { toRoleSlug } from '../../utils/authFlow';
+import { isAdminUser, toRoleSlug } from '../../utils/authFlow';
 import styles from './AppLayout.module.css';
 
 function AppLayout() {
@@ -12,7 +12,7 @@ function AppLayout() {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const { user } = useAuth();
 
-  const userRole = toRoleSlug(user?.userType) || 'freelancer';
+  const userRole = isAdminUser(user) ? 'admin' : toRoleSlug(user?.userType) || 'freelancer';
   const userName = user ? `${user.firstName} ${user.lastName}`.trim() : '';
 
   const toggleSidebar = () => {

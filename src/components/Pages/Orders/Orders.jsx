@@ -1,6 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
+import {
+  FaBriefcase,
+  FaCircleCheck,
+  FaClock,
+  FaInbox,
+  FaLayerGroup,
+} from 'react-icons/fa6';
 import { useAuth } from '../../../contexts/AuthContext';
 import {
   acceptOrder,
@@ -12,6 +19,7 @@ import {
   requestOrderRevision,
 } from '../../../services/orders';
 import { connectSocket, getSocket } from '../../../services/socket';
+import SpotlightCard from '../../UI/SpotlightCard/SpotlightCard';
 import styles from './Orders.module.css';
 
 const ROLE_LABEL = {
@@ -24,7 +32,7 @@ const STATUS_LABEL = {
   PENDING: 'Aguardando resposta',
   IN_PROGRESS: 'Em andamento',
   DELIVERED: 'Entregue',
-  COMPLETED: 'Concluido',
+  COMPLETED: 'Concluído',
   REJECTED: 'Recusado',
   CANCELED: 'Cancelado',
 };
@@ -34,7 +42,7 @@ const EVENT_LABEL = {
   ACCEPTED: 'Pedido aceito',
   REJECTED: 'Pedido recusado',
   DELIVERED: 'Entrega enviada',
-  REVISION_REQUESTED: 'Revisao solicitada',
+  REVISION_REQUESTED: 'Revisão solicitada',
   COMPLETED: 'Pedido aprovado',
   CANCELED: 'Pedido cancelado',
 };
@@ -50,9 +58,9 @@ const STATUS_OPTIONS = [
 
 const ORDER_STAGES = [
   { key: 'PENDING', label: 'Entrada' },
-  { key: 'IN_PROGRESS', label: 'Execucao' },
+  { key: 'IN_PROGRESS', label: 'Execução' },
   { key: 'DELIVERED', label: 'Entrega' },
-  { key: 'COMPLETED', label: 'Aprovacao' },
+  { key: 'COMPLETED', label: 'Aprovação' },
 ];
 
 const formatPrice = (cents) =>
@@ -105,7 +113,7 @@ const getEventDescription = (event) => {
 };
 
 const getName = (person) =>
-  `${person?.firstName || ''} ${person?.lastName || ''}`.trim() || person?.username || 'Usuario';
+  `${person?.firstName || ''} ${person?.lastName || ''}`.trim() || person?.username || 'Usuário';
 
 const getInitials = (person) =>
   getName(person)
@@ -117,25 +125,29 @@ const getInitials = (person) =>
     .toUpperCase() || 'U';
 
 const getStatusTone = (status) => {
-  if (status === 'COMPLETED') return 'green';
-  if (status === 'DELIVERED') return 'violet';
-  if (status === 'IN_PROGRESS') return 'blue';
-  if (status === 'REJECTED' || status === 'CANCELED') return 'red';
-  return 'amber';
+  if (status === 'COMPLETED') return 'Green';
+  if (status === 'DELIVERED') return 'Violet';
+  if (status === 'IN_PROGRESS') return 'Blue';
+  if (status === 'REJECTED' || status === 'CANCELED') return 'Red';
+  return 'Amber';
 };
 
 const getOrderStageState = (orderStatus, stageKey) => {
   if (orderStatus === 'REJECTED' || orderStatus === 'CANCELED') {
-    return stageKey === 'PENDING' ? 'done' : 'idle';
+    return stageKey === 'PENDING' ? 'Done' : 'Idle';
+  }
+
+  if (orderStatus === 'COMPLETED') {
+    return 'Done';
   }
 
   const currentIndex = ORDER_STAGES.findIndex((stage) => stage.key === orderStatus);
   const stageIndex = ORDER_STAGES.findIndex((stage) => stage.key === stageKey);
 
-  if (currentIndex === -1) return 'idle';
-  if (stageIndex < currentIndex) return 'done';
-  if (stageIndex === currentIndex) return 'current';
-  return 'idle';
+  if (currentIndex === -1) return 'Idle';
+  if (stageIndex < currentIndex) return 'Done';
+  if (stageIndex === currentIndex) return 'Current';
+  return 'Idle';
 };
 
 const getNextActionCopy = (order, userId) => {
@@ -146,28 +158,28 @@ const getNextActionCopy = (order, userId) => {
 
   if (order.status === 'PENDING') {
     return seller
-      ? 'Voce precisa aceitar ou recusar para iniciar a execucao.'
-      : 'O pedido foi criado e agora depende da confirmacao do freelancer.';
+      ? 'Você precisa aceitar ou recusar para iniciar a execução.'
+      : 'O pedido foi criado e agora depende da confirmação do freelancer.';
   }
 
   if (order.status === 'IN_PROGRESS') {
     return seller
       ? 'Centralize a entrega final aqui assim que o material estiver pronto.'
-      : 'O projeto esta em producao. Use a conversa para alinhar ajustes de rota.';
+      : 'O projeto está em produção. Use a conversa para alinhar ajustes de rota.';
   }
 
   if (order.status === 'DELIVERED') {
     return buyer
-      ? 'Revise a entrega, aprove se estiver ok ou devolva para revisao.'
+      ? 'Revise a entrega, aprove se estiver ok ou devolva para revisão.'
       : 'A entrega foi enviada. Agora o cliente revisa e responde.';
   }
 
   if (order.status === 'COMPLETED') {
-    return 'Pedido finalizado com aprovacao formal registrada.';
+    return 'Pedido finalizado com aprovação formal registrada.';
   }
 
   if (order.status === 'REJECTED') {
-    return 'O pedido foi encerrado antes da etapa de execucao.';
+    return 'O pedido foi encerrado antes da etapa de execução.';
   }
 
   return 'Este pedido saiu do fluxo principal.';
@@ -362,18 +374,52 @@ function Orders() {
     const active = orders.filter((order) => order.status === 'IN_PROGRESS').length;
     const delivered = orders.filter((order) => order.status === 'DELIVERED').length;
     const completed = orders.filter((order) => order.status === 'COMPLETED').length;
+    const completedValue = orders
+      .filter((order) => order.status === 'COMPLETED')
+      .reduce((sum, order) => sum + Number(order.priceCents || 0), 0);
 
-    return { pending, active, delivered, completed };
+    return { pending, active, delivered, completed, completedValue };
   }, [orders]);
+
+  const statCards = [
+    {
+      label: 'Total filtrado',
+      value: loadingList ? '...' : orders.length,
+      detail: ROLE_LABEL[role],
+      icon: <FaLayerGroup />,
+      tone: 'blue',
+    },
+    {
+      label: 'Aguardando resposta',
+      value: loadingList ? '...' : metrics.pending,
+      detail: role === 'seller' ? 'Aceitar ou recusar' : 'Confirmação do freelancer',
+      icon: <FaClock />,
+      tone: 'orange',
+    },
+    {
+      label: 'Fluxo ativo',
+      value: loadingList ? '...' : metrics.active + metrics.delivered,
+      detail: 'Execução ou revisão',
+      icon: <FaBriefcase />,
+      tone: 'purple',
+    },
+    {
+      label: 'Concluídos',
+      value: loadingList ? '...' : metrics.completed,
+      detail: formatPrice(metrics.completedValue),
+      icon: <FaCircleCheck />,
+      tone: 'green',
+    },
+  ];
 
   return (
     <div className={styles.page}>
       <section className={styles.hero}>
         <div className={styles.heroMain}>
           <div className={styles.eyebrow}>Central de pedidos</div>
-          <h1 className={styles.title}>Um fluxo mais claro para iniciar, conduzir e fechar cada projeto.</h1>
+          <h1 className={styles.title}>Um fluxo claro para iniciar, conduzir e fechar cada projeto.</h1>
           <p className={styles.subtitle}>
-            Aqui voce centraliza o combinado comercial, o andamento da execucao, as entregas formais e os proximos passos sem depender apenas do chat.
+            Aqui você centraliza o combinado comercial, o andamento da execução, as entregas formais e os próximos passos sem depender apenas do chat.
           </p>
 
           <div className={styles.heroActions}>
@@ -398,37 +444,18 @@ function Orders() {
               ))}
             </select>
           </div>
-
-          <div className={styles.heroStats}>
-            <div className={styles.heroStat}>
-              <span className={styles.heroStatLabel}>Aguardando resposta</span>
-              <strong>{metrics.pending}</strong>
-            </div>
-            <div className={styles.heroStat}>
-              <span className={styles.heroStatLabel}>Em andamento</span>
-              <strong>{metrics.active}</strong>
-            </div>
-            <div className={styles.heroStat}>
-              <span className={styles.heroStatLabel}>Para revisar</span>
-              <strong>{metrics.delivered}</strong>
-            </div>
-            <div className={styles.heroStat}>
-              <span className={styles.heroStatLabel}>Concluidos</span>
-              <strong>{metrics.completed}</strong>
-            </div>
-          </div>
         </div>
 
         <div className={styles.heroSide}>
           <div className={styles.heroSideCard}>
-            <span className={styles.heroSideLabel}>Modo atual</span>
-            <h2>{ROLE_LABEL[role]}</h2>
+            <span className={styles.heroSideLabel}>Fila operacional</span>
+            <h2>{loadingList ? '...' : metrics.pending + metrics.delivered}</h2>
             <p>
               {role === 'seller'
-                ? 'Veja o que precisa de resposta, quais pedidos estao em execucao e onde registrar entregas formais.'
+                ? 'Pedidos que dependem de aceite, entrega ou acompanhamento próximo.'
                 : role === 'buyer'
-                ? 'Acompanhe andamento, revise entregas e aprove ou devolva para ajuste com contexto.'
-                : 'Use uma visao unica para acompanhar pedidos dos dois lados da plataforma.'}
+                ? 'Entregas e conversas que precisam da sua revisão para o projeto avançar.'
+                : 'Pedidos dos dois lados da plataforma que precisam de acompanhamento.'}
             </p>
             <button
               type="button"
@@ -442,10 +469,22 @@ function Orders() {
         </div>
       </section>
 
+      <section className={styles.statGrid}>
+        {statCards.map((item) => (
+          <SpotlightCard key={item.label} className={`${styles.statCard} ${styles[item.tone]}`}>
+            <div className={styles.statIcon}>{item.icon}</div>
+            <span>{item.label}</span>
+            <strong>{item.value}</strong>
+            <p>{item.detail}</p>
+          </SpotlightCard>
+        ))}
+      </section>
+
       <div className={styles.layout}>
         <section className={styles.listPanel}>
           <div className={styles.panelHeader}>
             <div>
+              <span className={styles.sectionKicker}>Controle</span>
               <h2>Fila de pedidos</h2>
               <p className={styles.panelText}>
                 {orders.length} {orders.length === 1 ? 'pedido encontrado' : 'pedidos encontrados'}
@@ -459,7 +498,7 @@ function Orders() {
               <strong>{metrics.pending}</strong>
             </div>
             <div className={styles.summaryCard}>
-              <span>Operacao ativa</span>
+              <span>Operação ativa</span>
               <strong>{metrics.active + metrics.delivered}</strong>
             </div>
           </div>
@@ -468,7 +507,11 @@ function Orders() {
             {loadingList && orders.length === 0 ? (
               <div className={styles.emptyState}>Carregando pedidos...</div>
             ) : orders.length === 0 ? (
-              <div className={styles.emptyState}>Nenhum pedido encontrado para esse filtro.</div>
+              <div className={styles.emptyState}>
+                <div className={styles.emptyIcon}><FaInbox /></div>
+                <strong>Nenhum pedido encontrado</strong>
+                <p>Altere o papel ou o status para procurar em outro recorte.</p>
+              </div>
             ) : (
               orders.map((order) => {
                 const otherUser = getOrderCounterparty(order, user?.id);
@@ -514,11 +557,19 @@ function Orders() {
 
         <section className={styles.detailPanel}>
           {!selectedOrderId ? (
-            <div className={styles.emptyStateLarge}>Selecione um pedido para ver os detalhes.</div>
+            <div className={styles.emptyStateLarge}>
+              <div className={styles.emptyIcon}><FaInbox /></div>
+              <strong>Selecione um pedido</strong>
+              <p>Escolha um item da fila para ver briefing, entrega, histórico e ações disponíveis.</p>
+            </div>
           ) : loadingOrder ? (
             <div className={styles.emptyStateLarge}>Carregando pedido...</div>
           ) : !selectedOrder ? (
-            <div className={styles.emptyStateLarge}>Nao foi possivel carregar este pedido.</div>
+            <div className={styles.emptyStateLarge}>
+              <div className={styles.emptyIcon}><FaInbox /></div>
+              <strong>Pedido indisponível</strong>
+              <p>Não foi possível carregar este pedido agora. Atualize a fila e tente novamente.</p>
+            </div>
           ) : (
             <>
               <div className={`${styles.detailHero} ${styles[`detailHero${selectedTone}`]}`}>
@@ -590,7 +641,7 @@ function Orders() {
                       <strong>{getName(selectedOrder.freelancer)}</strong>
                     </div>
                     <div className={styles.infoCard}>
-                      <span className={styles.infoLabel}>Revisoes</span>
+                      <span className={styles.infoLabel}>Revisões</span>
                       <strong>{selectedOrder.revisionsUsed} / {selectedOrder.revisionsAllowed}</strong>
                     </div>
                     <div className={styles.infoCard}>
@@ -599,56 +650,61 @@ function Orders() {
                     </div>
                   </div>
 
-                  <div className={styles.section}>
-                    <div className={styles.sectionHeader}>
-                      <div>
-                        <h3>Briefing e requisitos</h3>
-                        <p className={styles.sectionText}>
-                          O combinado inicial do pedido fica registrado aqui para reduzir ruido ao longo da execucao.
-                        </p>
+                  <div className={styles.detailContentGrid}>
+                    <div className={styles.section}>
+                      <div className={styles.sectionHeader}>
+                        <div>
+                          <span className={styles.sectionKicker}>Escopo</span>
+                          <h3>Briefing e requisitos</h3>
+                          <p className={styles.sectionText}>
+                            Combinado inicial do pedido, salvo para consulta rápida durante a execução.
+                          </p>
+                        </div>
                       </div>
+                      <p className={styles.longText}>
+                        {selectedOrder.requirements || 'Nenhum requisito adicional informado.'}
+                      </p>
                     </div>
-                    <p className={styles.longText}>
-                      {selectedOrder.requirements || 'Nenhum requisito adicional informado.'}
-                    </p>
+
+                    <div className={styles.section}>
+                      <div className={styles.sectionHeader}>
+                        <div>
+                          <span className={styles.sectionKicker}>Entrega</span>
+                          <h3>Entrega atual</h3>
+                          <p className={styles.sectionText}>
+                            Material enviado pelo freelancer e links registrados na entrega formal.
+                          </p>
+                        </div>
+                      </div>
+                      <p className={styles.longText}>
+                        {selectedOrder.deliveryNote || 'Nenhuma entrega registrada ainda.'}
+                      </p>
+                      {selectedOrder.deliveryAssets?.length > 0 && (
+                        <div className={styles.assetGrid}>
+                          {selectedOrder.deliveryAssets.map((asset) => (
+                            <a
+                              key={asset.id}
+                              href={asset.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className={styles.assetCard}
+                            >
+                              <span className={styles.assetLabel}>{asset.label || 'Arquivo entregue'}</span>
+                              <strong className={styles.assetUrl}>{asset.url}</strong>
+                            </a>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   <div className={styles.section}>
                     <div className={styles.sectionHeader}>
                       <div>
-                        <h3>Entrega atual</h3>
+                        <span className={styles.sectionKicker}>Histórico</span>
+                        <h3>Histórico do pedido</h3>
                         <p className={styles.sectionText}>
-                          Sempre que houver uma nova entrega, o material e a descricao formal aparecem neste bloco.
-                        </p>
-                      </div>
-                    </div>
-                    <p className={styles.longText}>
-                      {selectedOrder.deliveryNote || 'Nenhuma entrega registrada ainda.'}
-                    </p>
-                    {selectedOrder.deliveryAssets?.length > 0 && (
-                      <div className={styles.assetGrid}>
-                        {selectedOrder.deliveryAssets.map((asset) => (
-                          <a
-                            key={asset.id}
-                            href={asset.url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className={styles.assetCard}
-                          >
-                            <span className={styles.assetLabel}>{asset.label || 'Arquivo entregue'}</span>
-                            <strong className={styles.assetUrl}>{asset.url}</strong>
-                          </a>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className={styles.section}>
-                    <div className={styles.sectionHeader}>
-                      <div>
-                        <h3>Historico do pedido</h3>
-                        <p className={styles.sectionText}>
-                          Cada mudanca relevante no fluxo fica registrada com ator, contexto e horario.
+                          Cada mudança relevante no fluxo fica registrada com ator, contexto e horário.
                         </p>
                       </div>
                     </div>
@@ -738,7 +794,7 @@ function Orders() {
                         rows={4}
                         value={deliveryNote}
                         onChange={(event) => setDeliveryNote(event.target.value)}
-                        placeholder="Descreva o que esta sendo entregue."
+                        placeholder="Descreva o que está sendo entregue."
                       />
                       <textarea
                         className={styles.textarea}
@@ -776,7 +832,7 @@ function Orders() {
                         rows={5}
                         value={revisionNote}
                         onChange={(event) => setRevisionNote(event.target.value)}
-                        placeholder="Escreva uma observacao para aprovar ou solicitar revisao."
+                        placeholder="Escreva uma observação para aprovar ou solicitar revisão."
                       />
                       <div className={styles.actionStack}>
                         <button
@@ -806,11 +862,11 @@ function Orders() {
                             runAction(
                               'revision',
                               () => requestOrderRevision(selectedOrder.id, { note: revisionNote.trim() }),
-                              'Revisao solicitada.'
+                              'Revisão solicitada.'
                             );
                           }}
                         >
-                          {actionLoading === 'revision' ? 'Solicitando...' : 'Pedir revisao'}
+                          {actionLoading === 'revision' ? 'Solicitando...' : 'Pedir revisão'}
                         </button>
                       </div>
                     </div>

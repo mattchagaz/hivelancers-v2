@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { toast, Toaster } from 'sonner';
+import { FaCircle, FaClock, FaComments, FaInbox, FaPaperPlane } from 'react-icons/fa';
 import { useAuth } from '../../../contexts/AuthContext';
+import EmptyState from '../../UI/EmptyState/EmptyState';
+import SpotlightCard from '../../UI/SpotlightCard/SpotlightCard';
 import {
   listConversations,
   getMessages,
@@ -106,6 +109,21 @@ const formatDateSeparator = (iso) => {
   return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
 };
 
+const getOtherParticipant = (conversation, currentUserId) =>
+  conversation?.participants?.find((p) => toId(p.id) !== toId(currentUserId)) || conversation?.otherUser;
+
+const getParticipantName = (participant) =>
+  `${participant?.firstName || ''} ${participant?.lastName || ''}`.trim() || 'Usuário';
+
+const getParticipantInitials = (participant) =>
+  getParticipantName(participant)
+    .split(' ')
+    .map((part) => part[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
+
 function Messages() {
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -118,6 +136,7 @@ function Messages() {
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const [search, setSearch] = useState('');
+  const [conversationFilter, setConversationFilter] = useState('all');
   const [mobileShowChat, setMobileShowChat] = useState(false);
   const [socketConnected, setSocketConnected] = useState(false);
   const [isOtherTyping, setIsOtherTyping] = useState(false);
@@ -146,6 +165,9 @@ function Messages() {
     setIsOtherTyping(false);
     setReplyingTo(null);
     setImagePreview(null);
+    if (activeId && window.innerWidth <= 768) {
+      setMobileShowChat(true);
+    }
   }, [activeId]);
 
   useEffect(() => {
@@ -547,9 +569,9 @@ function Messages() {
   };
 
   const activeConversation = conversations.find((c) => toId(c.id) === toId(activeId));
-  const otherUser = activeConversation?.participants?.find((p) => toId(p.id) !== toId(user?.id)) || activeConversation?.otherUser;
+  const otherUser = getOtherParticipant(activeConversation, user?.id);
   const otherProfileHandle = otherUser?.username || otherUser?.handle || otherUser?.id;
-  const otherName = otherUser ? `${otherUser.firstName || ''} ${otherUser.lastName || ''}`.trim() : 'Usuário';
+  const otherName = otherUser ? getParticipantName(otherUser) : 'Usuário';
 
   useEffect(() => {
     if (!activeConversation?.id || !user?.id) return;
@@ -562,13 +584,26 @@ function Messages() {
     });
   }, [activeConversation?.id, otherName, otherProfileHandle, user?.id]);
 
-  const filteredConversations = search
-    ? conversations.filter((c) => {
-        const other = c.participants?.find((p) => toId(p.id) !== toId(user?.id)) || c.otherUser;
-        const name = `${other?.firstName || ''} ${other?.lastName || ''}`.toLowerCase();
-        return name.includes(search.toLowerCase());
-      })
-    : conversations;
+  const unreadTotal = conversations.reduce((sum, conversation) => sum + Number(conversation.unreadCount || 0), 0);
+  const onlineTotal = conversations.filter((conversation) => {
+    const other = getOtherParticipant(conversation, user?.id);
+    return conversation.online || other?.online;
+  }).length;
+
+  const filteredConversations = conversations.filter((conversation) => {
+    const other = getOtherParticipant(conversation, user?.id);
+    const name = getParticipantName(other).toLowerCase();
+    const matchesSearch = !search || name.includes(search.toLowerCase());
+    const matchesFilter = conversationFilter === 'all' || Number(conversation.unreadCount || 0) > 0;
+    return matchesSearch && matchesFilter;
+  });
+
+  const hasConversationFilter = Boolean(search.trim()) || conversationFilter !== 'all';
+
+  const clearConversationFilters = () => {
+    setSearch('');
+    setConversationFilter('all');
+  };
 
   const groupedMessages = messages.reduce((groups, msg) => {
     const dateKey = new Date(msg.createdAt).toDateString();
@@ -589,8 +624,22 @@ function Messages() {
       {/* Sidebar */}
       <aside className={`${styles.sidebar} ${mobileShowChat ? styles.sidebarHidden : ''}`}>
         <div className={styles.sidebarHead}>
-          <h1 className={styles.sidebarTitle}>Mensagens</h1>
+          <div>
+            <span className={styles.sidebarEyebrow}>Inbox</span>
+            <h1 className={styles.sidebarTitle}>Mensagens</h1>
+          </div>
           <span className={styles.convCount}>{conversations.length}</span>
+        </div>
+
+        <div className={styles.sidebarStats}>
+          <span>
+            <FaInbox />
+            {unreadTotal ? `${unreadTotal} não lidas` : 'Tudo lido'}
+          </span>
+          <span>
+            <FaCircle />
+            {onlineTotal} online
+          </span>
         </div>
 
         <div className={styles.searchWrap}>
@@ -601,22 +650,51 @@ function Messages() {
           <input className={styles.searchInput} type="text" placeholder="Buscar conversa..." value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
 
+        <div className={styles.inboxTabs}>
+          <button
+            type="button"
+            className={`${styles.inboxTab} ${conversationFilter === 'all' ? styles.inboxTabActive : ''}`}
+            onClick={() => setConversationFilter('all')}
+          >
+            Todas
+          </button>
+          <button
+            type="button"
+            className={`${styles.inboxTab} ${conversationFilter === 'unread' ? styles.inboxTabActive : ''}`}
+            onClick={() => setConversationFilter('unread')}
+          >
+            Não lidas
+            {unreadTotal > 0 ? <span>{unreadTotal}</span> : null}
+          </button>
+        </div>
+
         <div className={styles.convList}>
           {loadingConvs ? (
             <div className={styles.loadingState}>Carregando conversas...</div>
           ) : filteredConversations.length === 0 ? (
-            <div className={styles.emptyConvs}>
-              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
-              </svg>
-              <p>Nenhuma conversa ainda</p>
-              <span>Inicie uma conversa a partir do perfil de um freelancer.</span>
-            </div>
+            <EmptyState
+              compact
+              className={styles.emptyConvs}
+              icon={<FaComments />}
+              title={
+                hasConversationFilter
+                  ? 'Nada por aqui'
+                  : 'Nenhuma conversa ainda'
+              }
+              description={
+                hasConversationFilter
+                  ? 'Remova filtros ou tente buscar por outro nome.'
+                  : 'As conversas iniciadas em perfis, serviços e pedidos aparecem neste painel.'
+              }
+              actionLabel={hasConversationFilter ? 'Limpar filtros' : 'Explorar serviços'}
+              actionOnClick={hasConversationFilter ? clearConversationFilters : undefined}
+              actionTo={!hasConversationFilter ? '/explore' : undefined}
+            />
           ) : (
             filteredConversations.map((conv) => {
-              const other = conv.participants?.find((p) => toId(p.id) !== toId(user?.id)) || conv.otherUser;
-              const name = `${other?.firstName || ''} ${other?.lastName || ''}`.trim() || 'Usuário';
-              const initials = name.split(' ').map((p) => p[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
+              const other = getOtherParticipant(conv, user?.id);
+              const name = getParticipantName(other);
+              const initials = getParticipantInitials(other);
               const lastMsg = conv.lastMessage;
               const isOwn = toId(lastMsg?.senderId) === toId(user?.id);
               const unread = conv.unreadCount > 0;
@@ -624,30 +702,35 @@ function Messages() {
               const previewText = lastMsg?.deletedAt
                 ? 'Mensagem apagada'
                 : lastMsg?.imageUrl && !lastMsg?.content
-                  ? '📷 Imagem'
+                  ? 'Imagem'
                   : lastMsg?.content || 'Sem mensagens';
 
               return (
-                <button
+                <SpotlightCard
                   key={conv.id}
-                  className={`${styles.convItem} ${isActive ? styles.convItemActive : ''} ${unread ? styles.convItemUnread : ''}`}
-                  onClick={() => selectConversation(conv.id)}
+                  className={`${styles.convSurface} ${isActive ? styles.convSurfaceActive : ''} ${unread ? styles.convSurfaceUnread : ''}`}
+                  spotlightColor="rgba(62, 115, 230, 0.12)"
                 >
-                  <div className={styles.convAvatar}>
-                    {other?.avatarUrl ? <img src={other.avatarUrl} alt="" className={styles.convAvatarImg} /> : initials || 'U'}
-                    {conv.online && <span className={styles.onlineDot} />}
-                  </div>
-                  <div className={styles.convBody}>
-                    <div className={styles.convTop}>
-                      <span className={styles.convName}>{name}</span>
-                      {lastMsg && <span className={styles.convTime}>{formatTime(lastMsg.createdAt)}</span>}
+                  <button
+                    className={styles.convItem}
+                    onClick={() => selectConversation(conv.id)}
+                  >
+                    <div className={styles.convAvatar}>
+                      {other?.avatarUrl ? <img src={other.avatarUrl} alt="" className={styles.convAvatarImg} /> : initials || 'U'}
+                      {(conv.online || other?.online) && <span className={styles.onlineDot} />}
                     </div>
-                    <div className={styles.convBottom}>
-                      <span className={styles.convPreview}>{isOwn && 'Você: '}{previewText}</span>
-                      {unread && <span className={styles.unreadBadge}>{conv.unreadCount}</span>}
+                    <div className={styles.convBody}>
+                      <div className={styles.convTop}>
+                        <span className={styles.convName}>{name}</span>
+                        {lastMsg && <span className={styles.convTime}>{formatTime(lastMsg.createdAt)}</span>}
+                      </div>
+                      <div className={styles.convBottom}>
+                        <span className={styles.convPreview}>{isOwn && 'Você: '}{previewText}</span>
+                        {unread && <span className={styles.unreadBadge}>{conv.unreadCount}</span>}
+                      </div>
                     </div>
-                  </div>
-                </button>
+                  </button>
+                </SpotlightCard>
               );
             })
           )}
@@ -658,13 +741,16 @@ function Messages() {
       <div className={`${styles.chat} ${mobileShowChat ? styles.chatVisible : ''}`}>
         {!activeId ? (
           <div className={styles.noChat}>
-            <div className={styles.noChatIcon}>
-              <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
-              </svg>
-            </div>
-            <h2>Selecione uma conversa</h2>
-            <p>Escolha uma conversa ao lado ou inicie uma nova a partir do perfil de um freelancer.</p>
+            <EmptyState
+              className={styles.noChatCard}
+              icon={<FaComments />}
+              eyebrow="Central de conversas"
+              title="Selecione uma conversa"
+              description="Abra uma conversa da inbox para continuar o alinhamento com cliente ou freelancer."
+              actionLabel={conversations.length ? 'Ver não lidas' : 'Explorar serviços'}
+              actionOnClick={conversations.length ? () => setConversationFilter('unread') : undefined}
+              actionTo={!conversations.length ? '/explore' : undefined}
+            />
           </div>
         ) : (
           <>
@@ -686,9 +772,18 @@ function Messages() {
                 ) : (
                   <span className={styles.chatUserName}>{otherName || 'Usuário'}</span>
                 )}
-                <span className={`${styles.chatUserStatus} ${isOtherTyping ? styles.chatUserTyping : ''}`}>
-                  {isOtherTyping ? 'Digitando...' : activeConversation?.online || otherUser?.online ? 'Online' : 'Offline'}
-                </span>
+                <div className={styles.chatHeaderMeta}>
+                  <span className={`${styles.chatUserStatus} ${isOtherTyping ? styles.chatUserTyping : ''}`}>
+                    <FaCircle />
+                    {isOtherTyping ? 'Digitando...' : activeConversation?.online || otherUser?.online ? 'Online' : 'Offline'}
+                  </span>
+                  {activeConversation?.updatedAt ? (
+                    <span className={styles.chatUpdatedAt}>
+                      <FaClock />
+                      {formatTime(activeConversation.updatedAt)}
+                    </span>
+                  ) : null}
+                </div>
               </div>
 
               <div className={styles.chatActions}>
@@ -715,7 +810,15 @@ function Messages() {
               {loadingMsgs ? (
                 <div className={styles.loadingState}>Carregando mensagens...</div>
               ) : messages.length === 0 ? (
-                <div className={styles.emptyMessages}><p>Nenhuma mensagem ainda. Diga oi!</p></div>
+                <EmptyState
+                  compact
+                  className={styles.emptyMessages}
+                  icon={<FaPaperPlane />}
+                  title="Conversa pronta"
+                  description={`Envie a primeira mensagem para ${otherName || 'este contato'}.`}
+                  actionLabel="Escrever mensagem"
+                  actionOnClick={() => inputRef.current?.focus()}
+                />
               ) : (
                 groupedMessages.map((group) => (
                   <div key={group.date}>
@@ -754,7 +857,7 @@ function Messages() {
                                     {msg.replyTo.deletedAt
                                       ? 'Mensagem apagada'
                                       : msg.replyTo.imageUrl && !msg.replyTo.content
-                                        ? '📷 Imagem'
+                                        ? 'Imagem'
                                         : msg.replyTo.content}
                                   </span>
                                 </div>
@@ -804,7 +907,7 @@ function Messages() {
                     <div className={styles.replyPreviewContent}>
                       <span className={styles.replyPreviewLabel}>Respondendo a {findSenderName(replyingTo.senderId)}</span>
                       <span className={styles.replyPreviewText}>
-                        {replyingTo.imageUrl && !replyingTo.content ? '📷 Imagem' : replyingTo.content}
+                        {replyingTo.imageUrl && !replyingTo.content ? 'Imagem' : replyingTo.content}
                       </span>
                     </div>
                     <button className={styles.previewClose} onClick={() => setReplyingTo(null)}>
@@ -843,7 +946,7 @@ function Messages() {
                 ref={inputRef}
                 className={styles.messageInput}
                 type="text"
-                placeholder="Digite sua mensagem..."
+                placeholder="Digite uma mensagem..."
                 value={text}
                 onChange={handleTextChange}
                 disabled={sending}

@@ -2,9 +2,18 @@ import { NavLink } from 'react-router-dom';
 import styles from './Sidebar.module.css';
 
 function Sidebar({ userRole = 'freelancer', collapsed, mobileOpen, onToggle, onMobileClose }) {
+  const isAdmin = userRole === 'admin';
   const isFreelancer = userRole === 'freelancer';
 
-  const mainNav = isFreelancer
+  const mainNav = isAdmin
+    ? [
+        { label: 'Admin', path: '/admin', icon: 'admin', badge: 4 },
+        { label: 'Dashboard', path: '/dashboard', icon: 'dashboard' },
+        { label: 'Pedidos', path: '/orders', icon: 'orders', badge: 3 },
+        { label: 'Mensagens', path: '/messages', icon: 'messages', badge: 5 },
+        { label: 'Financeiro', path: '/finances', icon: 'finances' },
+      ]
+    : isFreelancer
     ? [
         { label: 'Dashboard', path: '/dashboard', icon: 'dashboard' },
         { label: 'Meus Serviços', path: '/services', icon: 'services' },
@@ -33,6 +42,12 @@ function Sidebar({ userRole = 'freelancer', collapsed, mobileOpen, onToggle, onM
         <rect x="14" y="3" width="7" height="5" rx="1.5" />
         <rect x="14" y="12" width="7" height="9" rx="1.5" />
         <rect x="3" y="16" width="7" height="5" rx="1.5" />
+      </svg>
+    ),
+    admin: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 3l7 3v5c0 4.6-2.9 8.7-7 10-4.1-1.3-7-5.4-7-10V6l7-3z" />
+        <path d="M9 12l2 2 4-4" />
       </svg>
     ),
     services: (

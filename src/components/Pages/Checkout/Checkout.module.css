@@ -3,6 +3,7 @@
   flex-direction: column;
   gap: 22px;
   animation: fadeIn 0.35s ease;
+  min-width: 0;
 }
 
 .breadcrumbs {
@@ -34,6 +35,7 @@
   background:
     radial-gradient(circle at top right, rgba(var(--primary-color-rgb), 0.14), transparent 38%),
     var(--surface-gradient);
+  overflow: hidden;
 }
 
 .headerBadge,
@@ -66,6 +68,7 @@
   letter-spacing: -0.04em;
   color: var(--text-primary);
   margin: 14px 0 10px;
+  overflow-wrap: anywhere;
 }
 
 .subtitle,
@@ -82,13 +85,15 @@
 .successText {
   color: var(--text-secondary);
   line-height: 1.7;
+  overflow-wrap: anywhere;
 }
 
 .layout {
   display: grid;
-  grid-template-columns: minmax(0, 1.5fr) 360px;
+  grid-template-columns: minmax(0, 1fr) 380px;
   gap: 20px;
   align-items: start;
+  min-width: 0;
 }
 
 .mainColumn,
@@ -104,6 +109,7 @@
   display: flex;
   flex-direction: column;
   gap: 18px;
+  min-width: 0;
 }
 
 .sidebar {
@@ -113,6 +119,8 @@
 
 .card {
   padding: 22px 24px;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .cardHead,
@@ -140,18 +148,21 @@
 }
 
 .serviceSummary {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.32fr) minmax(0, 1fr) minmax(150px, 0.24fr);
   gap: 18px;
-  align-items: stretch;
+  align-items: center;
   padding: 20px;
   border-radius: 20px;
   background: var(--bg-subtle);
   border: 1px solid var(--border-light);
+  min-width: 0;
 }
 
 .sellerChip {
   align-items: center;
   gap: 12px;
-  min-width: 200px;
+  min-width: 0;
 }
 
 .avatar,
@@ -201,6 +212,7 @@
 }
 
 .serviceInfo {
+  min-width: 0;
   flex: 1;
 }
 
@@ -208,16 +220,26 @@
   font-size: 1.02rem;
   line-height: 1.45;
   margin-bottom: 8px;
+  overflow-wrap: anywhere;
+}
+
+.serviceInfo p {
+  overflow-wrap: anywhere;
 }
 
 .packageBox {
-  min-width: 180px;
   border-radius: 18px;
   padding: 16px;
   background: linear-gradient(180deg, var(--bg-accent-soft), var(--bg-primary));
   border: 1px solid rgba(var(--primary-color-rgb), 0.08);
   flex-direction: column;
   gap: 8px;
+  min-width: 0;
+}
+
+.packageBox strong,
+.packageBox small {
+  overflow-wrap: anywhere;
 }
 
 .packageLabel {
@@ -254,6 +276,7 @@
   color: var(--text-primary);
   outline: none;
   transition: border-color 0.18s ease, box-shadow 0.18s ease;
+  min-width: 0;
 }
 
 .input:focus,
@@ -324,6 +347,7 @@
   background:
     radial-gradient(circle at top right, rgba(var(--primary-color-rgb), 0.14), transparent 38%),
     var(--surface-gradient);
+  border-color: rgba(var(--primary-color-rgb), 0.16);
 }
 
 .checkoutTop {
@@ -341,6 +365,7 @@
 .checkoutTop strong {
   font-size: 1.75rem;
   line-height: 1;
+  white-space: nowrap;
 }
 
 .priceRow {
@@ -353,6 +378,7 @@
 
 .priceRow strong {
   color: var(--text-primary);
+  text-align: right;
 }
 
 .priceTotal {
@@ -365,6 +391,7 @@
   align-items: flex-start;
   gap: 10px;
   font-size: 0.84rem;
+  overflow-wrap: anywhere;
 }
 
 .featureDot {
@@ -523,9 +550,13 @@
     grid-template-columns: 1fr;
   }
 
-  .serviceSummary,
+  .serviceSummary {
+    grid-template-columns: 1fr;
+  }
+
   .checkoutTop {
     flex-direction: column;
+    align-items: flex-start;
   }
 }
 
