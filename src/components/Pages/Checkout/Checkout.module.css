@@ -474,6 +474,117 @@
   line-height: 1.4;
 }
 
+.paymentMethodSection {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.paymentMethodTitle {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.paymentMethodGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+.paymentMethodOption {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
+}
+
+.paymentMethodOption input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.paymentMethodOptionActive {
+  border-color: var(--primary-color);
+  background: rgba(var(--primary-color-rgb), 0.06);
+  box-shadow: 0 0 0 3px rgba(var(--primary-color-rgb), 0.1);
+}
+
+.paymentMethodOptionDisabled {
+  cursor: not-allowed;
+  background: color-mix(in srgb, var(--bg-subtle) 72%, white);
+  border-style: dashed;
+  opacity: 0.78;
+}
+
+.paymentMethodOptionDisabled .paymentMethodIcon {
+  color: var(--text-secondary);
+  background: var(--bg-secondary);
+}
+
+.paymentMethodIcon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--bg-subtle);
+  color: var(--primary-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.paymentMethodIcon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.paymentMethodCopy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.paymentMethodName {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.paymentMethodCopy strong {
+  font-size: 0.92rem;
+  line-height: 1.2;
+}
+
+.paymentMethodCopy em {
+  flex: 0 0 auto;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(var(--primary-color-rgb), 0.1);
+  color: var(--primary-color);
+  font-size: 0.68rem;
+  font-style: normal;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.paymentMethodCopy small {
+  font-size: 0.75rem;
+  line-height: 1.35;
+  color: var(--text-secondary);
+}
+
 .secureNote {
   text-align: center;
   font-size: 0.75rem;

@@ -62,6 +62,33 @@ export const listPublicServices = async (params = {}) => {
   }
 };
 
+export const listAdminServices = async (params = {}) => {
+  try {
+    const { data } = await api.get('/services/admin', { params });
+    return data;
+  } catch (error) {
+    throw new Error(extractMessage(error, 'Não foi possível carregar serviços do admin.'));
+  }
+};
+
+export const updateAdminService = async (id, payload) => {
+  try {
+    const { data } = await api.patch(`/services/admin/${id}`, payload);
+    return data.service;
+  } catch (error) {
+    throw new Error(extractMessage(error, 'Não foi possível atualizar o serviço pelo admin.'));
+  }
+};
+
+export const deleteAdminService = async (id, params = {}) => {
+  try {
+    const { data } = await api.delete(`/services/admin/${id}`, { params });
+    return data;
+  } catch (error) {
+    throw new Error(extractMessage(error, 'Não foi possível remover o serviço pelo admin.'));
+  }
+};
+
 export const getPublicService = async (id) => {
   try {
     const { data } = await api.get(`/services/${id}`);

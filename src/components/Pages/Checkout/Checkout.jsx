@@ -1,9 +1,32 @@
-import { useEffect, useMemo, useState } from 'react';
+import { createElement, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { FaCreditCard, FaPix } from 'react-icons/fa6';
 import { toast, Toaster } from 'sonner';
 import { getMyService, getPublicService } from '../../../services/services';
 import { createCheckoutSession, getCheckoutSessionStatus } from '../../../services/payments';
 import styles from './Checkout.module.css';
+
+const PAYMENT_METHODS = [
+  {
+    id: 'pix',
+    title: 'Pix',
+    description: 'Temporariamente desabilitado. Logo ativaremos QR Code e copia e cola.',
+    icon: FaPix,
+    disabled: true,
+    badge: 'Em breve',
+  },
+  {
+    id: 'card',
+    title: 'Cartão',
+    description: 'Crédito com confirmação imediata no Checkout seguro.',
+    icon: FaCreditCard,
+  },
+];
+
+const PAYMENT_METHOD_LABEL = {
+  pix: 'Pix',
+  card: 'Cartão de Crédito',
+};
 
 const formatPrice = (cents) =>
   new Intl.NumberFormat('pt-BR', {
@@ -83,6 +106,7 @@ function Checkout() {
   const [createdOrder, setCreatedOrder] = useState(null);
   const [paymentStatus, setPaymentStatus] = useState(null);
   const [isCheckingPayment, setIsCheckingPayment] = useState(false);
+  const [paymentMethodType, setPaymentMethodType] = useState('card');
 
   useEffect(() => {
     if (service?.title) {
@@ -217,6 +241,11 @@ function Checkout() {
   ];
 
   const handleSubmit = async () => {
+    if (paymentMethodType === 'pix') {
+      toast.message('Pix está temporariamente desabilitado. Em breve essa forma de pagamento será ativada.');
+      return;
+    }
+
     if (!briefing.trim() || briefing.trim().length < 30) {
       toast.error('Descreva o briefing com pelo menos 30 caracteres para orientar bem o profissional.');
       return;
@@ -238,6 +267,7 @@ function Checkout() {
         serviceId: service.id,
         planTier: selectedPlan.tier,
         requirements,
+        paymentMethodType,
       });
 
       if (!result.checkoutUrl) {
@@ -323,7 +353,7 @@ function Checkout() {
         <div className={styles.successGrid}>
           <div className={styles.successCard}>
             <span className={styles.successLabel}>Método Escolhido</span>
-            <strong>{paymentStatus.paymentMethodType === 'pix' ? 'Pix' : 'Cartão de Crédito'}</strong>
+            <strong>{PAYMENT_METHOD_LABEL[paymentStatus.paymentMethodType] || 'Cartão de Crédito'}</strong>
           </div>
           <div className={styles.successCard}>
             <span className={styles.successLabel}>Valor Total</span>
@@ -556,6 +586,44 @@ function Checkout() {
                   </li>
                 ))}
               </ul>
+            </div>
+
+            <div className={styles.paymentMethodSection}>
+              <span className={styles.paymentMethodTitle}>Forma de pagamento</span>
+              <div className={styles.paymentMethodGrid} role="radiogroup" aria-label="Forma de pagamento">
+                {PAYMENT_METHODS.map(({ id: methodId, title, description, icon, disabled, badge }) => {
+                  const isSelected = paymentMethodType === methodId;
+
+                  return (
+                    <label
+                      key={methodId}
+                      className={`${styles.paymentMethodOption} ${isSelected ? styles.paymentMethodOptionActive : ''} ${disabled ? styles.paymentMethodOptionDisabled : ''}`}
+                      aria-disabled={disabled ? 'true' : undefined}
+                    >
+                      <input
+                        type="radio"
+                        name="paymentMethodType"
+                        value={methodId}
+                        checked={isSelected}
+                        disabled={disabled}
+                        onChange={() => {
+                          if (!disabled) setPaymentMethodType(methodId);
+                        }}
+                      />
+                      <span className={styles.paymentMethodIcon}>
+                        {createElement(icon)}
+                      </span>
+                      <span className={styles.paymentMethodCopy}>
+                        <span className={styles.paymentMethodName}>
+                          <strong>{title}</strong>
+                          {badge ? <em>{badge}</em> : null}
+                        </span>
+                        <small>{description}</small>
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
             </div>
 
             <button

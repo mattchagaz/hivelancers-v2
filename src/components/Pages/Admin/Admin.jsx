@@ -11,8 +11,10 @@ import {
   FaFileInvoiceDollar,
   FaFlag,
   FaFloppyDisk,
+  FaGift,
   FaLayerGroup,
   FaMagnifyingGlass,
+  FaMedal,
   FaMoneyBillTransfer,
   FaPlus,
   FaShieldHalved,
@@ -28,9 +30,22 @@ import { CategoryIcon } from '../../../utils/categoryIcons';
 import {
   createCategory,
   deleteCategory,
+  deleteAdminService,
   listAdminCategories,
+  listAdminServices,
+  updateAdminService,
   updateCategory,
 } from '../../../services/services';
+import {
+  createAdminCoupon,
+  createRewardLevel,
+  deleteAdminCoupon,
+  deleteRewardLevel,
+  listAdminCoupons,
+  listRewardLevels,
+  updateAdminCoupon,
+  updateRewardLevel,
+} from '../../../services/admin';
 import {
   listAdminUsers,
   updateAdminUser,
@@ -103,6 +118,9 @@ const moderationItems = [
 
 const tabs = [
   { id: 'overview', label: 'Visão geral' },
+  { id: 'services', label: 'Serviços' },
+  { id: 'promotions', label: 'Promoções' },
+  { id: 'levels', label: 'Níveis' },
   { id: 'taxonomy', label: 'Taxonomia' },
   { id: 'users', label: 'Usuários' },
   { id: 'finance', label: 'Financeiro' },
@@ -173,6 +191,62 @@ const emptyUserDraft = {
   onboarded: false,
 };
 
+const SERVICE_STATUS_LABEL = {
+  DRAFT: 'Rascunho',
+  PUBLISHED: 'Publicado',
+  ARCHIVED: 'Arquivado',
+};
+
+const COUPON_STATUS_LABEL = {
+  active: 'Ativo',
+  inactive: 'Inativo',
+  scheduled: 'Agendado',
+  expired: 'Expirado',
+  limit_reached: 'Limite atingido',
+};
+
+const DISCOUNT_TYPE_LABEL = {
+  PERCENTAGE: 'Percentual',
+  FIXED_AMOUNT: 'Valor fixo',
+};
+
+const emptyServiceDraft = {
+  title: '',
+  description: '',
+  status: 'DRAFT',
+  categoryId: '',
+  subcategorySlug: '',
+  tags: '',
+  coverUrl: '',
+};
+
+const emptyCouponDraft = {
+  code: '',
+  name: '',
+  description: '',
+  discountType: 'PERCENTAGE',
+  discountValue: '10',
+  maxDiscountCents: '',
+  minSubtotalCents: '',
+  usageLimit: '',
+  startsAt: '',
+  endsAt: '',
+  isActive: true,
+};
+
+const emptyLevelDraft = {
+  audience: 'ALL',
+  levelNumber: 1,
+  name: '',
+  slug: '',
+  description: '',
+  xpRequired: 0,
+  badgeColor: '#3e73e6',
+  benefits: '',
+  position: 0,
+  isActive: true,
+};
+
 const toUserName = (user) =>
   `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || user?.email || 'Usuário';
 
@@ -187,6 +261,31 @@ const formatDate = (value) => {
   }).format(new Date(value));
 };
 
+const formatDateTimeLocal = (value) => {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  const pad = (item) => String(item).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+};
+
+const formatMoneyInput = (cents) => {
+  const value = Number(cents);
+  if (!value) return '';
+  return (value / 100).toFixed(2);
+};
+
+const parseMoneyInput = (value) => {
+  if (value === null || value === undefined || String(value).trim() === '') return null;
+  const raw = String(value).trim();
+  const normalized = raw.includes(',')
+    ? raw.replace(/\./g, '').replace(',', '.')
+    : raw;
+  const number = Number(normalized);
+  if (!Number.isFinite(number)) return null;
+  return Math.max(0, Math.round(number * 100));
+};
+
 const toUserDraft = (user) => ({
   email: user?.email || '',
   firstName: user?.firstName || '',
@@ -199,6 +298,45 @@ const toUserDraft = (user) => ({
   isAdmin: Boolean(user?.isAdmin),
   emailVerified: Boolean(user?.emailVerifiedAt),
   onboarded: Boolean(user?.onboardedAt),
+});
+
+const toServiceDraft = (service) => ({
+  title: service?.title || '',
+  description: service?.description || '',
+  status: service?.status || 'DRAFT',
+  categoryId: service?.category?.id || '',
+  subcategorySlug: service?.subcategorySlug || '',
+  tags: Array.isArray(service?.tags) ? service.tags.join(', ') : '',
+  coverUrl: service?.coverUrl || '',
+});
+
+const toCouponDraft = (coupon) => ({
+  code: coupon?.code || '',
+  name: coupon?.name || '',
+  description: coupon?.description || '',
+  discountType: coupon?.discountType || 'PERCENTAGE',
+  discountValue: coupon?.discountType === 'FIXED_AMOUNT'
+    ? formatMoneyInput(coupon?.discountValue)
+    : String(coupon?.discountValue || 10),
+  maxDiscountCents: formatMoneyInput(coupon?.maxDiscountCents),
+  minSubtotalCents: formatMoneyInput(coupon?.minSubtotalCents),
+  usageLimit: coupon?.usageLimit ? String(coupon.usageLimit) : '',
+  startsAt: formatDateTimeLocal(coupon?.startsAt),
+  endsAt: formatDateTimeLocal(coupon?.endsAt),
+  isActive: coupon?.isActive ?? true,
+});
+
+const toLevelDraft = (level) => ({
+  audience: level?.audience || 'ALL',
+  levelNumber: level?.levelNumber || 1,
+  name: level?.name || '',
+  slug: level?.slug || '',
+  description: level?.description || '',
+  xpRequired: level?.xpRequired || 0,
+  badgeColor: level?.badgeColor || '#3e73e6',
+  benefits: Array.isArray(level?.benefits) ? level.benefits.join('\n') : '',
+  position: level?.position || 0,
+  isActive: level?.isActive ?? true,
 });
 
 const getStatusTone = (status) => {
@@ -249,6 +387,28 @@ function Admin() {
   const [paymentStatusFilter, setPaymentStatusFilter] = useState('');
   const [releaseStatusFilter, setReleaseStatusFilter] = useState('');
   const [retryingPaymentId, setRetryingPaymentId] = useState('');
+  const [adminServices, setAdminServices] = useState([]);
+  const [adminServicesTotal, setAdminServicesTotal] = useState(0);
+  const [adminServicesSummary, setAdminServicesSummary] = useState({});
+  const [servicesLoading, setServicesLoading] = useState(false);
+  const [serviceStatusFilter, setServiceStatusFilter] = useState('all');
+  const [serviceCategoryFilter, setServiceCategoryFilter] = useState('');
+  const [selectedServiceId, setSelectedServiceId] = useState('');
+  const [serviceDraft, setServiceDraft] = useState(emptyServiceDraft);
+  const [serviceSaving, setServiceSaving] = useState(false);
+  const [coupons, setCoupons] = useState([]);
+  const [couponsSummary, setCouponsSummary] = useState({});
+  const [couponsTotal, setCouponsTotal] = useState(0);
+  const [couponsLoading, setCouponsLoading] = useState(false);
+  const [couponStatusFilter, setCouponStatusFilter] = useState('all');
+  const [selectedCouponId, setSelectedCouponId] = useState('');
+  const [couponDraft, setCouponDraft] = useState(emptyCouponDraft);
+  const [couponSaving, setCouponSaving] = useState(false);
+  const [freelancerLevels, setFreelancerLevels] = useState([]);
+  const [levelsLoading, setLevelsLoading] = useState(false);
+  const [selectedLevelId, setSelectedLevelId] = useState('');
+  const [levelDraft, setLevelDraft] = useState(emptyLevelDraft);
+  const [levelSaving, setLevelSaving] = useState(false);
 
   const loadCategories = async () => {
     setCategoriesLoading(true);
@@ -307,6 +467,23 @@ function Admin() {
     if (user) setUserDraft(toUserDraft(user));
   }, [adminUsers, selectedUserId]);
 
+  useEffect(() => {
+    const service = adminServices.find((item) => item.id === selectedServiceId);
+    if (service) setServiceDraft(toServiceDraft(service));
+  }, [adminServices, selectedServiceId]);
+
+  useEffect(() => {
+    if (selectedCouponId === 'new') return;
+    const coupon = coupons.find((item) => item.id === selectedCouponId);
+    if (coupon) setCouponDraft(toCouponDraft(coupon));
+  }, [coupons, selectedCouponId]);
+
+  useEffect(() => {
+    if (selectedLevelId === 'new') return;
+    const level = freelancerLevels.find((item) => item.id === selectedLevelId);
+    if (level) setLevelDraft(toLevelDraft(level));
+  }, [freelancerLevels, selectedLevelId]);
+
   const loadAdminPayments = useCallback(async () => {
     setPaymentsLoading(true);
     try {
@@ -332,8 +509,82 @@ function Admin() {
     return () => clearTimeout(timer);
   }, [activeTab, loadAdminPayments]);
 
+  const loadAdminServices = useCallback(async () => {
+    setServicesLoading(true);
+    try {
+      const data = await listAdminServices({
+        q: search.trim() || undefined,
+        status: serviceStatusFilter,
+        categoryId: serviceCategoryFilter || undefined,
+        pageSize: 100,
+      });
+      setAdminServices(data.items || []);
+      setAdminServicesTotal(data.total || 0);
+      setAdminServicesSummary(data.summary || {});
+      setSelectedServiceId((current) => current || data.items?.[0]?.id || '');
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setServicesLoading(false);
+    }
+  }, [search, serviceCategoryFilter, serviceStatusFilter]);
+
+  useEffect(() => {
+    if (activeTab !== 'services') return undefined;
+    const timer = setTimeout(loadAdminServices, 250);
+    return () => clearTimeout(timer);
+  }, [activeTab, loadAdminServices]);
+
+  const loadCoupons = useCallback(async () => {
+    setCouponsLoading(true);
+    try {
+      const data = await listAdminCoupons({
+        q: search.trim() || undefined,
+        status: couponStatusFilter,
+        pageSize: 100,
+      });
+      setCoupons(data.items || []);
+      setCouponsTotal(data.total || 0);
+      setCouponsSummary(data.summary || {});
+      setSelectedCouponId((current) => current || data.items?.[0]?.id || '');
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setCouponsLoading(false);
+    }
+  }, [couponStatusFilter, search]);
+
+  useEffect(() => {
+    if (activeTab !== 'promotions') return undefined;
+    const timer = setTimeout(loadCoupons, 250);
+    return () => clearTimeout(timer);
+  }, [activeTab, loadCoupons]);
+
+  const loadFreelancerLevels = useCallback(async () => {
+    setLevelsLoading(true);
+    try {
+      const levels = await listRewardLevels({ includeInactive: true });
+      setFreelancerLevels(levels || []);
+      setSelectedLevelId((current) => current || levels?.[0]?.id || '');
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setLevelsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab !== 'levels') return undefined;
+    loadFreelancerLevels();
+  }, [activeTab, loadFreelancerLevels]);
+
   const selectedCategory = categories.find((item) => item.id === selectedCategoryId);
   const selectedUser = adminUsers.find((item) => item.id === selectedUserId);
+  const selectedService = adminServices.find((item) => item.id === selectedServiceId);
+  const selectedCoupon = coupons.find((item) => item.id === selectedCouponId);
+  const selectedLevel = freelancerLevels.find((item) => item.id === selectedLevelId);
+  const selectedServiceCategory = categories.find((item) => item.id === serviceDraft.categoryId);
+  const selectedServiceSubcategories = selectedServiceCategory?.subcategories || [];
   const usersStats = useMemo(() => {
     const admins = adminUsers.filter((user) => user.isAdmin).length;
     const active = adminUsers.filter((user) => user.activityStatus !== 'inactive').length;
@@ -508,6 +759,220 @@ function Admin() {
     }
   };
 
+  const updateServiceDraft = (field, value) => {
+    setServiceDraft((current) => ({ ...current, [field]: value }));
+  };
+
+  const saveAdminService = async () => {
+    if (!selectedService) return;
+    if (!serviceDraft.title.trim() || !serviceDraft.description.trim()) {
+      toast.error('Título e descrição são obrigatórios.');
+      return;
+    }
+
+    setServiceSaving(true);
+    try {
+      const saved = await updateAdminService(selectedService.id, {
+        title: serviceDraft.title,
+        description: serviceDraft.description,
+        status: serviceDraft.status,
+        categoryId: serviceDraft.categoryId,
+        subcategorySlug: selectedServiceSubcategories.length ? serviceDraft.subcategorySlug : null,
+        tags: parseTags(serviceDraft.tags),
+        coverUrl: serviceDraft.coverUrl || null,
+      });
+      setAdminServices((current) => current.map((service) => (service.id === saved.id ? saved : service)));
+      setSelectedServiceId(saved.id);
+      toast.success('Serviço atualizado.');
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setServiceSaving(false);
+    }
+  };
+
+  const archiveAdminService = async (service) => {
+    if (!service || serviceSaving) return;
+    const confirmed = window.confirm(`Arquivar o serviço "${service.title}"? Ele sairá da busca pública.`);
+    if (!confirmed) return;
+
+    setServiceSaving(true);
+    try {
+      const result = await deleteAdminService(service.id);
+      if (result.service) {
+        setAdminServices((current) => current.map((item) => (item.id === result.service.id ? result.service : item)));
+        setSelectedServiceId(result.service.id);
+      }
+      toast.success('Serviço arquivado.');
+      await loadAdminServices();
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setServiceSaving(false);
+    }
+  };
+
+  const permanentlyDeleteAdminService = async (service) => {
+    if (!service || serviceSaving) return;
+    const confirmed = window.confirm(`Excluir permanentemente "${service.title}"? Essa ação não pode ser desfeita.`);
+    if (!confirmed) return;
+
+    setServiceSaving(true);
+    try {
+      await deleteAdminService(service.id, { permanent: true });
+      setAdminServices((current) => current.filter((item) => item.id !== service.id));
+      setSelectedServiceId('');
+      setServiceDraft(emptyServiceDraft);
+      toast.success('Serviço excluído permanentemente.');
+      await loadAdminServices();
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setServiceSaving(false);
+    }
+  };
+
+  const startNewCoupon = () => {
+    setSelectedCouponId('new');
+    setCouponDraft(emptyCouponDraft);
+    setActiveTab('promotions');
+  };
+
+  const updateCouponDraft = (field, value) => {
+    setCouponDraft((current) => ({ ...current, [field]: value }));
+  };
+
+  const couponPayload = () => ({
+    code: couponDraft.code,
+    name: couponDraft.name,
+    description: couponDraft.description || null,
+    discountType: couponDraft.discountType,
+    discountValue: couponDraft.discountType === 'PERCENTAGE'
+      ? Number(couponDraft.discountValue) || 0
+      : parseMoneyInput(couponDraft.discountValue) || 0,
+    maxDiscountCents: parseMoneyInput(couponDraft.maxDiscountCents),
+    minSubtotalCents: parseMoneyInput(couponDraft.minSubtotalCents),
+    usageLimit: couponDraft.usageLimit ? Number(couponDraft.usageLimit) : null,
+    startsAt: couponDraft.startsAt || null,
+    endsAt: couponDraft.endsAt || null,
+    isActive: couponDraft.isActive,
+  });
+
+  const saveCoupon = async () => {
+    if (!couponDraft.code.trim() || !couponDraft.name.trim()) {
+      toast.error('Código e nome do cupom são obrigatórios.');
+      return;
+    }
+
+    setCouponSaving(true);
+    try {
+      const saved = selectedCouponId === 'new'
+        ? await createAdminCoupon(couponPayload())
+        : await updateAdminCoupon(selectedCouponId, couponPayload());
+      setCoupons((current) =>
+        selectedCouponId === 'new'
+          ? [saved, ...current]
+          : current.map((coupon) => (coupon.id === saved.id ? saved : coupon))
+      );
+      setSelectedCouponId(saved.id);
+      toast.success(selectedCouponId === 'new' ? 'Cupom criado.' : 'Cupom atualizado.');
+      await loadCoupons();
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setCouponSaving(false);
+    }
+  };
+
+  const removeCoupon = async () => {
+    if (!selectedCoupon || couponSaving) return;
+    const confirmed = window.confirm(`Excluir o cupom "${selectedCoupon.code}"?`);
+    if (!confirmed) return;
+
+    setCouponSaving(true);
+    try {
+      await deleteAdminCoupon(selectedCoupon.id);
+      setCoupons((current) => current.filter((coupon) => coupon.id !== selectedCoupon.id));
+      setSelectedCouponId('');
+      setCouponDraft(emptyCouponDraft);
+      toast.success('Cupom excluído.');
+      await loadCoupons();
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setCouponSaving(false);
+    }
+  };
+
+  const startNewLevel = () => {
+    const nextPosition = Math.max(0, ...freelancerLevels.map((level) => level.position || 0)) + 1;
+    const nextLevelNumber = Math.max(0, ...freelancerLevels.map((level) => level.levelNumber || 0)) + 1;
+    setSelectedLevelId('new');
+    setLevelDraft({ ...emptyLevelDraft, position: nextPosition, levelNumber: nextLevelNumber });
+    setActiveTab('levels');
+  };
+
+  const updateLevelDraft = (field, value) => {
+    setLevelDraft((current) => ({ ...current, [field]: value }));
+  };
+
+  const levelPayload = () => ({
+    audience: levelDraft.audience,
+    levelNumber: Number(levelDraft.levelNumber) || 1,
+    name: levelDraft.name,
+    slug: levelDraft.slug || undefined,
+    description: levelDraft.description || null,
+    xpRequired: Number(levelDraft.xpRequired) || 0,
+    badgeColor: levelDraft.badgeColor || '#3e73e6',
+    benefits: levelDraft.benefits.split('\n').map((benefit) => benefit.trim()).filter(Boolean),
+    position: Number(levelDraft.position) || 0,
+    isActive: levelDraft.isActive,
+  });
+
+  const saveLevel = async () => {
+    if (!levelDraft.name.trim()) {
+      toast.error('Informe o nome do nível.');
+      return;
+    }
+
+    setLevelSaving(true);
+    try {
+      const saved = selectedLevelId === 'new'
+        ? await createRewardLevel(levelPayload())
+        : await updateRewardLevel(selectedLevelId, levelPayload());
+      setFreelancerLevels((current) =>
+        selectedLevelId === 'new'
+          ? [...current, saved].sort((a, b) => (a.levelNumber || 0) - (b.levelNumber || 0))
+          : current.map((level) => (level.id === saved.id ? saved : level)).sort((a, b) => (a.levelNumber || 0) - (b.levelNumber || 0))
+      );
+      setSelectedLevelId(saved.id);
+      toast.success(selectedLevelId === 'new' ? 'Nível criado.' : 'Nível atualizado.');
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setLevelSaving(false);
+    }
+  };
+
+  const removeLevel = async () => {
+    if (!selectedLevel || levelSaving) return;
+    const confirmed = window.confirm(`Excluir o nível "${selectedLevel.name}"?`);
+    if (!confirmed) return;
+
+    setLevelSaving(true);
+    try {
+      await deleteRewardLevel(selectedLevel.id);
+      setFreelancerLevels((current) => current.filter((level) => level.id !== selectedLevel.id));
+      setSelectedLevelId('');
+      setLevelDraft(emptyLevelDraft);
+      toast.success('Nível excluído.');
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setLevelSaving(false);
+    }
+  };
+
   return (
     <div className={styles.page}>
       <section className={styles.hero}>
@@ -614,6 +1079,484 @@ function Admin() {
               </div>
             </section>
           </div>
+        )}
+
+        {activeTab === 'services' && (
+          <section className={styles.panel}>
+            <div className={styles.panelHead}>
+              <div>
+                <span className={styles.sectionKicker}>Marketplace</span>
+                <h3>Serviços publicados e rascunhos</h3>
+              </div>
+              <div className={styles.buttonGroup}>
+                <button type="button" className={styles.ghostButton} onClick={loadAdminServices} disabled={servicesLoading}>
+                  {servicesLoading ? 'Atualizando...' : 'Atualizar'}
+                </button>
+                <button type="button" className={styles.primaryButton} onClick={saveAdminService} disabled={!selectedService || serviceSaving}>
+                  <FaFloppyDisk /> {serviceSaving ? 'Salvando...' : 'Salvar serviço'}
+                </button>
+              </div>
+            </div>
+
+            <div className={styles.userStats}>
+              <div className={styles.taxonomyStat}>
+                <FaLayerGroup />
+                <span>Total filtrado</span>
+                <strong>{adminServicesTotal}</strong>
+              </div>
+              <div className={styles.taxonomyStat}>
+                <FaCircleCheck />
+                <span>Publicados</span>
+                <strong>{adminServicesSummary.PUBLISHED || 0}</strong>
+              </div>
+              <div className={styles.taxonomyStat}>
+                <FaClock />
+                <span>Rascunhos</span>
+                <strong>{adminServicesSummary.DRAFT || 0}</strong>
+              </div>
+              <div className={styles.taxonomyStat}>
+                <FaBan />
+                <span>Arquivados</span>
+                <strong>{adminServicesSummary.ARCHIVED || 0}</strong>
+              </div>
+            </div>
+
+            <div className={styles.userFilters}>
+              <select value={serviceStatusFilter} onChange={(event) => setServiceStatusFilter(event.target.value)}>
+                <option value="all">Todos os status</option>
+                <option value="PUBLISHED">Publicados</option>
+                <option value="DRAFT">Rascunhos</option>
+                <option value="ARCHIVED">Arquivados</option>
+              </select>
+              <select value={serviceCategoryFilter} onChange={(event) => setServiceCategoryFilter(event.target.value)}>
+                <option value="">Todas as categorias</option>
+                {categories.map((category) => (
+                  <option key={category.id} value={category.id}>{category.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className={styles.userManagementGrid}>
+              <div className={styles.tableWrap}>
+                <table className={styles.table}>
+                  <thead>
+                    <tr>
+                      <th>Serviço</th>
+                      <th>Freelancer</th>
+                      <th>Status</th>
+                      <th>Sinais</th>
+                      <th>Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {servicesLoading ? (
+                      <tr>
+                        <td colSpan="5">Carregando serviços...</td>
+                      </tr>
+                    ) : adminServices.length === 0 ? (
+                      <tr>
+                        <td colSpan="5">Nenhum serviço encontrado.</td>
+                      </tr>
+                    ) : (
+                      adminServices.map((service) => (
+                        <tr key={service.id} className={selectedServiceId === service.id ? styles.tableRowActive : ''}>
+                          <td>
+                            <strong>{service.title}</strong>
+                            <span>{service.category?.name || 'Sem categoria'} · {service.subcategoryName || 'Sem subcategoria'}</span>
+                            <span>ID: {service.id}</span>
+                          </td>
+                          <td>
+                            <strong>{toUserName(service.owner)}</strong>
+                            <span>@{service.owner?.username || 'sem username'}</span>
+                          </td>
+                          <td>
+                            <em className={`${styles.badge} ${styles[getStatusTone(SERVICE_STATUS_LABEL[service.status] || service.status)]}`}>
+                              {SERVICE_STATUS_LABEL[service.status] || service.status}
+                            </em>
+                            <span>Atualizado: {formatDate(service.updatedAt)}</span>
+                          </td>
+                          <td>
+                            <strong>{formatCents(service.minPriceCents)} inicial</strong>
+                            <span>{service.counts?.orders || 0} pedidos · {service.counts?.favorites || 0} favoritos</span>
+                          </td>
+                          <td>
+                            <div className={styles.rowActions}>
+                              <button type="button" onClick={() => setSelectedServiceId(service.id)}>Editar</button>
+                              <button type="button" onClick={() => archiveAdminService(service)} disabled={serviceSaving || service.status === 'ARCHIVED'}>
+                                Arquivar
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => permanentlyDeleteAdminService(service)}
+                                disabled={serviceSaving || (service.counts?.orders || 0) > 0 || (service.counts?.payments || 0) > 0}
+                              >
+                                Excluir
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              <aside className={styles.userEditor}>
+                {selectedService ? (
+                  <>
+                    <div className={styles.userEditorHeader}>
+                      <div className={styles.userAvatar}>
+                        <CategoryIcon category={selectedService.category} />
+                      </div>
+                      <div>
+                        <span className={styles.sectionKicker}>Editor de serviço</span>
+                        <h4>{selectedService.title}</h4>
+                        <p>{toUserName(selectedService.owner)} · {selectedService.category?.name}</p>
+                      </div>
+                    </div>
+
+                    <div className={styles.formGrid}>
+                      <label className={`${styles.formField} ${styles.formFieldFull}`}>
+                        <span>Título</span>
+                        <input value={serviceDraft.title} onChange={(event) => updateServiceDraft('title', event.target.value)} />
+                      </label>
+                      <label className={styles.formField}>
+                        <span>Status</span>
+                        <select value={serviceDraft.status} onChange={(event) => updateServiceDraft('status', event.target.value)}>
+                          <option value="DRAFT">Rascunho</option>
+                          <option value="PUBLISHED">Publicado</option>
+                          <option value="ARCHIVED">Arquivado</option>
+                        </select>
+                      </label>
+                      <label className={styles.formField}>
+                        <span>Categoria</span>
+                        <select
+                          value={serviceDraft.categoryId}
+                          onChange={(event) => {
+                            updateServiceDraft('categoryId', event.target.value);
+                            updateServiceDraft('subcategorySlug', '');
+                          }}
+                        >
+                          <option value="">Selecione</option>
+                          {categories.map((category) => (
+                            <option key={category.id} value={category.id}>{category.name}</option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className={styles.formField}>
+                        <span>Subcategoria</span>
+                        <select value={serviceDraft.subcategorySlug} onChange={(event) => updateServiceDraft('subcategorySlug', event.target.value)}>
+                          <option value="">Sem subcategoria</option>
+                          {selectedServiceSubcategories.map((subcategory) => (
+                            <option key={subcategory.slug} value={subcategory.slug}>{subcategory.name}</option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className={styles.formField}>
+                        <span>URL da capa</span>
+                        <input value={serviceDraft.coverUrl} onChange={(event) => updateServiceDraft('coverUrl', event.target.value)} />
+                      </label>
+                      <label className={`${styles.formField} ${styles.formFieldFull}`}>
+                        <span>Tags</span>
+                        <input value={serviceDraft.tags} onChange={(event) => updateServiceDraft('tags', event.target.value)} placeholder="landing pages, react, sites" />
+                      </label>
+                      <label className={`${styles.formField} ${styles.formFieldFull}`}>
+                        <span>Descrição</span>
+                        <textarea rows={6} value={serviceDraft.description} onChange={(event) => updateServiceDraft('description', event.target.value)} />
+                      </label>
+                    </div>
+
+                    <button type="button" className={styles.primaryButton} onClick={saveAdminService} disabled={serviceSaving}>
+                      <FaFloppyDisk /> {serviceSaving ? 'Salvando...' : 'Salvar alterações'}
+                    </button>
+                  </>
+                ) : (
+                  <div className={styles.taxonomyEmpty}>
+                    Selecione um serviço para editar status, categoria, tags e informações principais.
+                  </div>
+                )}
+              </aside>
+            </div>
+          </section>
+        )}
+
+        {activeTab === 'promotions' && (
+          <section className={styles.panel}>
+            <div className={styles.panelHead}>
+              <div>
+                <span className={styles.sectionKicker}>Crescimento</span>
+                <h3>Cupons e promoções</h3>
+              </div>
+              <div className={styles.buttonGroup}>
+                <button type="button" className={styles.ghostButton} onClick={loadCoupons} disabled={couponsLoading}>
+                  {couponsLoading ? 'Atualizando...' : 'Atualizar'}
+                </button>
+                <button type="button" className={styles.primaryButton} onClick={startNewCoupon}>
+                  <FaPlus /> Novo cupom
+                </button>
+              </div>
+            </div>
+
+            <div className={styles.userStats}>
+              <div className={styles.taxonomyStat}>
+                <FaGift />
+                <span>Total filtrado</span>
+                <strong>{couponsTotal}</strong>
+              </div>
+              <div className={styles.taxonomyStat}>
+                <FaCircleCheck />
+                <span>Ativos</span>
+                <strong>{couponsSummary.active || 0}</strong>
+              </div>
+              <div className={styles.taxonomyStat}>
+                <FaClock />
+                <span>Agendados</span>
+                <strong>{couponsSummary.scheduled || 0}</strong>
+              </div>
+              <div className={styles.taxonomyStat}>
+                <FaBan />
+                <span>Expirados/inativos</span>
+                <strong>{(couponsSummary.expired || 0) + (couponsSummary.inactive || 0)}</strong>
+              </div>
+            </div>
+
+            <div className={styles.userFilters}>
+              <select value={couponStatusFilter} onChange={(event) => setCouponStatusFilter(event.target.value)}>
+                <option value="all">Todos os cupons</option>
+                <option value="active">Ativos</option>
+                <option value="scheduled">Agendados</option>
+                <option value="expired">Expirados</option>
+                <option value="inactive">Inativos</option>
+                <option value="limit_reached">Limite atingido</option>
+              </select>
+            </div>
+
+            <div className={styles.userManagementGrid}>
+              <div className={styles.couponGrid}>
+                {couponsLoading ? (
+                  <div className={styles.taxonomyEmpty}>Carregando cupons...</div>
+                ) : coupons.length === 0 ? (
+                  <div className={styles.taxonomyEmpty}>Nenhum cupom encontrado.</div>
+                ) : (
+                  coupons.map((coupon) => (
+                    <button
+                      key={coupon.id}
+                      type="button"
+                      className={`${styles.promoCard} ${selectedCouponId === coupon.id ? styles.promoCardActive : ''}`}
+                      onClick={() => setSelectedCouponId(coupon.id)}
+                    >
+                      <span className={styles.promoCode}>{coupon.code}</span>
+                      <strong>{coupon.name}</strong>
+                      <small>
+                        {coupon.discountType === 'PERCENTAGE'
+                          ? `${coupon.discountValue}% de desconto`
+                          : `${formatCents(coupon.discountValue)} de desconto`}
+                      </small>
+                      <em className={`${styles.badge} ${styles[getStatusTone(COUPON_STATUS_LABEL[coupon.operationalStatus] || coupon.operationalStatus)]}`}>
+                        {COUPON_STATUS_LABEL[coupon.operationalStatus] || coupon.operationalStatus}
+                      </em>
+                    </button>
+                  ))
+                )}
+              </div>
+
+              <aside className={styles.userEditor}>
+                <div className={styles.userEditorHeader}>
+                  <div className={styles.userAvatar}><FaGift /></div>
+                  <div>
+                    <span className={styles.sectionKicker}>{selectedCouponId === 'new' ? 'Novo cupom' : 'Editor'}</span>
+                    <h4>{couponDraft.code || 'Cupom promocional'}</h4>
+                    <p>Controle campanha, janela, limite e desconto.</p>
+                  </div>
+                </div>
+
+                <div className={styles.formGrid}>
+                  <label className={styles.formField}>
+                    <span>Código</span>
+                    <input value={couponDraft.code} onChange={(event) => updateCouponDraft('code', event.target.value.toUpperCase())} placeholder="BEMVINDO10" />
+                  </label>
+                  <label className={styles.formField}>
+                    <span>Tipo</span>
+                    <select value={couponDraft.discountType} onChange={(event) => updateCouponDraft('discountType', event.target.value)}>
+                      <option value="PERCENTAGE">Percentual</option>
+                      <option value="FIXED_AMOUNT">Valor fixo</option>
+                    </select>
+                  </label>
+                  <label className={`${styles.formField} ${styles.formFieldFull}`}>
+                    <span>Nome da campanha</span>
+                    <input value={couponDraft.name} onChange={(event) => updateCouponDraft('name', event.target.value)} placeholder="Boas-vindas" />
+                  </label>
+                  <label className={styles.formField}>
+                    <span>{couponDraft.discountType === 'PERCENTAGE' ? 'Desconto (%)' : 'Desconto (R$)'}</span>
+                    <input value={couponDraft.discountValue} onChange={(event) => updateCouponDraft('discountValue', event.target.value)} />
+                  </label>
+                  <label className={styles.formField}>
+                    <span>Desconto máximo (R$)</span>
+                    <input value={couponDraft.maxDiscountCents} onChange={(event) => updateCouponDraft('maxDiscountCents', event.target.value)} />
+                  </label>
+                  <label className={styles.formField}>
+                    <span>Pedido mínimo (R$)</span>
+                    <input value={couponDraft.minSubtotalCents} onChange={(event) => updateCouponDraft('minSubtotalCents', event.target.value)} />
+                  </label>
+                  <label className={styles.formField}>
+                    <span>Limite de usos</span>
+                    <input type="number" min="1" value={couponDraft.usageLimit} onChange={(event) => updateCouponDraft('usageLimit', event.target.value)} />
+                  </label>
+                  <label className={styles.formField}>
+                    <span>Início</span>
+                    <input type="datetime-local" value={couponDraft.startsAt} onChange={(event) => updateCouponDraft('startsAt', event.target.value)} />
+                  </label>
+                  <label className={styles.formField}>
+                    <span>Fim</span>
+                    <input type="datetime-local" value={couponDraft.endsAt} onChange={(event) => updateCouponDraft('endsAt', event.target.value)} />
+                  </label>
+                  <label className={`${styles.formField} ${styles.formFieldFull}`}>
+                    <span>Descrição interna</span>
+                    <textarea rows={3} value={couponDraft.description} onChange={(event) => updateCouponDraft('description', event.target.value)} />
+                  </label>
+                </div>
+
+                <div className={styles.userSwitches}>
+                  <label>
+                    <input type="checkbox" checked={couponDraft.isActive} onChange={(event) => updateCouponDraft('isActive', event.target.checked)} />
+                    <span>Cupom ativo</span>
+                  </label>
+                </div>
+
+                <div className={styles.editorActions}>
+                  {selectedCoupon && (
+                    <button type="button" className={styles.dangerButton} onClick={removeCoupon} disabled={couponSaving}>
+                      <FaTrash /> Excluir
+                    </button>
+                  )}
+                  <button type="button" className={styles.primaryButton} onClick={saveCoupon} disabled={couponSaving}>
+                    <FaFloppyDisk /> {couponSaving ? 'Salvando...' : 'Salvar cupom'}
+                  </button>
+                </div>
+              </aside>
+            </div>
+          </section>
+        )}
+
+        {activeTab === 'levels' && (
+          <section className={styles.panel}>
+            <div className={styles.panelHead}>
+              <div>
+                <span className={styles.sectionKicker}>Confiança</span>
+                <h3>Sistema geral de níveis e XP</h3>
+              </div>
+              <div className={styles.buttonGroup}>
+                <button type="button" className={styles.ghostButton} onClick={loadFreelancerLevels} disabled={levelsLoading}>
+                  {levelsLoading ? 'Atualizando...' : 'Atualizar'}
+                </button>
+                <button type="button" className={styles.primaryButton} onClick={startNewLevel}>
+                  <FaPlus /> Novo nível
+                </button>
+              </div>
+            </div>
+
+            <div className={styles.levelLayout}>
+              <div className={styles.levelList}>
+                {levelsLoading ? (
+                  <div className={styles.taxonomyEmpty}>Carregando níveis...</div>
+                ) : freelancerLevels.length === 0 ? (
+                  <div className={styles.taxonomyEmpty}>Nenhum nível configurado.</div>
+                ) : (
+                  freelancerLevels.map((level) => (
+                    <button
+                      key={level.id}
+                      type="button"
+                      className={`${styles.levelCard} ${selectedLevelId === level.id ? styles.levelCardActive : ''}`}
+                      onClick={() => setSelectedLevelId(level.id)}
+                    >
+                      <span className={styles.levelSwatch} style={{ background: level.badgeColor }} />
+                      <span>
+                        <strong>Nível {level.levelNumber} · {level.name}</strong>
+                        <small>
+                          {level.audience === 'ALL' ? 'Todos' : level.audience === 'FREELANCER' ? 'Freelancers' : 'Clientes'} · {level.xpRequired} XP para liberar
+                        </small>
+                      </span>
+                      <em className={`${styles.badge} ${styles[level.isActive ? 'success' : 'neutral']}`}>
+                        {level.isActive ? 'Ativo' : 'Inativo'}
+                      </em>
+                    </button>
+                  ))
+                )}
+              </div>
+
+              <aside className={styles.userEditor}>
+                <div className={styles.userEditorHeader}>
+                  <div className={styles.userAvatar}><FaMedal /></div>
+                  <div>
+                    <span className={styles.sectionKicker}>{selectedLevelId === 'new' ? 'Novo nível' : 'Editor'}</span>
+                    <h4>{levelDraft.name || 'Nível da plataforma'}</h4>
+                    <p>Configure XP, audiência e recompensas exibidas ao usuário.</p>
+                  </div>
+                </div>
+
+                <div className={styles.formGrid}>
+                  <label className={styles.formField}>
+                    <span>Audiência</span>
+                    <select value={levelDraft.audience} onChange={(event) => updateLevelDraft('audience', event.target.value)}>
+                      <option value="ALL">Todos</option>
+                      <option value="FREELANCER">Freelancers</option>
+                      <option value="CLIENT">Clientes</option>
+                    </select>
+                  </label>
+                  <label className={styles.formField}>
+                    <span>Número do nível</span>
+                    <input type="number" min="1" value={levelDraft.levelNumber} onChange={(event) => updateLevelDraft('levelNumber', event.target.value)} />
+                  </label>
+                  <label className={styles.formField}>
+                    <span>Nome</span>
+                    <input value={levelDraft.name} onChange={(event) => updateLevelDraft('name', event.target.value)} placeholder="Nível 5" />
+                  </label>
+                  <label className={styles.formField}>
+                    <span>Slug</span>
+                    <input value={levelDraft.slug} onChange={(event) => updateLevelDraft('slug', slugify(event.target.value))} placeholder="nivel-5" />
+                  </label>
+                  <label className={styles.formField}>
+                    <span>XP necessário</span>
+                    <input type="number" min="0" value={levelDraft.xpRequired} onChange={(event) => updateLevelDraft('xpRequired', event.target.value)} />
+                  </label>
+                  <label className={styles.formField}>
+                    <span>Ordem</span>
+                    <input type="number" min="0" value={levelDraft.position} onChange={(event) => updateLevelDraft('position', event.target.value)} />
+                  </label>
+                  <label className={styles.formField}>
+                    <span>Cor do selo</span>
+                    <input type="color" value={levelDraft.badgeColor} onChange={(event) => updateLevelDraft('badgeColor', event.target.value)} />
+                  </label>
+                  <label className={`${styles.formField} ${styles.formFieldFull}`}>
+                    <span>Descrição</span>
+                    <textarea rows={3} value={levelDraft.description} onChange={(event) => updateLevelDraft('description', event.target.value)} />
+                  </label>
+                  <label className={`${styles.formField} ${styles.formFieldFull}`}>
+                    <span>Recompensas/benefícios, um por linha</span>
+                    <textarea rows={4} value={levelDraft.benefits} onChange={(event) => updateLevelDraft('benefits', event.target.value)} />
+                  </label>
+                </div>
+
+                <div className={styles.userSwitches}>
+                  <label>
+                    <input type="checkbox" checked={levelDraft.isActive} onChange={(event) => updateLevelDraft('isActive', event.target.checked)} />
+                    <span>Nível ativo</span>
+                  </label>
+                </div>
+
+                <div className={styles.editorActions}>
+                  {selectedLevel && (
+                    <button type="button" className={styles.dangerButton} onClick={removeLevel} disabled={levelSaving}>
+                      <FaTrash /> Excluir
+                    </button>
+                  )}
+                  <button type="button" className={styles.primaryButton} onClick={saveLevel} disabled={levelSaving}>
+                    <FaFloppyDisk /> {levelSaving ? 'Salvando...' : 'Salvar nível'}
+                  </button>
+                </div>
+              </aside>
+            </div>
+          </section>
         )}
 
         {activeTab === 'taxonomy' && (

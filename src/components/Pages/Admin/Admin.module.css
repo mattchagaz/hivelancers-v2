@@ -932,6 +932,7 @@
 }
 
 .formFieldFull {
+  grid-column: 1 / -1;
   margin-top: 12px;
 }
 
@@ -977,6 +978,113 @@
   line-height: 1.6;
 }
 
+.couponGrid,
+.levelList {
+  display: grid;
+  gap: 12px;
+}
+
+.couponGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-content: start;
+}
+
+.promoCard,
+.levelCard {
+  min-width: 0;
+  border: 1px solid var(--border-color, #e8e8ef);
+  background: var(--bg-primary, #fff);
+  color: var(--text-primary, #1a1a2e);
+  text-align: left;
+  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.promoCard {
+  display: flex;
+  min-height: 158px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 18px;
+  border-radius: 20px;
+}
+
+.promoCard:hover,
+.promoCardActive,
+.levelCard:hover,
+.levelCardActive {
+  border-color: rgba(var(--primary-color-rgb, 62, 115, 230), 0.32);
+  box-shadow: 0 18px 44px rgba(var(--shadow-rgb, 15, 23, 42), 0.07);
+}
+
+.promoCard:hover,
+.levelCard:hover {
+  transform: translateY(-1px);
+}
+
+.promoCode {
+  display: inline-flex;
+  min-height: 30px;
+  align-items: center;
+  padding: 0 11px;
+  border-radius: 999px;
+  background: rgba(var(--primary-color-rgb, 62, 115, 230), 0.1);
+  color: var(--primary-color, #3e73e6);
+  font-size: 0.76rem;
+  font-weight: 900;
+  letter-spacing: 0.03em;
+}
+
+.promoCard strong {
+  color: var(--text-primary, #1a1a2e);
+  font-size: 1rem;
+}
+
+.promoCard small {
+  color: var(--text-secondary, #6c6d72);
+  font-size: 0.84rem;
+}
+
+.levelLayout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 420px;
+  gap: 16px;
+  align-items: start;
+}
+
+.levelCard {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  padding: 16px;
+  border-radius: 18px;
+}
+
+.levelSwatch {
+  display: block;
+  width: 16px;
+  height: 56px;
+  border-radius: 999px;
+}
+
+.levelCard strong,
+.levelCard small {
+  display: block;
+}
+
+.levelCard strong {
+  color: var(--text-primary, #1a1a2e);
+  font-size: 1rem;
+}
+
+.levelCard small {
+  margin-top: 4px;
+  color: var(--text-secondary, #6c6d72);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
 .securityCard {
   display: grid;
   grid-template-columns: 46px minmax(0, 1fr);
@@ -1018,7 +1126,8 @@
   .overviewGrid,
   .financeGrid,
   .taxonomyLayout,
-  .userManagementGrid {
+  .userManagementGrid,
+  .levelLayout {
     grid-template-columns: 1fr;
   }
 
@@ -1060,7 +1169,8 @@
   .moderationGrid,
   .taxonomyStats,
   .userStats,
-  .formGrid {
+  .formGrid,
+  .couponGrid {
     grid-template-columns: 1fr;
   }
 
