@@ -25,16 +25,6 @@
   --primary-color-rgb: 62, 115, 230;
   --secondary-color: rgb(99, 147, 252);
   --secondary-color-rgb: 99, 147, 252;
-
-  /* Neutros */
-  --bg-primary: #ffffff;
-  --bg-secondary: #f5f6fa;
-  --bg-tertiary: #eef0f6;
-  --text-primary: #1a1a2e;
-  --text-secondary: #6c6d72;
-  --text-muted: #a0a0ab;
-  --border-color: #e8e8ef;
-  --border-light: #f0f0f5;
 }
 
 html, body {
