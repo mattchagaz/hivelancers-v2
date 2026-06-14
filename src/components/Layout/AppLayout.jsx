@@ -12,7 +12,8 @@ function AppLayout() {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const { user } = useAuth();
 
-  const userRole = isAdminUser(user) ? 'admin' : toRoleSlug(user?.userType) || 'freelancer';
+  const isAdmin = isAdminUser(user);
+  const userRole = toRoleSlug(user?.userType) || 'freelancer';
   const userName = user ? `${user.firstName} ${user.lastName}`.trim() : '';
 
   const toggleSidebar = () => {
@@ -29,6 +30,7 @@ function AppLayout() {
     <div className={styles.layout}>
       <Sidebar
         userRole={userRole}
+        isAdmin={isAdmin}
         collapsed={sidebarCollapsed}
         mobileOpen={mobileSidebarOpen}
         onToggle={toggleSidebar}
@@ -38,7 +40,7 @@ function AppLayout() {
       <div className={`${styles.mainArea} ${sidebarCollapsed ? styles.collapsed : ''}`}>
         <TopBar
           userName={userName}
-          userRole={userRole}
+          userRole={isAdmin ? 'admin' : userRole}
           avatarUrl={user?.avatarUrl}
           onMenuToggle={toggleSidebar}
         />

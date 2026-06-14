@@ -7,12 +7,11 @@ import styles from './Sidebar.module.css';
 
 const ACTIVE_ORDER_STATUSES = new Set(['PENDING', 'IN_PROGRESS', 'DELIVERED']);
 
-function Sidebar({ userRole = 'freelancer', collapsed, mobileOpen, onToggle, onMobileClose }) {
-  const isAdmin = userRole === 'admin';
+function Sidebar({ userRole = 'freelancer', isAdmin = false, collapsed, mobileOpen, onToggle, onMobileClose }) {
   const isFreelancer = userRole === 'freelancer';
   const [badges, setBadges] = useState({ orders: 0, messages: 0 });
 
-  const orderRole = isAdmin ? 'all' : isFreelancer ? 'seller' : 'buyer';
+  const orderRole = isFreelancer ? 'seller' : 'buyer';
 
   const loadBadges = useCallback(async () => {
     const [ordersResult, conversationsResult] = await Promise.allSettled([
@@ -53,18 +52,8 @@ function Sidebar({ userRole = 'freelancer', collapsed, mobileOpen, onToggle, onM
     const ordersBadge = badges.orders || undefined;
     const messagesBadge = badges.messages || undefined;
 
-    if (isAdmin) {
-      return [
-        { label: 'Admin', path: '/admin', icon: 'admin', badge: attentionBadge || undefined },
-        { label: 'Dashboard', path: '/dashboard', icon: 'dashboard' },
-        { label: 'Pedidos', path: '/orders', icon: 'orders', badge: ordersBadge },
-        { label: 'Mensagens', path: '/messages', icon: 'messages', badge: messagesBadge },
-        { label: 'Financeiro', path: '/finances', icon: 'finances' },
-      ];
-    }
-
-    if (isFreelancer) {
-      return [
+    const roleNav = isFreelancer
+      ? [
         { label: 'Dashboard', path: '/dashboard', icon: 'dashboard' },
         { label: 'Meus Serviços', path: '/services', icon: 'services' },
         { label: 'Pedidos', path: '/orders', icon: 'orders', badge: ordersBadge },
@@ -72,10 +61,8 @@ function Sidebar({ userRole = 'freelancer', collapsed, mobileOpen, onToggle, onM
         { label: 'Favoritos', path: '/favorites', icon: 'heart' },
         { label: 'Financeiro', path: '/finances', icon: 'finances' },
         { label: 'Recompensas', path: '/rewards', icon: 'rewards' },
-      ];
-    }
-
-    return [
+      ]
+      : [
       { label: 'Dashboard', path: '/dashboard', icon: 'dashboard' },
       { label: 'Explorar', path: '/explore', icon: 'explore' },
       { label: 'Meus Pedidos', path: '/orders', icon: 'cart', badge: ordersBadge },
@@ -83,6 +70,10 @@ function Sidebar({ userRole = 'freelancer', collapsed, mobileOpen, onToggle, onM
       { label: 'Favoritos', path: '/favorites', icon: 'heart' },
       { label: 'Recompensas', path: '/rewards', icon: 'rewards' },
     ];
+
+    return isAdmin
+      ? [{ label: 'Admin', path: '/admin', icon: 'admin', badge: attentionBadge || undefined }, ...roleNav]
+      : roleNav;
   }, [attentionBadge, badges.messages, badges.orders, isAdmin, isFreelancer]);
 
   const icons = {

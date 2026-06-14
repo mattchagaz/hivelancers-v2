@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast, Toaster } from 'sonner';
 import { getPublicService, getMyService } from '../../../services/services';
 import { startConversation } from '../../../services/messages';
-import { addFavoriteService, getMyFavorites, removeFavoriteService } from '../../../services/users';
+import { addFavoriteService, getMyFavorites, getPublicProfile, removeFavoriteService } from '../../../services/users';
 import { useAuth } from '../../../contexts/AuthContext';
 import { CategoryIcon } from '../../../utils/categoryIcons';
 import { recordRecentActivity } from '../../../utils/clientRecentActivity';
@@ -14,6 +14,21 @@ const formatPrice = (cents) =>
     style: 'currency',
     currency: 'BRL',
   }).format((cents || 0) / 100);
+
+const getServiceMinPrice = (serviceItem) => {
+  const prices = (serviceItem?.plans || [])
+    .map((plan) => Number(plan.priceCents))
+    .filter((value) => Number.isFinite(value) && value > 0);
+  if (prices.length > 0) return Math.min(...prices);
+  return Number(serviceItem?.minPriceCents) || 0;
+};
+
+const getServiceMinDelivery = (serviceItem) => {
+  const deliveryDays = (serviceItem?.plans || [])
+    .map((plan) => Number(plan.deliveryDays))
+    .filter((value) => Number.isFinite(value) && value > 0);
+  return deliveryDays.length > 0 ? Math.min(...deliveryDays) : 0;
+};
 
 const TIER_LABEL = {
   BASIC: 'Básico',
@@ -40,6 +55,8 @@ function ServiceDetails() {
   const [activeImageIdx, setActiveImageIdx] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [contactingOwner, setContactingOwner] = useState(false);
+  const [relatedServices, setRelatedServices] = useState([]);
+  const [loadingRelatedServices, setLoadingRelatedServices] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -81,6 +98,37 @@ function ServiceDetails() {
       })
       .catch(() => {});
   }, [service?.id]);
+
+  useEffect(() => {
+    const ownerHandle = service?.owner?.username || service?.owner?.id || service?.ownerId;
+    if (!service?.id || !ownerHandle) {
+      setRelatedServices([]);
+      setLoadingRelatedServices(false);
+      return undefined;
+    }
+
+    let cancelled = false;
+    setLoadingRelatedServices(true);
+
+    getPublicProfile(ownerHandle)
+      .then((profile) => {
+        if (cancelled) return;
+        const items = (profile?.services || [])
+          .filter((item) => item.id !== service.id)
+          .slice(0, 3);
+        setRelatedServices(items);
+      })
+      .catch(() => {
+        if (!cancelled) setRelatedServices([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingRelatedServices(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [service?.id, service?.owner?.username, service?.owner?.id, service?.ownerId]);
 
   useEffect(() => {
     if (!service?.id || !user?.id || user?.userType !== 'CLIENT') return;
@@ -149,11 +197,13 @@ function ServiceDetails() {
   const sellerName = `${service.owner?.firstName || ''} ${service.owner?.lastName || ''}`.trim() || 'Profissional';
   const sellerInitial = (sellerName[0] || '?').toUpperCase();
   const sellerAvatarUrl = service.owner?.avatarUrl;
+  const sellerProfileHandle = service.owner?.username || service.owner?.id || service.ownerId;
+  const sellerProfileHref = sellerProfileHandle ? `/profile/${sellerProfileHandle}` : null;
   const isOwner = user?.id === service.ownerId;
   const tags = Array.isArray(service.tags) ? service.tags : [];
   const subcategoryName = service.subcategoryName || '';
-  const minPriceCents = Math.min(...service.plans.map((plan) => plan.priceCents || 0));
-  const minDeliveryDays = Math.min(...service.plans.map((plan) => plan.deliveryDays || 0));
+  const minPriceCents = getServiceMinPrice(service);
+  const minDeliveryDays = getServiceMinDelivery(service);
   const maxRevisions = Math.max(...service.plans.map((plan) => plan.revisions || 0));
   const reviews = service.reviews || [];
   const averageRating = service.reviewSummary?.averageRating;
@@ -283,6 +333,16 @@ function ServiceDetails() {
               {service.owner?.headline && <p className={styles.sellerHeadline}>{service.owner.headline}</p>}
             </div>
           </div>
+
+          {sellerProfileHref && (
+            <Link to={sellerProfileHref} className={styles.profileButton}>
+              Ver perfil público
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M7 17L17 7" />
+                <path d="M7 7h10v10" />
+              </svg>
+            </Link>
+          )}
           
           <div className={styles.sellerStats}>
             <div className={styles.sellerStat}>
@@ -395,6 +455,91 @@ function ServiceDetails() {
             </div>
           </section>
 
+          <section className={styles.card}>
+            <div className={styles.sectionHeaderRow}>
+              <div>
+                <h2 className={styles.sectionTitle}>Outros serviços deste freelancer</h2>
+                <p className={styles.sectionText}>Veja mais opções publicadas por {sellerName}.</p>
+              </div>
+              {sellerProfileHref && (
+                <Link to={sellerProfileHref} className={styles.sectionLink}>
+                  Ver perfil completo
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M7 17L17 7" />
+                    <path d="M7 7h10v10" />
+                  </svg>
+                </Link>
+              )}
+            </div>
+
+            {loadingRelatedServices ? (
+              <div className={styles.relatedLoading}>
+                <div className={styles.relatedSkeleton} />
+                <div className={styles.relatedSkeleton} />
+                <div className={styles.relatedSkeleton} />
+              </div>
+            ) : relatedServices.length > 0 ? (
+              <div className={styles.relatedGrid}>
+                {relatedServices.map((item) => {
+                  const cover = item.coverUrl || item.images?.[0]?.url;
+                  const categoryName = item.subcategoryName || item.category?.name || 'Serviço';
+                  const minPrice = getServiceMinPrice(item);
+                  const delivery = getServiceMinDelivery(item);
+
+                  return (
+                    <Link key={item.id} to={`/services/${item.id}`} className={styles.relatedCard}>
+                      <div
+                        className={styles.relatedMedia}
+                        style={cover ? { backgroundImage: `url(${cover})` } : undefined}
+                      >
+                        {!cover && (
+                          <span className={styles.relatedMediaFallback}>
+                            <CategoryIcon category={item.category} />
+                          </span>
+                        )}
+                        <span className={styles.relatedBadge}>
+                          <CategoryIcon category={item.category} />
+                          {categoryName}
+                        </span>
+                      </div>
+
+                      <div className={styles.relatedBody}>
+                        <h3>{item.title}</h3>
+                        {item.description && <p>{item.description}</p>}
+                        <div className={styles.relatedFooter}>
+                          <span>{delivery ? `${delivery} ${delivery === 1 ? 'dia' : 'dias'}` : 'Prazo sob consulta'}</span>
+                          <strong>{formatPrice(minPrice)}</strong>
+                        </div>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className={styles.relatedEmpty}>
+                <div className={styles.relatedEmptyIcon}>
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                    <path d="M3.3 7 12 12l8.7-5" />
+                    <path d="M12 22V12" />
+                  </svg>
+                </div>
+                <div>
+                  <h3>Nenhum outro serviço publicado ainda</h3>
+                  <p>
+                    Quando {sellerName.split(' ')[0] || sellerName} publicar novas ofertas,
+                    elas aparecerão aqui automaticamente.
+                  </p>
+                </div>
+                {isOwner ? (
+                  <Link to="/services/new" className={styles.emptyRelatedAction}>Criar outro serviço</Link>
+                ) : sellerProfileHref ? (
+                  <Link to={sellerProfileHref} className={styles.emptyRelatedAction}>Ver perfil público</Link>
+                ) : null}
+              </div>
+            )}
+          </section>
+
           {/* Avaliações */}
           <section className={styles.card}>
             <div className={styles.sectionHeader}>
@@ -504,14 +649,26 @@ function ServiceDetails() {
 
             <div className={styles.actionButtons}>
               {isOwner ? (
-                <Link to={`/services/${service.id}/edit`} className={styles.primaryButton}>
-                  Editar meu Serviço
-                </Link>
+                <>
+                  <Link to={`/services/${service.id}/edit`} className={styles.primaryButton}>
+                    Editar meu Serviço
+                  </Link>
+                  {sellerProfileHref && (
+                    <Link to={sellerProfileHref} className={styles.secondaryButton}>
+                      Ver meu perfil público
+                    </Link>
+                  )}
+                </>
               ) : (
                 <>
                   <button type="button" className={styles.primaryButton} onClick={handleOrder}>
                     Continuar para Pagamento
                   </button>
+                  {sellerProfileHref && (
+                    <Link to={sellerProfileHref} className={styles.secondaryButton}>
+                      Ver perfil público
+                    </Link>
+                  )}
                   <button type="button" className={styles.secondaryButton} onClick={handleContact} disabled={contactingOwner}>
                     {contactingOwner ? 'Iniciando conversa...' : `Falar com ${sellerName}`}
                   </button>

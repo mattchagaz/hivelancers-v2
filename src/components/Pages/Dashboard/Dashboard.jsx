@@ -26,6 +26,7 @@ import { listConversations } from '../../../services/messages';
 import { getMyFavorites } from '../../../services/users';
 import { CategoryIcon } from '../../../utils/categoryIcons';
 import { getFeaturedProject } from '../../../utils/profileEnhancements';
+import CategoryCarousel from '../../UI/CategoryCarousel/CategoryCarousel';
 import SpotlightCard from '../../UI/SpotlightCard/SpotlightCard';
 import styles from './Dashboard.module.css';
 
@@ -819,12 +820,11 @@ function ServiceShowcase({ services }) {
 function CategoryStrip({ categories }) {
   return (
     <div className={styles.categoryStrip}>
-      {categories.map((category) => (
-        <Link key={category.id} to={`/explore?category=${category.slug}`} className={styles.categoryChip}>
-          <CategoryIcon category={category} />
-          <span>{category.name}</span>
-        </Link>
-      ))}
+      <CategoryCarousel
+        categories={categories}
+        compact
+        getHref={(category) => `/explore?category=${category.slug}`}
+      />
     </div>
   );
 }

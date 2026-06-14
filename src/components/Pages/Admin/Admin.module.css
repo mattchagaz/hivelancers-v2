@@ -465,7 +465,7 @@
 
 .financeGrid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
   margin-bottom: 16px;
 }
@@ -529,7 +529,22 @@
 }
 
 .ledgerRow {
-  grid-template-columns: minmax(0, 1fr) auto auto auto auto;
+  grid-template-columns: minmax(0, 1.35fr) auto minmax(130px, 0.45fr) auto auto auto;
+}
+
+.ledgerEconomics {
+  min-width: 130px;
+}
+
+.ledgerEconomics strong {
+  display: block;
+  font-size: 0.95rem;
+}
+
+.ledgerEconomics p {
+  margin: 2px 0 0;
+  color: var(--text-secondary, #6c6d72);
+  font-size: 0.76rem;
 }
 
 .ledgerRow span,

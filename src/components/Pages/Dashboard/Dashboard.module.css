@@ -553,22 +553,7 @@
 }
 
 .categoryStrip {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
   margin-bottom: 18px;
-}
-
-.categoryChip {
-  display: inline-flex;
-  min-height: 42px;
-  align-items: center;
-  gap: 9px;
-  padding: 0 14px;
-  color: var(--text-primary, #1a1a2e);
-  font-size: 0.84rem;
-  font-weight: 800;
-  text-decoration: none;
 }
 
 .showcaseGrid {

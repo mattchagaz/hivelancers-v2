@@ -176,7 +176,7 @@ function ProfileProjectDetails() {
           <div className={styles.heroEyebrow}>Case em destaque</div>
           <h1 className={styles.title}>{project.title || 'Projeto sem titulo'}</h1>
           <p className={styles.description}>
-            {project.description || 'Projeto salvo no portfolio publico do freelancer.'}
+            {project.description || 'Projeto salvo no portfólio público do freelancer.'}
           </p>
 
           {project.tags?.length > 0 ? (
@@ -215,7 +215,7 @@ function ProfileProjectDetails() {
             <strong>{gallery.length}</strong>
           </div>
           <div className={styles.statCard}>
-            <span>Posicao no portfolio</span>
+            <span>Posição no portfólio</span>
             <strong>#{(project.position ?? 0) + 1}</strong>
           </div>
           {isOwner ? (
@@ -266,7 +266,7 @@ function ProfileProjectDetails() {
               </div>
             </div>
             <p className={styles.ownerHeadline}>
-              {profile.headline || 'Freelancer com portfolio publico ativo na plataforma.'}
+              {profile.headline || 'Freelancer com portfólio público ativo na plataforma.'}
             </p>
             <div className={styles.ownerLinks}>
               {links.slice(0, 4).map((link) => {

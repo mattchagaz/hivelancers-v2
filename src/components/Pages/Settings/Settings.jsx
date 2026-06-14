@@ -172,11 +172,11 @@ function Settings() {
       { id: 'profile', label: 'Perfil Público', icon: 'user', description: 'Apresentação e vitrine' },
       { id: 'account', label: 'Conta e Acesso', icon: 'shield', description: 'Login, telefone e segurança' },
       { id: 'notifications', label: 'Notificações', icon: 'bell', description: 'Preferências de alertas' },
-      { id: 'appearance', label: 'Aparência', icon: 'palette', description: 'Tema, densidade e UI' },
+      { id: 'appearance', label: 'Aparência', icon: 'palette', description: 'Tema, cores e espaçamento' },
       { id: 'privacy', label: 'Privacidade', icon: 'lock', description: 'Visibilidade e mensagens' },
-      { id: 'billing', label: 'Pagamentos', icon: 'card', description: isFreelancer ? 'Recebimentos e repasses' : 'Cartões e histórico' },
+      { id: 'billing', label: 'Pagamentos', icon: 'card', description: isFreelancer ? 'Planos, verificação e repasses' : 'Planos, cartões e histórico' },
       { id: 'language', label: 'Localização', icon: 'globe', description: 'Idioma, fuso e moeda' },
-      { id: 'danger', label: 'Ações Críticas', icon: 'alert', description: 'Exclusão e dados' },
+      { id: 'danger', label: 'Segurança da conta', icon: 'alert', description: 'Dados e encerramento' },
     ],
     [isFreelancer]
   );
@@ -278,7 +278,7 @@ function Settings() {
 
   const heroStats = [
     { label: 'Perfil público', value: `${profileCompletion}%`, helper: profileCompletion >= 80 ? 'Excelente' : 'Complete mais itens', icon: <FaUserCheck />, tone: 'blue' },
-    { label: 'Tema ativo', value: THEME_LABEL[appearance.theme] || 'Claro', helper: `Densidade ${DENSITY_LABEL[appearance.density] || 'Confortável'}`, icon: <FaPalette />, tone: 'purple' },
+    { label: 'Tema ativo', value: THEME_LABEL[appearance.theme] || 'Claro', helper: `Espaçamento ${DENSITY_LABEL[appearance.density] || 'Confortável'}`, icon: <FaPalette />, tone: 'purple' },
     { label: 'Privacidade', value: privacy.profilePublic ? 'Público' : 'Privado', helper: privacy.allowDm === 'everyone' ? 'DM aberto' : 'Filtro ativo', icon: <FaShieldHalved />, tone: 'green' },
     { label: 'Alertas', value: `${emailEnabledCount + pushEnabledCount} ativos`, helper: `Resumo ${DIGEST_LABEL[notifications.emailDigest] || 'Diário'}`, icon: <FaBell />, tone: 'orange' },
   ];
@@ -640,7 +640,7 @@ function NotificationsPanel({ notifications, toggleNotification, setNotification
 function AppearancePanel({ appearance, setAppearance }) {
   return (
     <section className={styles.card}>
-      <SectionHeader title="Tema Visual" subtitle="Escolha as cores da plataforma." />
+      <SectionHeader title="Aparência da interface" subtitle="Escolha o visual que fica mais confortável para você." />
       <div className={styles.themeGrid}>
         {[{id: 'light', lbl: 'Claro'}, {id: 'dark', lbl: 'Escuro'}, {id: 'system', lbl: 'Automático'}].map(t => (
           <button key={t.id} type="button" className={`${styles.themeCard} ${appearance.theme === t.id ? styles.themeActive : ''}`} onClick={() => setAppearance(prev => ({ ...prev, theme: t.id }))}>
@@ -654,7 +654,7 @@ function AppearancePanel({ appearance, setAppearance }) {
       </div>
 
       <div className={styles.divider} />
-      <SectionHeader title="Cor de Destaque" subtitle="Personalize botões e badges." />
+      <SectionHeader title="Cor de destaque" subtitle="Personalize botões e indicadores da plataforma." />
       <div className={styles.accentRow}>
         {[{id:'blue',c:'#3b82f6'},{id:'green',c:'#10b981'},{id:'amber',c:'#f59e0b'},{id:'purple',c:'#8b5cf6'}].map(a => (
           <button key={a.id} type="button" className={`${styles.accentDot} ${appearance.accent === a.id ? styles.accentActive : ''}`} style={{ background: a.c }} onClick={() => setAppearance(p => ({ ...p, accent: a.id }))} />
@@ -667,10 +667,10 @@ function AppearancePanel({ appearance, setAppearance }) {
 function PrivacyPanel({ privacy, togglePrivacy }) {
   return (
     <section className={styles.card}>
-      <SectionHeader title="Controle de Visibilidade" subtitle="Gerencie como os outros te enxergam." />
-      <ToggleRow title="Perfil Totalmente Público" description="Permite ser encontrado nas buscas da Hivelancers." checked={privacy.profilePublic} onChange={() => togglePrivacy('profilePublic')} />
-      <ToggleRow title="Exibir Status 'Online'" description="Mostra a bolinha verde quando você está ativo." checked={privacy.showOnline} onChange={() => togglePrivacy('showOnline')} />
-      <ToggleRow title="Mostrar Ganhos Totais" description="Exibe quanto você já faturou (ótimo para prova social)." checked={privacy.showEarnings} onChange={() => togglePrivacy('showEarnings')} />
+      <SectionHeader title="Visibilidade do perfil" subtitle="Controle como outras pessoas encontram você." />
+      <ToggleRow title="Perfil público" description="Permite aparecer nas buscas e em links compartilhados." checked={privacy.profilePublic} onChange={() => togglePrivacy('profilePublic')} />
+      <ToggleRow title="Mostrar status online" description="Mostra quando você está ativo na plataforma." checked={privacy.showOnline} onChange={() => togglePrivacy('showOnline')} />
+      <ToggleRow title="Mostrar ganhos totais" description="Exibe seu faturamento acumulado como prova social." checked={privacy.showEarnings} onChange={() => togglePrivacy('showEarnings')} />
     </section>
   );
 }
@@ -678,6 +678,7 @@ function PrivacyPanel({ privacy, togglePrivacy }) {
 function BillingPanel({ isFreelancer }) {
   const [connectState, setConnectState] = useState({ configured: true, connected: false, account: null });
   const [isLoading, setIsLoading] = useState(isFreelancer);
+  const [activeStripeAction, setActiveStripeAction] = useState('');
 
   useEffect(() => {
     if (isFreelancer) {
@@ -687,21 +688,74 @@ function BillingPanel({ isFreelancer }) {
 
   return (
     <section className={styles.card}>
-      <SectionHeader title="Módulo Financeiro (Stripe)" subtitle="Integração segura para processar repasses e pagamentos." />
+      <SectionHeader
+        title="Pagamentos, planos e verificação"
+        subtitle={isFreelancer ? 'Gerencie assinatura, dados de recebimento e liberação de repasses.' : 'Gerencie assinatura, métodos de pagamento e histórico de cobrança.'}
+      />
       {isFreelancer ? (
-        <div className={styles.listRow}>
-          <div className={styles.listIcon}>{renderCardIcon()}</div>
-          <div className={styles.listCopy}>
-            <strong>Status do Recebedor</strong>
-            <span>{isLoading ? 'Verificando...' : connectState.account ? 'Conta conectada e apta para receber Pix/Cartão.' : 'Complete o onboarding da Stripe para ativar seu perfil.'}</span>
+        <>
+          <div className={styles.listRow}>
+            <div className={styles.listIcon}>{renderCardIcon()}</div>
+            <div className={styles.listCopy}>
+              <strong>Verificação da conta</strong>
+              <span>{isLoading ? 'Verificando...' : connectState.account ? 'Conta conectada e pronta para receber pagamentos por cartão. Pix será ativado em breve.' : 'Complete o cadastro financeiro para liberar seus recebimentos.'}</span>
+            </div>
+            <Link to="/verification" className={styles.btnPrimary}>Abrir verificação</Link>
           </div>
-          <button className={styles.btnPrimary} onClick={async () => {
-            const data = await createMyStripeConnectOnboardingLink();
-            if (data?.url) window.location.assign(data.url);
-          }}>{connectState.account ? 'Dashboard Stripe' : 'Conectar Conta'}</button>
-        </div>
+          <div className={styles.listRow}>
+            <div className={styles.listIcon}>{renderCardIcon()}</div>
+            <div className={styles.listCopy}>
+              <strong>Conta Stripe Connect</strong>
+              <span>Use a Stripe para enviar documentos sensíveis, dados bancários e acompanhar saques.</span>
+            </div>
+            <button
+              type="button"
+              className={styles.btnGhost}
+              disabled={activeStripeAction === 'stripe'}
+              onClick={async () => {
+                setActiveStripeAction('stripe');
+                try {
+                  const data = connectState.account?.detailsSubmitted
+                    ? await createMyStripeConnectDashboardLink()
+                    : await createMyStripeConnectOnboardingLink();
+                  if (data?.url) window.location.assign(data.url);
+                } catch (error) {
+                  toast.error(error.message || 'Não foi possível abrir a Stripe.');
+                  setActiveStripeAction('');
+                }
+              }}
+            >
+              {activeStripeAction === 'stripe' ? 'Abrindo...' : connectState.account?.detailsSubmitted ? 'Abrir Stripe' : 'Conectar Stripe'}
+            </button>
+          </div>
+          <div className={styles.listRow}>
+            <div className={styles.listIcon}>{renderCardIcon()}</div>
+            <div className={styles.listCopy}>
+              <strong>Plano e assinatura</strong>
+              <span>Compare benefícios, comissão, recursos de crescimento e cobrança recorrente.</span>
+            </div>
+            <Link to="/subscription" className={styles.btnGhost}>Ver planos</Link>
+          </div>
+        </>
       ) : (
-        <div className={styles.emptyContent}>Gerenciamento de cartões de clientes estará disponível em breve.</div>
+        <>
+          <div className={styles.listRow}>
+            <div className={styles.listIcon}>{renderCardIcon()}</div>
+            <div className={styles.listCopy}>
+              <strong>Plano e assinatura</strong>
+              <span>Veja os recursos disponíveis para clientes, equipes e empresas.</span>
+            </div>
+            <Link to="/subscription" className={styles.btnPrimary}>Ver planos</Link>
+          </div>
+          <div className={styles.listRow}>
+            <div className={styles.listIcon}>{renderCardIcon()}</div>
+            <div className={styles.listCopy}>
+              <strong>Métodos de pagamento</strong>
+              <span>Gerenciamento de cartões e recibos para clientes ficará disponível pelo portal seguro.</span>
+            </div>
+            <button type="button" className={styles.btnGhost} disabled>Em breve</button>
+          </div>
+        </>
       )}
     </section>
   );
@@ -722,13 +776,13 @@ function LanguagePanel({ language, setLanguage }) {
 function DangerPanel() {
   return (
     <section className={`${styles.card} ${styles.dangerCard}`}>
-      <SectionHeader title="Exclusão de Dados" subtitle="Ações irreversíveis." />
+      <SectionHeader title="Encerramento da conta" subtitle="Ações irreversíveis." />
       <div className={styles.listRow}>
         <div className={styles.listCopy}>
           <strong>Excluir conta permanentemente</strong>
-          <span>Apaga histórico, mensagens e dados financeiros.</span>
+          <span>Remove histórico, mensagens e dados financeiros.</span>
         </div>
-        <button className={styles.rowActionDanger}>Solicitar Exclusão</button>
+        <button className={styles.rowActionDanger}>Solicitar exclusão</button>
       </div>
     </section>
   );

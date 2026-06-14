@@ -1395,7 +1395,7 @@ export const SERVICES = [
       'Observações pontuais quando necessário',
     ],
     process: [
-      { title: 'Leitura do material', text: 'Analiso contexto, densidade e terminologia do conteúdo.' },
+      { title: 'Leitura do material', text: 'Analiso contexto, complexidade e terminologia do conteúdo.' },
       { title: 'Tradução', text: 'Converto o texto preservando intenção e clareza.' },
       { title: 'Revisão', text: 'Faço leitura final para naturalidade e consistência.' },
       { title: 'Entrega', text: 'Envio o material revisado e pronto para uso.' },

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { FaArrowLeft, FaArrowRight, FaHeart, FaArrowUpRightFromSquare, FaXmark, FaRegHeart } from 'react-icons/fa6';
+import { FaArrowLeft, FaArrowRight, FaCircleCheck, FaHeart, FaArrowUpRightFromSquare, FaXmark, FaRegHeart } from 'react-icons/fa6';
 import { toast, Toaster } from 'sonner';
 import { useAuth } from '../../../contexts/AuthContext';
 import {
@@ -179,6 +179,61 @@ function UserProfile() {
   const skills = profile.skills || [];
   const isOwner = Boolean(user && profile.id === user.id);
   const roleLabel = profile.userType === 'CLIENT' ? 'Cliente' : 'Especialista';
+  const categoryNames = services
+    .map((svc) => {
+      if (typeof svc.category === 'string') return svc.category;
+      return svc.category?.name || svc.categoryName;
+    })
+    .filter(Boolean);
+  const primaryCategory = categoryNames[0] || skills[0] || 'Projetos sob demanda';
+  const startingPriceCents = services.reduce((currentMin, svc) => {
+    const prices = [
+      svc.minPriceCents,
+      ...((svc.plans || []).map((plan) => plan.priceCents)),
+    ]
+      .map((value) => Number(value))
+      .filter((value) => Number.isFinite(value) && value > 0);
+
+    if (prices.length === 0) return currentMin;
+    const serviceMin = Math.min(...prices);
+    return currentMin === null ? serviceMin : Math.min(currentMin, serviceMin);
+  }, null);
+  const profileReadiness = completion.percent >= 90
+    ? 'Vitrine completa'
+    : completion.percent >= 70
+      ? 'Perfil consistente'
+      : 'Perfil em construção';
+  const responseSignal = presence.online ? 'Disponível agora' : 'Responde pela conversa';
+  const trustSignals = [
+    `${completion.percent}% do perfil completo`,
+    services.length
+      ? `${services.length} ${services.length === 1 ? 'serviço publicado' : 'serviços publicados'}`
+      : 'Serviços em preparação',
+    projects.length
+      ? `${projects.length} ${projects.length === 1 ? 'projeto no portfólio' : 'projetos no portfólio'}`
+      : 'Portfólio em construção',
+    links.length
+      ? `${links.length} ${links.length === 1 ? 'link profissional' : 'links profissionais'}`
+      : 'Links profissionais pendentes',
+  ];
+  const trustList = [
+    {
+      label: profileReadiness,
+      helper: completion.percent >= 70 ? 'Boa base de informações para avaliação.' : 'Ainda recebendo melhorias no perfil.',
+    },
+    {
+      label: memberSince ? `Membro desde ${memberSince}` : 'Histórico em formação',
+      helper: 'Conta ativa na Hivelancers.',
+    },
+    {
+      label: responseSignal,
+      helper: presence.label,
+    },
+    {
+      label: projects.length ? 'Portfólio publicado' : 'Portfólio em preparação',
+      helper: projects.length ? `${projects.length} trabalhos visíveis no perfil.` : 'Ainda sem cases publicados.',
+    },
+  ];
 
   const handleStartChat = async () => {
     if (!profile?.id || startingChat) return;
@@ -258,7 +313,6 @@ function UserProfile() {
   return (
     <div className={styles.page}>
       
-      {/* Banner / Hero Section */}
       <header className={styles.hero}>
         <div className={styles.heroMain}>
           <div className={styles.heroTop}>
@@ -285,7 +339,7 @@ function UserProfile() {
               </div>
 
               <p className={styles.headline}>
-                {profile.headline || 'Perfil em construção. Em breve com mais contexto, links e projetos.'}
+                {profile.headline || 'Perfil em construção. Envie uma mensagem para entender disponibilidade, experiência e forma de trabalho.'}
               </p>
 
               <div className={styles.metaRow}>
@@ -302,6 +356,15 @@ function UserProfile() {
                   </span>
                 )}
               </div>
+
+              <div className={styles.trustStrip}>
+                {trustSignals.map((signal) => (
+                  <span key={signal} className={styles.trustPill}>
+                    <FaCircleCheck />
+                    {signal}
+                  </span>
+                ))}
+              </div>
             </div>
           </div>
 
@@ -309,20 +372,20 @@ function UserProfile() {
             {isOwner ? (
               <>
                 <Link to="/profile/customize" className={styles.primaryAction}>
-                  Personalizar meu Perfil
+                  Personalizar meu perfil
                 </Link>
                 <Link to="/settings" className={styles.secondaryAction}>
-                  Configurações da Conta
+                  Configurações da conta
                 </Link>
               </>
             ) : (
               <>
                 <button className={styles.primaryAction} onClick={handleProposalRequest} disabled={startingChat}>
-                  {startingChat ? 'Iniciando...' : 'Solicitar Orçamento'}
+                  {startingChat ? 'Iniciando...' : 'Solicitar proposta'}
                 </button>
                 <button className={styles.secondaryAction} onClick={handleStartChat} disabled={startingChat}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
-                  Mensagem
+                  Enviar mensagem
                 </button>
                 <button className={`${styles.iconAction} ${isFavoriteFreelancer ? styles.isFavorite : ''}`} onClick={handleFavoriteFreelancer} title={isFavoriteFreelancer ? 'Remover favorito' : 'Favoritar'}>
                   {isFavoriteFreelancer ? <FaHeart /> : <FaRegHeart />}
@@ -350,35 +413,43 @@ function UserProfile() {
           <div className={styles.metricCard}>
             <span className={styles.metricLabel}>Serviços</span>
             <strong className={styles.metricValue}>{services.length}</strong>
+            <span className={styles.metricHint}>publicados</span>
           </div>
           <div className={styles.metricCard}>
             <span className={styles.metricLabel}>Projetos</span>
             <strong className={styles.metricValue}>{projects.length}</strong>
+            <span className={styles.metricHint}>no portfólio</span>
           </div>
           <div className={styles.metricCard}>
             <span className={styles.metricLabel}>Habilidades</span>
             <strong className={styles.metricValue}>{skills.length}</strong>
+            <span className={styles.metricHint}>destacadas</span>
           </div>
-          {isOwner && (
-            <div className={`${styles.metricCard} ${styles.metricAccent}`}>
-              <span className={styles.metricLabel}>Força do perfil</span>
-              <strong className={styles.metricValue}>{completion.percent}%</strong>
-              <div className={styles.progressMini}>
-                <div className={styles.progressMiniFill} style={{ width: `${completion.percent}%` }}></div>
-              </div>
+          {startingPriceCents !== null && (
+            <div className={styles.metricCard}>
+              <span className={styles.metricLabel}>A partir de</span>
+              <strong className={styles.metricValue}>{formatPrice(startingPriceCents)}</strong>
+              <span className={styles.metricHint}>preço inicial</span>
             </div>
           )}
+          <div className={`${styles.metricCard} ${styles.metricAccent}`}>
+            <span className={styles.metricLabel}>{isOwner ? 'Força do perfil' : 'Sinais do perfil'}</span>
+            <strong className={styles.metricValue}>{completion.percent}%</strong>
+            <span className={styles.metricHint}>{profileReadiness}</span>
+            <div className={styles.progressMini}>
+              <div className={styles.progressMiniFill} style={{ width: `${completion.percent}%` }}></div>
+            </div>
+          </div>
         </aside>
       </header>
 
-      {/* Main Content Area */}
       <div className={styles.contentGrid}>
         <div className={styles.mainColumn}>
           
-          {/* Sobre / Bio */}
           <section className={styles.card}>
             <div className={styles.sectionHead}>
-              <h2 className={styles.sectionTitle}>Sobre</h2>
+              <h2 className={styles.sectionTitle}>Resumo profissional</h2>
+              <span className={styles.summaryBadge}>{profileReadiness}</span>
             </div>
             {profile.bio ? (
               <p className={styles.bio}>{profile.bio}</p>
@@ -386,16 +457,29 @@ function UserProfile() {
               <div className={styles.emptyContent}>
                 {isOwner
                   ? 'Adicione uma bio para contar sua experiência, foco e forma de trabalhar.'
-                  : 'Este usuário ainda não adicionou uma descrição pessoal.'}
+                  : 'Este perfil ainda não adicionou uma descrição pessoal.'}
               </div>
             )}
+            <div className={styles.summaryGrid}>
+              <div className={styles.summaryItem}>
+                <span>Foco principal</span>
+                <strong>{primaryCategory}</strong>
+              </div>
+              <div className={styles.summaryItem}>
+                <span>Preço inicial</span>
+                <strong>{startingPriceCents !== null ? formatPrice(startingPriceCents) : 'Sob consulta'}</strong>
+              </div>
+              <div className={styles.summaryItem}>
+                <span>Disponibilidade</span>
+                <strong>{responseSignal}</strong>
+              </div>
+            </div>
           </section>
 
-          {/* Portfólio de Projetos */}
           <section className={styles.card}>
             <div className={styles.sectionHead}>
-              <h2 className={styles.sectionTitle}>Projetos em Destaque</h2>
-              {isOwner && <Link to="/profile/customize" className={styles.inlineAction}>Editar Projetos</Link>}
+              <h2 className={styles.sectionTitle}>Portfólio em destaque</h2>
+              {isOwner && <Link to="/profile/customize" className={styles.inlineAction}>Editar projetos</Link>}
             </div>
 
             {projects.length === 0 ? (
@@ -434,10 +518,10 @@ function UserProfile() {
                       )}
 
                       <div className={styles.projectActions}>
-                        <Link to={`/profile/${handle}/projects/${project.id}`} className={styles.projectLink}>Abrir Case</Link>
+                        <Link to={`/profile/${handle}/projects/${project.id}`} className={styles.projectLink}>Ver projeto</Link>
                         {project.projectUrl && (
                           <button type="button" className={styles.projectLinkOutline} onClick={() => handleTrackedProjectClick(project)}>
-                            Ver Externo <FaArrowUpRightFromSquare />
+                            Abrir link <FaArrowUpRightFromSquare />
                           </button>
                         )}
                       </div>
@@ -463,14 +547,13 @@ function UserProfile() {
             )}
           </section>
 
-          {/* Serviços do Usuário */}
           <section className={styles.card}>
             <div className={styles.sectionHead}>
-              <h2 className={styles.sectionTitle}>Serviços Ofertados ({services.length})</h2>
+              <h2 className={styles.sectionTitle}>Serviços disponíveis ({services.length})</h2>
             </div>
 
             {services.length === 0 ? (
-              <div className={styles.emptyContent}>Este usuário ainda não publicou serviços para contratação.</div>
+              <div className={styles.emptyContent}>Este perfil ainda não publicou serviços para contratação.</div>
             ) : (
               <div className={styles.grid}>
                 {services.map((svc) => {
@@ -503,14 +586,54 @@ function UserProfile() {
           </section>
         </div>
 
-        {/* Sidebar Lateral */}
         <aside className={styles.aside}>
+          <section className={`${styles.card} ${styles.ctaCard}`}>
+            <span className={styles.ctaEyebrow}>{isOwner ? 'Sua vitrine' : 'Contratação'}</span>
+            <h2 className={styles.ctaTitle}>
+              {isOwner ? 'Deixe seu perfil pronto para vender.' : `Fale com ${fullName.split(' ')[0] || fullName}.`}
+            </h2>
+            <p className={styles.ctaText}>
+              {isOwner
+                ? 'Complete projetos, links e serviços para aumentar a confiança de quem visita seu perfil.'
+                : 'Envie um resumo do projeto, prazo e expectativa. A conversa já fica registrada na plataforma.'}
+            </p>
+            <div className={styles.ctaActions}>
+              {isOwner ? (
+                <Link to="/profile/customize" className={styles.primaryAction}>Editar vitrine</Link>
+              ) : (
+                <>
+                  <button className={styles.primaryAction} onClick={handleProposalRequest} disabled={startingChat}>
+                    Solicitar proposta
+                  </button>
+                  <button className={styles.secondaryAction} onClick={handleStartChat} disabled={startingChat}>
+                    Conversar
+                  </button>
+                </>
+              )}
+            </div>
+          </section>
+
+          <section className={styles.card}>
+            <div className={styles.sectionHead}>
+              <h2 className={styles.sectionTitle}>Sinais de confiança</h2>
+            </div>
+            <div className={styles.trustList}>
+              {trustList.map((item) => (
+                <div key={`${item.label}_${item.helper}`} className={styles.trustItem}>
+                  <span className={styles.trustIcon}><FaCircleCheck /></span>
+                  <div>
+                    <strong>{item.label}</strong>
+                    <span>{item.helper}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
           
-          {/* Projeto Destacado Maior */}
           {featuredProject && (
             <section className={`${styles.card} ${styles.featuredCard}`}>
               <div className={styles.sectionHead}>
-                <h2 className={styles.sectionTitle}>Projeto Principal</h2>
+                <h2 className={styles.sectionTitle}>Projeto em destaque</h2>
               </div>
               <div className={styles.featuredProjectCard}>
                 {featuredProject.coverImageUrl || featuredProject.imageUrl ? (
@@ -525,10 +648,10 @@ function UserProfile() {
                   <p>{featuredProject.description || 'Projeto selecionado como principal vitrine do perfil.'}</p>
                   
                   <div className={styles.projectActions}>
-                    <Link to={`/profile/${handle}/projects/${featuredProject.id}`} className={styles.projectLink}>Detalhes do Case</Link>
+                    <Link to={`/profile/${handle}/projects/${featuredProject.id}`} className={styles.projectLink}>Ver detalhes</Link>
                     {featuredProject.projectUrl && (
                       <button type="button" className={styles.projectLinkOutline} onClick={() => handleTrackedProjectClick(featuredProject)}>
-                        Ver Site <FaArrowUpRightFromSquare />
+                        Abrir link <FaArrowUpRightFromSquare />
                       </button>
                     )}
                   </div>
@@ -539,11 +662,11 @@ function UserProfile() {
 
           <section className={styles.card}>
             <div className={styles.sectionHead}>
-              <h2 className={styles.sectionTitle}>Presença Online</h2>
+              <h2 className={styles.sectionTitle}>Links profissionais</h2>
             </div>
             {links.length === 0 ? (
               <div className={styles.emptyContent}>
-                {isOwner ? 'Adicione suas redes e links para passar mais confiança.' : 'Nenhum link adicionado.'}
+                {isOwner ? 'Adicione suas redes e links para passar mais confiança.' : 'Nenhum link profissional adicionado.'}
               </div>
             ) : (
               <div className={styles.profileLinkList}>
@@ -567,7 +690,7 @@ function UserProfile() {
             </div>
             {skills.length === 0 ? (
               <div className={styles.emptyContent}>
-                {isOwner ? 'Adicione skills (tags) para mostrar suas ferramentas.' : 'Este perfil não listou habilidades.'}
+                {isOwner ? 'Adicione habilidades para mostrar suas ferramentas e especialidades.' : 'Este perfil não listou habilidades.'}
               </div>
             ) : (
               <div className={styles.skillList}>
