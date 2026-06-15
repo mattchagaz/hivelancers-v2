@@ -254,7 +254,7 @@ function Rewards() {
                     <span className={reached ? styles.levelDotDone : styles.levelDot} style={{ background: reached ? item.badgeColor : undefined }} />
                     <div>
                       <strong>{item.name}</strong>
-                      <small>{formatNumber(item.xpRequired)} XP</small>
+                      <small> - {formatNumber(item.xpRequired)} XP</small>
                     </div>
                   </div>
                 );

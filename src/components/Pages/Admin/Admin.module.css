@@ -14,8 +14,8 @@
   overflow: hidden;
   border: 1px solid rgba(var(--primary-color-rgb, 62, 115, 230), 0.12);
   border-radius: 26px;
-  background:
-    linear-gradient(135deg, rgba(17, 24, 39, 0.98), rgba(30, 64, 175, 0.95) 48%, rgba(13, 148, 136, 0.94)),
+    background:
+    linear-gradient(135deg, rgba(17, 24, 39, 0.98), var(--primary-color) 50%, rgba(13, 148, 136, 0.9)),
     radial-gradient(circle at top right, rgba(255, 255, 255, 0.18), transparent 34%);
   color: #fff;
   box-shadow: 0 24px 70px rgba(15, 23, 42, 0.14);
@@ -232,7 +232,7 @@
   display: flex;
   gap: 8px;
   overflow-x: auto;
-  padding: 16px 24px 0;
+  padding: 16px 24px 24px;
 }
 
 .tab {
@@ -262,8 +262,9 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
 }
-
-.overviewGrid,
+.overviewGrid{
+  padding: 0 24px 24px;
+}
 .panel {
   padding: 24px;
 }

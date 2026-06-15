@@ -14,7 +14,7 @@
   color: #fff;
   background:
     radial-gradient(circle at top left, rgba(251, 191, 36, 0.16), transparent 28%),
-    linear-gradient(135deg, #111827 0%, #1d4ed8 48%, #0f766e 100%);
+    linear-gradient(135deg, #111827 0%, var(--primary-color) 48%, #0f766e 100%);
 }
 
 .eyebrow {
