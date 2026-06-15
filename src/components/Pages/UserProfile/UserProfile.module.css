@@ -25,7 +25,7 @@
   gap: 32px;
   padding: 40px;
   border-radius: 26px;
-  background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 50%, #0d9488 100%);
+  background: linear-gradient(135deg, #0f172a 0%, var(--primary-color) 50%, #0d9488 100%);
   color: #fff;
   position: relative;
   overflow: hidden;
@@ -504,7 +504,7 @@
 
 /* ===== Sidebar (Aside) ===== */
 .ctaCard {
-  background: linear-gradient(135deg, #172554 0%, #2563eb 55%, #0f766e 100%);
+  background: linear-gradient(135deg, #172554 0%, var(--primary-color) 55%, #0f766e 100%);
   color: #fff;
   border-color: rgba(255, 255, 255, 0.12);
   box-shadow: 0 18px 40px rgba(37, 99, 235, 0.22);
