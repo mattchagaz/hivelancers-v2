@@ -692,21 +692,21 @@ function BillingPanel({ isFreelancer }) {
         title="Pagamentos, planos e verificação"
         subtitle={isFreelancer ? 'Gerencie assinatura, dados de recebimento e liberação de repasses.' : 'Gerencie assinatura, métodos de pagamento e histórico de cobrança.'}
       />
+      <div className={styles.listRow}>
+        <div className={styles.listIcon}>{renderCardIcon()}</div>
+        <div className={styles.listCopy}>
+          <strong>Verificação de identidade</strong>
+          <span>Confirme CPF e documento para proteger recompensas, cupons, pedidos e limites futuros da conta.</span>
+        </div>
+        <Link to="/verification" className={styles.btnPrimary}>Abrir verificação</Link>
+      </div>
       {isFreelancer ? (
         <>
           <div className={styles.listRow}>
             <div className={styles.listIcon}>{renderCardIcon()}</div>
             <div className={styles.listCopy}>
-              <strong>Verificação da conta</strong>
-              <span>{isLoading ? 'Verificando...' : connectState.account ? 'Conta conectada e pronta para receber pagamentos por cartão. Pix será ativado em breve.' : 'Complete o cadastro financeiro para liberar seus recebimentos.'}</span>
-            </div>
-            <Link to="/verification" className={styles.btnPrimary}>Abrir verificação</Link>
-          </div>
-          <div className={styles.listRow}>
-            <div className={styles.listIcon}>{renderCardIcon()}</div>
-            <div className={styles.listCopy}>
               <strong>Conta Stripe Connect</strong>
-              <span>Use a Stripe para enviar documentos sensíveis, dados bancários e acompanhar saques.</span>
+              <span>{isLoading ? 'Verificando...' : connectState.account ? 'Conta de repasse conectada. Use a Stripe para acompanhar saques.' : 'Conecte sua conta recebedora para liberar repasses de pedidos pagos.'}</span>
             </div>
             <button
               type="button"

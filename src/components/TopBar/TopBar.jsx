@@ -2,8 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useAuth } from '../../contexts/AuthContext';
-import { listConversations } from '../../services/messages';
-import { listOrders } from '../../services/orders';
+import { loadNotificationFeed } from '../../services/notifications';
 import { connectSocket, getSocket } from '../../services/socket';
 import { getPublicProfilePath } from '../../utils/profileEnhancements';
 import styles from './TopBar.module.css';
@@ -12,10 +11,6 @@ const toId = (value) => (value === undefined || value === null ? '' : String(val
 
 const getPersonName = (person) =>
   `${person?.firstName || ''} ${person?.lastName || ''}`.trim() || person?.username || 'Usuário';
-
-const getOtherParticipant = (conversation, currentUserId) =>
-  conversation?.participants?.find((participant) => toId(participant.id) !== toId(currentUserId)) ||
-  conversation?.otherUser;
 
 const formatRelativeTime = (value) => {
   if (!value) return 'Agora';
@@ -61,95 +56,6 @@ const playNotificationSound = () => {
   } catch {
     // Browsers can block audio before user interaction. The visual badge still updates.
   }
-};
-
-const getOrderNotification = (order, userId) => {
-  if (!order?.id) return null;
-
-  const isSeller = toId(order.freelancerId) === toId(userId);
-  const isBuyer = toId(order.clientId) === toId(userId);
-  const other = isSeller ? order.client : order.freelancer;
-  const serviceTitle = order.service?.title || order.planTitle || 'Pedido';
-  const base = {
-    id: `order:${order.id}:${order.status}:${order.updatedAt || order.createdAt}`,
-    type: 'order',
-    to: `/orders?id=${order.id}`,
-    createdAt: order.updatedAt || order.createdAt,
-    actor: getPersonName(other),
-  };
-
-  if (order.status === 'PENDING') {
-    return {
-      ...base,
-      tone: 'amber',
-      title: isSeller ? 'Novo pedido aguardando resposta' : 'Pedido enviado ao freelancer',
-      description: isSeller
-        ? `${getPersonName(other)} contratou ${serviceTitle}.`
-        : `${serviceTitle} aguarda confirmação do freelancer.`,
-    };
-  }
-
-  if (order.status === 'IN_PROGRESS') {
-    return {
-      ...base,
-      tone: 'blue',
-      title: 'Pedido em execução',
-      description: isBuyer
-        ? `${serviceTitle} foi aceito e entrou em produção.`
-        : `${serviceTitle} está na sua fila de execução.`,
-    };
-  }
-
-  if (order.status === 'DELIVERED') {
-    return {
-      ...base,
-      tone: 'purple',
-      title: isBuyer ? 'Entrega aguardando revisão' : 'Entrega enviada ao cliente',
-      description: isBuyer
-        ? `Revise a entrega de ${serviceTitle}.`
-        : `${serviceTitle} está aguardando aprovação.`,
-    };
-  }
-
-  if (order.status === 'COMPLETED') {
-    return {
-      ...base,
-      tone: 'green',
-      title: 'Pedido concluído',
-      description: `${serviceTitle} foi finalizado com aprovação formal.`,
-    };
-  }
-
-  if (order.status === 'REJECTED' || order.status === 'CANCELED') {
-    return {
-      ...base,
-      tone: 'red',
-      title: order.status === 'REJECTED' ? 'Pedido recusado' : 'Pedido cancelado',
-      description: `${serviceTitle} saiu do acompanhamento ativo.`,
-    };
-  }
-
-  return null;
-};
-
-const getConversationNotification = (conversation, userId) => {
-  const unreadCount = Number(conversation?.unreadCount || 0);
-  if (!conversation?.id || unreadCount <= 0) return null;
-
-  const other = getOtherParticipant(conversation, userId);
-  const lastMessage = conversation.lastMessage;
-  const preview = lastMessage?.content || (lastMessage?.imageUrl ? 'Enviou uma imagem.' : 'Nova mensagem recebida.');
-
-  return {
-    id: `conversation:${conversation.id}:${lastMessage?.id || conversation.updatedAt}`,
-    type: 'message',
-    tone: 'blue',
-    title: `${unreadCount} ${unreadCount === 1 ? 'mensagem nova' : 'mensagens novas'}`,
-    description: `${getPersonName(other)}: ${preview}`,
-    actor: getPersonName(other),
-    createdAt: lastMessage?.createdAt || conversation.updatedAt,
-    to: `/messages?chat=${conversation.id}`,
-  };
 };
 
 function TopBar({ userName = '', userRole = 'freelancer', avatarUrl = '', onMenuToggle }) {
@@ -222,26 +128,12 @@ function TopBar({ userName = '', userRole = 'freelancer', avatarUrl = '', onMenu
 
     setNotificationsLoading(true);
     try {
-      const [ordersResult, conversationsResult] = await Promise.allSettled([
-        listOrders({ role: 'all' }),
-        listConversations(),
-      ]);
-
-      const orderItems = ordersResult.status === 'fulfilled' ? ordersResult.value?.items || [] : [];
-      const conversationItems = conversationsResult.status === 'fulfilled' ? conversationsResult.value || [] : [];
-
-      const next = [
-        ...orderItems.map((order) => getOrderNotification(order, user.id)).filter(Boolean),
-        ...conversationItems.map((conversation) => getConversationNotification(conversation, user.id)).filter(Boolean),
-      ]
-        .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
-        .slice(0, 14);
-
-      setNotifications(next);
+      const { live } = await loadNotificationFeed(user);
+      setNotifications(live.slice(0, 14));
     } finally {
       setNotificationsLoading(false);
     }
-  }, [user?.id]);
+  }, [user]);
 
   useEffect(() => {
     loadNotifications();
@@ -275,6 +167,19 @@ function TopBar({ userName = '', userRole = 'freelancer', avatarUrl = '', onMenu
       const current = getSocket();
       current.off('order:new', handleNewOrder);
       refreshEvents.forEach((event) => current.off(event, refresh));
+    };
+  }, [loadNotifications, user?.id]);
+
+  useEffect(() => {
+    if (!user?.id) return undefined;
+
+    const refresh = () => loadNotifications();
+    window.addEventListener('focus', refresh);
+    window.addEventListener('hivelancers:notifications:refresh', refresh);
+
+    return () => {
+      window.removeEventListener('focus', refresh);
+      window.removeEventListener('hivelancers:notifications:refresh', refresh);
     };
   }, [loadNotifications, user?.id]);
 
@@ -440,6 +345,12 @@ function TopBar({ userName = '', userRole = 'freelancer', avatarUrl = '', onMenu
                     );
                   })
                 )}
+              </div>
+
+              <div className={styles.notifFooter}>
+                <Link to="/notifications" onClick={() => setNotificationsOpen(false)}>
+                  Ver histórico completo
+                </Link>
               </div>
             </div>
           )}

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   FaArrowTrendUp,
+  FaArrowUpRightFromSquare,
   FaBan,
   FaBell,
   FaBolt,
@@ -12,6 +13,7 @@ import {
   FaFlag,
   FaFloppyDisk,
   FaGift,
+  FaDownload,
   FaLayerGroup,
   FaMagnifyingGlass,
   FaMedal,
@@ -23,6 +25,7 @@ import {
   FaTriangleExclamation,
   FaUserCheck,
   FaUsers,
+  FaXmark,
 } from 'react-icons/fa6';
 import { toast, Toaster } from 'sonner';
 import SpotlightCard from '../../UI/SpotlightCard/SpotlightCard';
@@ -48,6 +51,7 @@ import {
 } from '../../../services/admin';
 import {
   listAdminUsers,
+  reviewAdminAccountVerification,
   updateAdminUser,
 } from '../../../services/users';
 import {
@@ -177,6 +181,14 @@ const ACTIVITY_LABEL = {
   inactive: 'Inativo',
 };
 
+const IDENTITY_STATUS_LABEL = {
+  NOT_STARTED: 'Não iniciada',
+  DRAFT: 'Rascunho',
+  PENDING: 'Em análise',
+  VERIFIED: 'Verificada',
+  REJECTED: 'Recusada',
+};
+
 const emptyUserDraft = {
   email: '',
   firstName: '',
@@ -300,6 +312,23 @@ const toUserDraft = (user) => ({
   onboarded: Boolean(user?.onboardedAt),
 });
 
+const getIdentityStatus = (user) => user?.accountVerification?.status || (user?.identityVerifiedAt ? 'VERIFIED' : 'NOT_STARTED');
+
+const isPdfUrl = (url = '') => /\.pdf(?:$|\?)/i.test(url);
+
+const getDownloadUrl = (url = '') => {
+  if (!url.includes('res.cloudinary.com') || !url.includes('/upload/')) return url;
+  if (url.includes('/upload/fl_attachment/')) return url;
+  return url.replace('/upload/', '/upload/fl_attachment/');
+};
+
+const maskCpf = (cpf) => {
+  if (!cpf) return 'CPF não informado';
+  const digits = String(cpf).replace(/\D/g, '');
+  if (digits.length !== 11) return cpf;
+  return `${digits.slice(0, 3)}.***.***-${digits.slice(-2)}`;
+};
+
 const toServiceDraft = (service) => ({
   title: service?.title || '',
   description: service?.description || '',
@@ -342,9 +371,16 @@ const toLevelDraft = (level) => ({
 const getStatusTone = (status) => {
   const normalized = status.toLowerCase();
   if (normalized.includes('ativo') || normalized.includes('liberado') || normalized.includes('concluído') || normalized.includes('capturado')) return 'success';
-  if (normalized.includes('online') || normalized.includes('verificado') || normalized.includes('admin')) return 'success';
-  if (normalized.includes('atenção') || normalized.includes('revisão') || normalized.includes('verificação') || normalized.includes('retido')) return 'warning';
-  if (normalized.includes('alto') || normalized.includes('bloqueio') || normalized.includes('atrasado') || normalized.includes('crítico') || normalized.includes('inativo')) return 'danger';
+  if (normalized.includes('online') || normalized.includes('verificado') || normalized.includes('verificada') || normalized.includes('admin')) return 'success';
+  if (normalized.includes('atenção') || normalized.includes('revisão') || normalized.includes('verificação') || normalized.includes('retido') || normalized.includes('análise') || normalized.includes('rascunho')) return 'warning';
+  if (normalized.includes('alto') || normalized.includes('bloqueio') || normalized.includes('atrasado') || normalized.includes('crítico') || normalized.includes('inativo') || normalized.includes('recusada')) return 'danger';
+  return 'neutral';
+};
+
+const getIdentityTone = (status) => {
+  if (status === 'VERIFIED') return 'success';
+  if (status === 'REJECTED') return 'danger';
+  if (status === 'PENDING' || status === 'DRAFT') return 'warning';
   return 'neutral';
 };
 
@@ -376,6 +412,10 @@ function Admin() {
   const [usersTotal, setUsersTotal] = useState(0);
   const [usersLoading, setUsersLoading] = useState(false);
   const [userSaving, setUserSaving] = useState(false);
+  const [verificationSaving, setVerificationSaving] = useState(false);
+  const [identityModalUserId, setIdentityModalUserId] = useState('');
+  const [identityRejecting, setIdentityRejecting] = useState(false);
+  const [identityReviewNote, setIdentityReviewNote] = useState('');
   const [userStatusFilter, setUserStatusFilter] = useState('all');
   const [userTypeFilter, setUserTypeFilter] = useState('');
   const [selectedUserId, setSelectedUserId] = useState('');
@@ -580,17 +620,30 @@ function Admin() {
 
   const selectedCategory = categories.find((item) => item.id === selectedCategoryId);
   const selectedUser = adminUsers.find((item) => item.id === selectedUserId);
+  const identityModalUser = adminUsers.find((item) => item.id === identityModalUserId);
   const selectedService = adminServices.find((item) => item.id === selectedServiceId);
   const selectedCoupon = coupons.find((item) => item.id === selectedCouponId);
   const selectedLevel = freelancerLevels.find((item) => item.id === selectedLevelId);
   const selectedServiceCategory = categories.find((item) => item.id === serviceDraft.categoryId);
   const selectedServiceSubcategories = selectedServiceCategory?.subcategories || [];
+  const identityModalDocuments = useMemo(() => {
+    const verification = identityModalUser?.accountVerification;
+    if (!verification) return [];
+
+    return [
+      ['Frente do documento', verification.documentFrontUrl],
+      ['Verso do documento', verification.documentBackUrl],
+      ['Comprovante de endereço', verification.proofOfAddressUrl],
+    ].filter(([, url]) => Boolean(url));
+  }, [identityModalUser?.accountVerification]);
+  const identityModalStatus = getIdentityStatus(identityModalUser);
   const usersStats = useMemo(() => {
     const admins = adminUsers.filter((user) => user.isAdmin).length;
     const active = adminUsers.filter((user) => user.activityStatus !== 'inactive').length;
     const freelancers = adminUsers.filter((user) => user.userType === 'FREELANCER').length;
     const clients = adminUsers.filter((user) => user.userType === 'CLIENT').length;
-    return { admins, active, freelancers, clients };
+    const identityVerified = adminUsers.filter((user) => getIdentityStatus(user) === 'VERIFIED').length;
+    return { admins, active, freelancers, clients, identityVerified };
   }, [adminUsers]);
   const taxonomyStats = useMemo(() => {
     const subcategoryCount = categories.reduce(
@@ -756,6 +809,52 @@ function Admin() {
       toast.error(err.message);
     } finally {
       setUserSaving(false);
+    }
+  };
+
+  const openIdentityModal = (user) => {
+    if (!user?.accountVerification) {
+      toast.info('Este usuário ainda não enviou documentos para análise.');
+      return;
+    }
+
+    setIdentityModalUserId(user.id);
+    setIdentityRejecting(false);
+    setIdentityReviewNote(user.accountVerification.reviewNote || '');
+  };
+
+  const closeIdentityModal = () => {
+    if (verificationSaving) return;
+    setIdentityModalUserId('');
+    setIdentityRejecting(false);
+    setIdentityReviewNote('');
+  };
+
+  const reviewIdentity = async (status) => {
+    if (!identityModalUser || verificationSaving) return;
+    const note = identityReviewNote.trim();
+
+    if (status === 'REJECTED' && !note) {
+      toast.error('Informe o motivo da reprovação para orientar o usuário.');
+      return;
+    }
+
+    setVerificationSaving(true);
+    try {
+      const result = await reviewAdminAccountVerification(identityModalUser.id, {
+        status,
+        reviewNote: status === 'REJECTED' ? note : undefined,
+      });
+      setAdminUsers((current) => current.map((user) => (user.id === result.user.id ? result.user : user)));
+      setSelectedUserId(result.user.id);
+      setIdentityModalUserId(result.user.id);
+      setIdentityRejecting(false);
+      setIdentityReviewNote(result.user.accountVerification?.reviewNote || '');
+      toast.success(status === 'VERIFIED' ? 'Identidade aprovada.' : 'Identidade recusada.');
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setVerificationSaving(false);
     }
   };
 
@@ -1785,8 +1884,8 @@ function Admin() {
               </div>
               <div className={styles.taxonomyStat}>
                 <FaUserCheck />
-                <span>Admins</span>
-                <strong>{usersStats.admins}</strong>
+                <span>Identidade verificada</span>
+                <strong>{usersStats.identityVerified}</strong>
               </div>
               <div className={styles.taxonomyStat}>
                 <FaBolt />
@@ -1802,6 +1901,9 @@ function Admin() {
                 <option value="inactive">Inativos</option>
                 <option value="verified">Email verificado</option>
                 <option value="unverified">Email pendente</option>
+                <option value="identity_verified">Identidade verificada</option>
+                <option value="identity_pending">Identidade em análise</option>
+                <option value="identity_rejected">Identidade recusada</option>
                 <option value="admin">Admins</option>
               </select>
               <select value={userTypeFilter} onChange={(event) => setUserTypeFilter(event.target.value)}>
@@ -1819,6 +1921,7 @@ function Admin() {
                       <th>Usuário</th>
                       <th>Tipo</th>
                       <th>Atividade</th>
+                      <th>Identidade</th>
                       <th>Uso</th>
                       <th>Admin</th>
                       <th>Ações</th>
@@ -1827,11 +1930,11 @@ function Admin() {
                   <tbody>
                     {usersLoading ? (
                       <tr>
-                        <td colSpan="6">Carregando usuários...</td>
+                        <td colSpan="7">Carregando usuários...</td>
                       </tr>
                     ) : adminUsers.length === 0 ? (
                       <tr>
-                        <td colSpan="6">Nenhum usuário encontrado.</td>
+                        <td colSpan="7">Nenhum usuário encontrado.</td>
                       </tr>
                     ) : (
                       adminUsers.map((user) => (
@@ -1856,19 +1959,31 @@ function Admin() {
                             <span>Último acesso: {formatDate(user.lastSeenAt)}</span>
                           </td>
                           <td>
+                            <em className={`${styles.badge} ${styles[getIdentityTone(getIdentityStatus(user))]}`}>
+                              {IDENTITY_STATUS_LABEL[getIdentityStatus(user)] || 'Não iniciada'}
+                            </em>
+                            <span>{user.identityVerifiedAt ? `Aprovada em ${formatDate(user.identityVerifiedAt)}` : 'Sem aprovação'}</span>
+                          </td>
+                          <td>
                             <strong>{user.counts?.services || 0} serviços</strong>
                             <span>{user.counts?.orders || 0} pedidos · {user.counts?.messages || 0} msgs</span>
                           </td>
                           <td>
-                            <em className={`${styles.badge} ${styles[user.isAdmin ? 'success' : 'neutral']}`}>
-                              {user.isAdmin ? 'Admin' : 'Usuário'}
-                            </em>
+                            <label className={styles.adminToggle}>
+                              <input
+                                type="checkbox"
+                                checked={Boolean(user.isAdmin)}
+                                onChange={() => toggleAdmin(user)}
+                                disabled={userSaving}
+                              />
+                              <span>{user.isAdmin ? 'Admin' : 'Usuário'}</span>
+                            </label>
                           </td>
                           <td>
                             <div className={styles.rowActions}>
                               <button type="button" onClick={() => setSelectedUserId(user.id)}>Editar</button>
-                              <button type="button" onClick={() => toggleAdmin(user)} disabled={userSaving}>
-                                {user.isAdmin ? 'Remover admin' : 'Tornar admin'}
+                              <button type="button" onClick={() => openIdentityModal(user)} disabled={!user.accountVerification}>
+                                Verificação
                               </button>
                             </div>
                           </td>
@@ -2184,6 +2299,154 @@ function Admin() {
           </div>
         </SpotlightCard>
       </section>
+
+      {identityModalUser && (
+        <div className={styles.reviewModalOverlay} onClick={closeIdentityModal}>
+          <section className={styles.reviewModal} role="dialog" aria-modal="true" aria-labelledby="identity-review-title" onClick={(event) => event.stopPropagation()}>
+            <header className={styles.reviewModalHeader}>
+              <div>
+                <span className={styles.sectionKicker}>Revisão de identidade</span>
+                <h3 id="identity-review-title">{toUserName(identityModalUser)}</h3>
+                <p>{identityModalUser.email} · ID: {identityModalUser.id}</p>
+              </div>
+              <button type="button" onClick={closeIdentityModal} aria-label="Fechar revisão" disabled={verificationSaving}>
+                <FaXmark />
+              </button>
+            </header>
+
+            <div className={styles.reviewModalStatus}>
+              <em className={`${styles.badge} ${styles[getIdentityTone(identityModalStatus)]}`}>
+                {IDENTITY_STATUS_LABEL[identityModalStatus] || 'Não iniciada'}
+              </em>
+              <span>
+                {identityModalUser.identityVerifiedAt
+                  ? `Aprovada em ${formatDate(identityModalUser.identityVerifiedAt)}`
+                  : identityModalUser.accountVerification?.submittedAt
+                    ? `Enviada em ${formatDate(identityModalUser.accountVerification.submittedAt)}`
+                    : 'Sem envio para análise'}
+              </span>
+            </div>
+
+            {identityModalUser.accountVerification ? (
+              <>
+                <div className={styles.identityGrid}>
+                  <div>
+                    <span>Nome legal</span>
+                    <strong>{identityModalUser.accountVerification.legalName}</strong>
+                  </div>
+                  <div>
+                    <span>CPF vinculado</span>
+                    <strong>{maskCpf(identityModalUser.accountVerification.cpf)}</strong>
+                  </div>
+                  <div>
+                    <span>Documento enviado</span>
+                    <strong>{identityModalUser.accountVerification.documentType} · {maskCpf(identityModalUser.accountVerification.documentNumber)}</strong>
+                  </div>
+                  <div>
+                    <span>Telefone</span>
+                    <strong>{identityModalUser.accountVerification.phone || 'Não informado'}</strong>
+                  </div>
+                  <div>
+                    <span>Cidade/UF</span>
+                    <strong>
+                      {[identityModalUser.accountVerification.addressCity, identityModalUser.accountVerification.addressState].filter(Boolean).join(' · ') || 'Não informado'}
+                    </strong>
+                  </div>
+                  <div>
+                    <span>Endereço</span>
+                    <strong>{identityModalUser.accountVerification.addressLine || 'Não informado'}</strong>
+                  </div>
+                </div>
+
+                <div className={styles.identityLinks}>
+                  {identityModalDocuments.length > 0 ? identityModalDocuments.map(([label, url]) => (
+                    <div key={label} className={styles.identityDocument}>
+                      <div>
+                        <strong>{label}</strong>
+                        <span>{isPdfUrl(url) ? 'PDF anexado' : 'Imagem anexada'}</span>
+                      </div>
+                      <div>
+                        <a href={url} target="_blank" rel="noreferrer">
+                          <FaArrowUpRightFromSquare /> Abrir
+                        </a>
+                        <a href={getDownloadUrl(url)} target="_blank" rel="noreferrer" download>
+                          <FaDownload /> Baixar
+                        </a>
+                      </div>
+                    </div>
+                  )) : (
+                    <div className={styles.taxonomyEmpty}>Nenhum documento anexado.</div>
+                  )}
+                </div>
+
+                {identityModalStatus === 'VERIFIED' && (
+                  <div className={`${styles.identityDecision} ${styles.identityDecisionSuccess}`}>
+                    <FaCircleCheck />
+                    <div>
+                      <strong>Usuário verificado com sucesso</strong>
+                      <span>Esta conta já passou pela análise de identidade.</span>
+                    </div>
+                  </div>
+                )}
+
+                {identityModalStatus === 'REJECTED' && (
+                  <div className={`${styles.identityDecision} ${styles.identityDecisionDanger}`}>
+                    <FaBan />
+                    <div>
+                      <strong>Verificação recusada</strong>
+                      <span>{identityModalUser.accountVerification.reviewNote || 'O usuário precisa corrigir os dados ou reenviar documentos.'}</span>
+                    </div>
+                  </div>
+                )}
+
+                {identityRejecting && identityModalStatus === 'PENDING' && (
+                  <label className={styles.reviewReason}>
+                    <span>Motivo da reprovação</span>
+                    <textarea
+                      value={identityReviewNote}
+                      onChange={(event) => setIdentityReviewNote(event.target.value)}
+                      placeholder="Ex: CPF não bate com o documento, imagem ilegível, comprovante de endereço ausente..."
+                      rows={5}
+                    />
+                    <small>Esse texto será salvo no usuário para orientar o próximo envio.</small>
+                  </label>
+                )}
+
+                <footer className={styles.reviewModalActions}>
+                  <button type="button" className={styles.ghostButton} onClick={closeIdentityModal} disabled={verificationSaving}>
+                    Fechar
+                  </button>
+
+                  {identityModalStatus === 'PENDING' && !identityRejecting && (
+                    <>
+                      <button type="button" className={styles.dangerButton} onClick={() => setIdentityRejecting(true)} disabled={verificationSaving}>
+                        <FaBan /> Reprovar
+                      </button>
+                      <button type="button" className={styles.primaryButton} onClick={() => reviewIdentity('VERIFIED')} disabled={verificationSaving}>
+                        <FaCircleCheck /> {verificationSaving ? 'Aprovando...' : 'Aprovar identidade'}
+                      </button>
+                    </>
+                  )}
+
+                  {identityModalStatus === 'PENDING' && identityRejecting && (
+                    <>
+                      <button type="button" className={styles.ghostButton} onClick={() => setIdentityRejecting(false)} disabled={verificationSaving}>
+                        Cancelar reprovação
+                      </button>
+                      <button type="button" className={styles.dangerButton} onClick={() => reviewIdentity('REJECTED')} disabled={verificationSaving}>
+                        <FaBan /> {verificationSaving ? 'Reprovando...' : 'Confirmar reprovação'}
+                      </button>
+                    </>
+                  )}
+                </footer>
+              </>
+            ) : (
+              <div className={styles.taxonomyEmpty}>Este usuário ainda não enviou CPF e documentos.</div>
+            )}
+          </section>
+        </div>
+      )}
+
       <Toaster position="top-center" richColors />
     </div>
   );

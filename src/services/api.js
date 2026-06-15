@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { tokenStorage } from './tokenStorage';
 
-const baseURL = import.meta.env.VITE_API_URL || 'http://hivelancers-backend.fly.dev';
+const baseURL = import.meta.env.VITE_API_URL || 'https://hivelancers-backend.fly.dev';
 
 export const api = axios.create({ baseURL });
 

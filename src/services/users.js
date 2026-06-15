@@ -58,6 +58,24 @@ export const completeOnboarding = async () => {
   }
 };
 
+export const getMyAccountVerification = async () => {
+  try {
+    const { data } = await api.get('/users/me/account-verification');
+    return data;
+  } catch (error) {
+    throw new Error(extractMessage(error, 'Não foi possível carregar sua verificação.'));
+  }
+};
+
+export const submitMyAccountVerification = async (payload) => {
+  try {
+    const { data } = await api.put('/users/me/account-verification', payload);
+    return data;
+  } catch (error) {
+    throw new Error(extractMessage(error, 'Não foi possível enviar sua verificação.'));
+  }
+};
+
 export const getPublicProfile = async (handle) => {
   try {
     const { data } = await api.get(`/users/${handle}`);
@@ -154,5 +172,14 @@ export const updateAdminUser = async (id, payload) => {
     return data.user;
   } catch (error) {
     throw new Error(extractMessage(error, 'Não foi possível atualizar o usuário.'));
+  }
+};
+
+export const reviewAdminAccountVerification = async (id, payload) => {
+  try {
+    const { data } = await api.patch(`/users/admin/${id}/account-verification`, payload);
+    return data;
+  } catch (error) {
+    throw new Error(extractMessage(error, 'Não foi possível revisar a verificação.'));
   }
 };
