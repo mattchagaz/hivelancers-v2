@@ -445,7 +445,7 @@ function Orders() {
       tone: 'orange',
     },
     {
-      label: 'Fluxo ativo',
+      label: 'Em andamento',
       value: loadingList ? '...' : metrics.active + metrics.delivered,
       detail: 'Execução ou revisão',
       icon: <FaBriefcase />,

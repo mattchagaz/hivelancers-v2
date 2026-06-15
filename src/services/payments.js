@@ -63,6 +63,33 @@ export const getMyFinancialOverview = async () => {
   }
 };
 
+export const getMySubscription = async () => {
+  try {
+    const { data } = await api.get('/payments/me/subscription');
+    return data;
+  } catch (error) {
+    throw new Error(extractMessage(error, 'Não foi possível carregar sua assinatura.'));
+  }
+};
+
+export const createSubscriptionCheckoutSession = async (payload) => {
+  try {
+    const { data } = await api.post('/payments/subscription/checkout-session', payload);
+    return data;
+  } catch (error) {
+    throw new Error(extractMessage(error, 'Não foi possível iniciar a assinatura.'));
+  }
+};
+
+export const createSubscriptionPortalSession = async () => {
+  try {
+    const { data } = await api.post('/payments/me/subscription/portal-session');
+    return data;
+  } catch (error) {
+    throw new Error(extractMessage(error, 'Não foi possível abrir o portal de cobrança.'));
+  }
+};
+
 export const listAdminPayments = async (params = {}) => {
   try {
     const { data } = await api.get('/payments/admin/payments', { params });

@@ -667,7 +667,7 @@ function CustomizeProfile() {
           <section className={styles.card}>
             <div className={styles.sectionHead}>
               <div>
-                <h2>Presença Online</h2>
+                <h2>Links profissionais</h2>
                 <p>Centralize os lugares onde seu trabalho pode ser validado e acompanhado.</p>
               </div>
             </div>

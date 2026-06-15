@@ -17,6 +17,7 @@ import {
   FaTrophy,
 } from 'react-icons/fa6';
 import { getMyRewards } from '../../../services/rewards';
+import SpotlightCard from '../../UI/SpotlightCard/SpotlightCard';
 import styles from './Rewards.module.css';
 
 const AUDIENCE_LABEL = {
@@ -152,30 +153,30 @@ function Rewards() {
       </section>
 
       <section className={styles.statGrid}>
-        <article className={styles.statCard}>
+        <SpotlightCard className={styles.statCard}>
           <div className={styles.statIcon}><FaCoins /></div>
           <span>Créditos</span>
           <strong>{formatNumber(summary.rewardCredits)}</strong>
           <p>Saldo simbólico gerado pelo XP.</p>
-        </article>
-        <article className={styles.statCard}>
+        </SpotlightCard>
+        <SpotlightCard className={styles.statCard}>
           <div className={styles.statIcon}><FaCircleCheck /></div>
           <span>Missões</span>
           <strong>{completedMissions}/{missions.length}</strong>
           <p>Objetivos concluídos no programa.</p>
-        </article>
-        <article className={styles.statCard}>
+        </SpotlightCard>
+        <SpotlightCard className={styles.statCard}>
           <div className={styles.statIcon}><FaStar /></div>
           <span>Avaliações</span>
           <strong>{stats.averageRating ? stats.averageRating.toFixed(1) : '-'}</strong>
           <p>{formatNumber(stats.reviewCount)} avaliações recebidas.</p>
-        </article>
-        <article className={styles.statCard}>
+        </SpotlightCard>
+        <SpotlightCard className={styles.statCard}>
           <div className={styles.statIcon}><FaChartSimple /></div>
           <span>Receita concluída</span>
           <strong>{formatCurrency(stats.revenueCents)}</strong>
           <p>Pedidos finalizados como freelancer.</p>
-        </article>
+        </SpotlightCard>
       </section>
 
       <section className={styles.workspaceGrid}>

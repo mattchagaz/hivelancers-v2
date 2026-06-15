@@ -10,6 +10,7 @@ import { listCategories, listPublicServices } from '../../../services/services';
 import { addFavoriteService, getMyFavorites, removeFavoriteService } from '../../../services/users';
 import { CategoryIcon } from '../../../utils/categoryIcons';
 import EmptyState from '../../UI/EmptyState/EmptyState';
+import CategoryCarousel from '../../UI/CategoryCarousel/CategoryCarousel';
 import styles from './ExploreServices.module.css';
 
 const formatPrice = (cents) =>
@@ -226,23 +227,14 @@ function ExploreServices() {
           </div>
           <span className={styles.catCount}>{categories.length} categorias</span>
         </div>
-        <div className={styles.catScroll}>
-          {categoryChips.map((cat) => (
-            <button
-              key={cat.id}
-              className={`${styles.catChip} ${activeCategorySlug === cat.slug ? styles.catChipActive : ''}`}
-              onClick={() => {
-                setActiveCategorySlug(cat.slug);
-                setActiveSubcategorySlug('');
-              }}
-            >
-              <span className={styles.catIcon}>
-                <CategoryIcon category={cat} />
-              </span>
-              <span>{cat.name}</span>
-            </button>
-          ))}
-        </div>
+        <CategoryCarousel
+          categories={categoryChips}
+          activeSlug={activeCategorySlug}
+          onSelect={(cat) => {
+            setActiveCategorySlug(cat.slug);
+            setActiveSubcategorySlug('');
+          }}
+        />
       </div>
 
       {activeCategorySlug !== 'all' && subcategoryChips.length > 0 && (

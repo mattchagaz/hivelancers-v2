@@ -20,6 +20,7 @@ import {
   getMyFinancialOverview,
   getMyStripeConnectStatus,
 } from '../../../services/payments';
+import SpotlightCard from '../../UI/SpotlightCard/SpotlightCard';
 import styles from './Finances.module.css';
 
 const ORDER_STATUS_LABEL = {
@@ -161,12 +162,12 @@ const getVerificationState = (connectState, loading) => {
 
 function MetricCard({ icon, label, value, detail, tone = 'blue' }) {
   return (
-    <article className={`${styles.metricCard} ${styles[tone]}`}>
+    <SpotlightCard className={`${styles.metricCard} ${styles[tone]}`}>
       <div className={styles.metricIcon}>{icon}</div>
       <span>{label}</span>
       <strong>{value}</strong>
       <p>{detail}</p>
-    </article>
+    </SpotlightCard>
   );
 }
 

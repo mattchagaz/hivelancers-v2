@@ -2003,9 +2003,21 @@ function Admin() {
               </div>
               <div className={styles.financeCard}>
                 <FaFileInvoiceDollar />
-                <span>Taxas capturadas</span>
+                <span>Comissão capturada</span>
                 <strong>{formatCents(financeSummary.platformFeeCents)}</strong>
                 <p>Take rate aplicado nos pedidos</p>
+              </div>
+              <div className={styles.financeCard}>
+                <FaCreditCard />
+                <span>Taxa Stripe estimada</span>
+                <strong>{formatCents(financeSummary.estimatedStripeFeeCents)}</strong>
+                <p>Estimativa por Pix/cartão</p>
+              </div>
+              <div className={styles.financeCard}>
+                <FaArrowTrendUp />
+                <span>Líquido da plataforma</span>
+                <strong>{formatCents(financeSummary.platformNetCents)}</strong>
+                <p>Comissão menos taxa Stripe estimada</p>
               </div>
               <div className={styles.financeCard}>
                 <FaTriangleExclamation />
@@ -2045,6 +2057,11 @@ function Admin() {
                     </p>
                   </div>
                   <strong>{formatCents(payment.amountCents)}</strong>
+                  <div className={styles.ledgerEconomics}>
+                    <span>Plataforma</span>
+                    <strong>{formatCents(payment.economics?.platformNetCents)}</strong>
+                    <p>Stripe: {formatCents(payment.economics?.estimatedStripeFeeCents)}</p>
+                  </div>
                   <em className={`${styles.badge} ${getStatusTone(PAYMENT_STATUS_LABEL[payment.status] || payment.status)}`}>
                     {PAYMENT_STATUS_LABEL[payment.status] || payment.status}
                   </em>

@@ -156,10 +156,10 @@ export const getProfileCompletion = (profile) => {
       weight: 10,
       done: Boolean(String(profile?.firstName || '').trim() && String(profile?.lastName || '').trim()),
     },
-    { id: 'username', label: 'Usuario publico', weight: 10, done: Boolean(profile?.username) },
-    { id: 'headline', label: 'Titulo profissional', weight: 10, done: Boolean(profile?.headline) },
+    { id: 'username', label: 'Usuário público', weight: 10, done: Boolean(profile?.username) },
+    { id: 'headline', label: 'Título profissional', weight: 10, done: Boolean(profile?.headline) },
     { id: 'bio', label: 'Bio com contexto', weight: 15, done: Boolean(String(profile?.bio || '').trim()) },
-    { id: 'location', label: 'Localizacao', weight: 10, done: Boolean(profile?.location) },
+    { id: 'location', label: 'Localização', weight: 10, done: Boolean(profile?.location) },
     {
       id: 'link',
       label: 'Ao menos um link',
@@ -171,7 +171,7 @@ export const getProfileCompletion = (profile) => {
     },
     {
       id: 'skills',
-      label: 'Tres habilidades',
+      label: 'Três habilidades',
       weight: 10,
       done: normalizeSkills(profile?.skills).length >= 3,
     },
@@ -198,19 +198,19 @@ export const getProfileMilestones = (profile) => {
       id: 'starter',
       title: 'Perfil montado',
       threshold: 40,
-      reward: 'Comeca a passar confianca',
+      reward: 'Começa a passar confiança',
     },
     {
       id: 'trusted',
-      title: 'Perfil confiavel',
+      title: 'Perfil confiável',
       threshold: 80,
-      reward: 'Desbloqueia a missao principal',
+      reward: 'Desbloqueia o destaque principal',
     },
     {
       id: 'showcase',
       title: 'Vitrine premium',
       threshold: 100,
-      reward: 'Perfil pronto para campanhas e portfolio',
+      reward: 'Perfil pronto para campanhas e portfólio',
     },
   ];
 

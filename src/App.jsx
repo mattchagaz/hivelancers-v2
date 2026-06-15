@@ -22,6 +22,8 @@ import Favorites from './components/Pages/Favorites/Favorites';
 import Finances from './components/Pages/Finances/Finances';
 import Admin from './components/Pages/Admin/Admin';
 import Rewards from './components/Pages/Rewards/Rewards';
+import Subscription from './components/Pages/Subscription/Subscription';
+import AccountVerification from './components/Pages/AccountVerification/AccountVerification';
 import './App.css';
 
 function App() {
@@ -67,6 +69,8 @@ function App() {
             <Route path="/favorites" element={<Favorites />} />
             <Route path="/finances" element={<Finances />} />
             <Route path="/rewards" element={<Rewards />} />
+            <Route path="/subscription" element={<Subscription />} />
+            <Route path="/verification" element={<AccountVerification />} />
             <Route path="/profile/customize" element={<CustomizeProfile />} />
             <Route path="/profile/:handle/projects/:projectId" element={<ProfileProjectDetails />} />
             <Route path="/profile/:handle" element={<UserProfile />} />

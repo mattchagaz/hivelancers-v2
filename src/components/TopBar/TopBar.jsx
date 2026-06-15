@@ -125,7 +125,7 @@ const getOrderNotification = (order, userId) => {
       ...base,
       tone: 'red',
       title: order.status === 'REJECTED' ? 'Pedido recusado' : 'Pedido cancelado',
-      description: `${serviceTitle} saiu do fluxo ativo.`,
+      description: `${serviceTitle} saiu do acompanhamento ativo.`,
     };
   }
 
