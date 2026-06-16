@@ -1,4 +1,5 @@
 import { api } from './api';
+import { filterPublicCategories, filterPublicServices } from '../utils/categoryVisibility';
 
 const extractMessage = (error, fallback) => {
   const data = error?.response?.data;
@@ -12,7 +13,7 @@ const extractMessage = (error, fallback) => {
 export const listCategories = async () => {
   try {
     const { data } = await api.get('/categories');
-    return data.categories;
+    return filterPublicCategories(data.categories);
   } catch (error) {
     throw new Error(extractMessage(error, 'Não foi possível carregar categorias.'));
   }
@@ -56,7 +57,12 @@ export const deleteCategory = async (id) => {
 export const listPublicServices = async (params = {}) => {
   try {
     const { data } = await api.get('/services', { params });
-    return data;
+    const originalItems = Array.isArray(data.items) ? data.items : [];
+    const items = filterPublicServices(originalItems);
+    const hiddenItems = originalItems.length - items.length;
+    const total = typeof data.total === 'number' ? Math.max(0, data.total - hiddenItems) : items.length;
+
+    return { ...data, items, total };
   } catch (error) {
     throw new Error(extractMessage(error, 'Não foi possível carregar serviços.'));
   }
