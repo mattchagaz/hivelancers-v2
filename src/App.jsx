@@ -25,6 +25,7 @@ import Rewards from './components/Pages/Rewards/Rewards';
 import Subscription from './components/Pages/Subscription/Subscription';
 import AccountVerification from './components/Pages/AccountVerification/AccountVerification';
 import Notifications from './components/Pages/Notifications/Notifications';
+import Support from './components/Pages/Support/Support';
 import './App.css';
 
 function App() {
@@ -77,6 +78,7 @@ function App() {
             <Route path="/profile/:handle/projects/:projectId" element={<ProfileProjectDetails />} />
             <Route path="/profile/:handle" element={<UserProfile />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/support" element={<Support />} />
           </Route>
         </Route>
 
