@@ -29,31 +29,24 @@ const Stack = {
               <span className={styles.eyebrow}>Suporte</span>
               <h1 className={styles.title}>Central de suporte Hivelancers</h1>
               <p className={styles.subtitle}>
-                Encontre aqui o suporte para o seus problemas dentro da plataforma.
+                Encontre aqui o suporte e a ajuda necessaria para resolver o seus problemas dentro da plataforma.
               </p>
             </div>
             <div className={styles.heroStats}>
             <div className={styles.statCard}>
-                <span>Total salvo</span>
-                <strong>Live</strong>
+                <span>Pagamento via pix</span>
+                <strong>OFF</strong>
             </div>
             <div className={styles.statCard}>
                 <span>Serviços</span>
-                <strong>OFF</strong>
+                <strong>ON</strong>
             </div>
             <div className={styles.statCard}>
-                <span>Freelancers</span>
-                <strong>OFF</strong>
+                <span>Pagamento via credito/debito</span>
+                <strong>ON</strong>
             </div>
             </div>
       </section>
-
-        <section className={styles.metricGrid}>
-            <div className={styles.statusPanel}></div>
-            <div className={styles.statusPanel}></div>
-            <div className={styles.statusPanel}></div>
-        </section>
-
 
         <section className={styles.tools}>
             <div className={styles.toolsHeader}>
@@ -87,7 +80,33 @@ const Stack = {
 
 
         <section className={styles.ticketPanel}>
-            <h3>Ticket</h3>
+            <div className={styles.ticketHeader}>
+                <div>
+                    <span className={styles.sectionKicker}>Conversa</span>
+                    <h2>Esta tendo algum outro problema?</h2>
+                </div>
+            </div>
+            <div className={styles.muiHeader}>
+                <div className={styles.muiPanel}>
+                    <a className={styles.panelAction} href="/ticket">
+                        <div>
+                            <h3>Enviar um ticket</h3>
+                            <strong>Diga qual é o problema em um ticket</strong>
+                        </div>
+                        <FaArrowRight />
+                    </a>
+                </div>
+
+                <div className={styles.muiPanel}>
+                    <a className={styles.panelAction} href="/livesupport">
+                        <div>
+                            <h3>Suporte ao vivo</h3>
+                            <strong>Converse com a gente para resolver seus problemas sem demora</strong>
+                        </div>
+                        <FaArrowRight />
+                    </a>
+                </div>
+            </div>
         </section>
         </div>
     )
