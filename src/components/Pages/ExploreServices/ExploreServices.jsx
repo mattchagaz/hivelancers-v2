@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { toast, Toaster } from 'sonner';
 import {
@@ -24,7 +24,9 @@ const normalizeSubcategories = (category) =>
 
 function ExploreServices() {
   const [searchParams] = useSearchParams();
+  const filtersRef = useRef(null);
   const [categories, setCategories] = useState([]);
+  const [categoriesLoaded, setCategoriesLoaded] = useState(false);
   const [services, setServices] = useState([]);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
@@ -67,7 +69,8 @@ function ExploreServices() {
   useEffect(() => {
     listCategories()
       .then(setCategories)
-      .catch((err) => toast.error(err.message));
+      .catch((err) => toast.error(err.message))
+      .finally(() => setCategoriesLoaded(true));
   }, []);
 
   useEffect(() => {
@@ -148,6 +151,14 @@ function ExploreServices() {
     setSort('newest');
   };
 
+  const openFilters = () => {
+    setShowFilters(true);
+    window.setTimeout(() => {
+      filtersRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      filtersRef.current?.querySelector('input, button, select')?.focus({ preventScroll: true });
+    }, 0);
+  };
+
   const hasActiveFilters =
     Boolean(search.trim()) ||
     activeCategorySlug !== 'all' ||
@@ -177,6 +188,15 @@ function ExploreServices() {
     [activeSubcategorySlug, subcategoryChips]
   );
 
+  useEffect(() => {
+    if (!categoriesLoaded || activeCategorySlug === 'all') return;
+    if (categoryChips.some((cat) => cat.slug === activeCategorySlug)) return;
+
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setActiveCategorySlug('all');
+    setActiveSubcategorySlug('');
+  }, [activeCategorySlug, categoriesLoaded, categoryChips]);
+
   const activeFilterChips = useMemo(() => {
     const chips = [];
     if (search.trim()) chips.push({ key: 'search', label: `Busca: ${search.trim()}` });
@@ -200,7 +220,7 @@ function ExploreServices() {
             Explore categorias, compare preço e prazo, salve favoritos e avance para contratação com mais confiança.
           </p>
           <div className={styles.heroActions}>
-            <button type="button" className={styles.primaryAction} onClick={() => setShowFilters(true)}>
+            <button type="button" className={styles.primaryAction} onClick={openFilters}>
               <FaSliders /> Ajustar filtros
             </button>
             <button type="button" className={styles.secondaryAction} onClick={clearFilters}>
@@ -288,7 +308,12 @@ function ExploreServices() {
         </div>
 
         <div className={styles.toolbarRight}>
-          <button className={styles.filterToggle} onClick={() => setShowFilters(!showFilters)}>
+          <button
+            className={styles.filterToggle}
+            onClick={openFilters}
+            aria-controls="explore-filters"
+            aria-expanded={showFilters}
+          >
             <FaSliders />
             Filtros
             {hasActiveFilters && <span className={styles.filterDot} />}
@@ -336,7 +361,11 @@ function ExploreServices() {
       </div>
 
       <div className={styles.main}>
-        <aside className={`${styles.filters} ${showFilters ? styles.filtersOpen : ''}`}>
+        <aside
+          id="explore-filters"
+          ref={filtersRef}
+          className={`${styles.filters} ${showFilters ? styles.filtersOpen : ''}`}
+        >
           <div className={styles.filtersHead}>
             <h3 className={styles.filtersTitle}>Filtros</h3>
             {hasActiveFilters && (

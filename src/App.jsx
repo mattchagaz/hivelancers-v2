@@ -10,6 +10,7 @@ import AppLayout from './components/Layout/AppLayout';
 import Dashboard from './components/Pages/Dashboard/Dashboard';
 import CreateService from './components/Pages/CreateService/CreateService';
 import ExploreServices from './components/Pages/ExploreServices/ExploreServices';
+import MyServices from './components/Pages/MyServices/MyServices';
 import ServiceDetails from './components/Pages/ServiceDetails/ServiceDetails';
 import Checkout from './components/Pages/Checkout/Checkout';
 import Orders from './components/Pages/Orders/Orders';
@@ -61,7 +62,7 @@ function App() {
               )}
             />
             <Route path="/services/new" element={<CreateService />} />
-            <Route path="/services" element={<ExploreServices />} />
+            <Route path="/services" element={<MyServices />} />
             <Route path="/services/:id/edit" element={<CreateService />} />
             <Route path="/services/:id" element={<ServiceDetails />} />
             <Route path="/checkout/:id" element={<Checkout />} />

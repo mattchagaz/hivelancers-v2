@@ -40,29 +40,51 @@ const DIGEST_LABEL = {
   never: 'Desativado',
 };
 
-const STRIPE_REQUIREMENT_LABELS = {
-  external_account: 'Conta bancária para repasse',
-  'business_profile.url': 'Site, perfil público ou rede social',
-  'business_profile.product_description': 'Descrição dos serviços',
-  'individual.id_number': 'CPF',
-  'individual.dob.day': 'Data de nascimento',
-  'individual.dob.month': 'Data de nascimento',
-  'individual.dob.year': 'Data de nascimento',
-  'individual.address.line1': 'Endereço',
-  'individual.address.city': 'Cidade',
-  'individual.address.state': 'Estado',
-  'individual.address.postal_code': 'CEP',
-  'individual.verification.document': 'Documento de identidade',
-  'individual.verification.additional_document': 'Documento complementar',
-};
+const EMAIL_NOTIFICATION_OPTIONS = [
+  {
+    field: 'orderUpdates',
+    title: 'Atualizações de Projetos',
+    description: 'Mudança de status, entregas e aprovações.',
+  },
+  {
+    field: 'messages',
+    title: 'Novas Mensagens no Chat',
+    description: 'Quando alguém te envia uma DM ou responde.',
+  },
+  {
+    field: 'reviews',
+    title: 'Avaliações e Revisões',
+    description: 'Notas, comentários e pedidos de ajuste em entregas.',
+  },
+  {
+    field: 'marketing',
+    title: 'Dicas da Plataforma',
+    description: 'Conteúdos para te ajudar a vender mais.',
+  },
+  {
+    field: 'newsletter',
+    title: 'Resumo e Novidades',
+    description: 'Atualizações importantes da Hivelancers no seu email.',
+  },
+];
 
-const formatStripeRequirement = (item) =>
-  STRIPE_REQUIREMENT_LABELS[item] ||
-  item
-    .split('.')
-    .filter(Boolean)
-    .map((part) => part.replace(/_/g, ' '))
-    .join(' · ');
+const PUSH_NOTIFICATION_OPTIONS = [
+  {
+    field: 'pushMessages',
+    title: 'Mensagens e Chats',
+    description: 'Não deixe o cliente esperando.',
+  },
+  {
+    field: 'pushOrders',
+    title: 'Pedidos e Entregas',
+    description: 'Alertas imediatos sobre dinheiro e projetos.',
+  },
+  {
+    field: 'pushPromos',
+    title: 'Promoções e Cupons',
+    description: 'Avisos sobre campanhas, bônus e oportunidades.',
+  },
+];
 
 const profileFromUser = (user) => ({
   firstName: user?.firstName || '',
@@ -107,7 +129,7 @@ const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 function Settings() {
   const [searchParams] = useSearchParams();
   const { user, setUser } = useAuth();
-  const { settings, toggleField, updateSection, resetSettings } = useSettings();
+  const { settings, toggleField, updateSection } = useSettings();
 
   const userRole = toRoleSlug(user?.userType) || 'freelancer';
   const isFreelancer = userRole === 'freelancer';
@@ -123,7 +145,8 @@ function Settings() {
   const { notifications, appearance, privacy, language } = settings;
 
   useEffect(() => {
-    setProfile(serverProfile);
+    const timer = window.setTimeout(() => setProfile(serverProfile), 0);
+    return () => window.clearTimeout(timer);
   }, [serverProfile]);
 
   const fullName = `${profile.firstName} ${profile.lastName}`.trim() || 'Usuário';
@@ -151,19 +174,13 @@ function Settings() {
     return Math.round((filled / checklist.length) * 100);
   }, [profile]);
 
-  const emailEnabledCount = [
-    notifications.orderUpdates,
-    notifications.messages,
-    notifications.reviews,
-    notifications.marketing,
-    notifications.newsletter,
-  ].filter(Boolean).length;
+  const emailEnabledCount = EMAIL_NOTIFICATION_OPTIONS
+    .filter(({ field }) => Boolean(notifications[field]))
+    .length;
 
-  const pushEnabledCount = [
-    notifications.pushMessages,
-    notifications.pushOrders,
-    notifications.pushPromos,
-  ].filter(Boolean).length;
+  const pushEnabledCount = PUSH_NOTIFICATION_OPTIONS
+    .filter(({ field }) => Boolean(notifications[field]))
+    .length;
 
   const publicProfileHref = profile.username ? `/profile/${profile.username}` : null;
 
@@ -184,24 +201,27 @@ function Settings() {
   useEffect(() => {
     const requestedTab = searchParams.get('tab');
     if (requestedTab && tabs.some((tab) => tab.id === requestedTab)) {
-      setActiveTab(requestedTab);
+      const timer = window.setTimeout(() => setActiveTab(requestedTab), 0);
+      return () => window.clearTimeout(timer);
     }
+    return undefined;
   }, [searchParams, tabs]);
 
   useEffect(() => {
     const stripeFlow = searchParams.get('stripe');
-    if (!stripeFlow) return;
+    if (!stripeFlow) return undefined;
 
-    setActiveTab('billing');
+    const timer = window.setTimeout(() => setActiveTab('billing'), 0);
 
     if (stripeFlow === 'return') {
       toast.success('Voltamos da Stripe. Atualizando o status da sua conta.');
-      return;
+      return () => window.clearTimeout(timer);
     }
 
     if (stripeFlow === 'refresh') {
       toast.info('O link da Stripe expirou. Gere um novo para continuar a conexão.');
     }
+    return () => window.clearTimeout(timer);
   }, [searchParams]);
 
   const activeTabData = tabs.find((tab) => tab.id === activeTab) || tabs[0];
@@ -269,11 +289,6 @@ function Settings() {
     } finally {
       setIsSavingProfile(false);
     }
-  };
-
-  const restorePreferences = () => {
-    resetSettings();
-    toast.success('Preferências restauradas para o padrão.');
   };
 
   const heroStats = [
@@ -426,7 +441,7 @@ function Settings() {
           )}
 
           {activeTab === 'notifications' && (
-            <NotificationsPanel notifications={notifications} toggleNotification={(field) => toggleField('notifications', field)} setNotifications={(updater) => updateSection('notifications', typeof updater === 'function' ? updater(notifications) : updater)} />
+            <NotificationsPanel notifications={notifications} toggleNotification={(field) => toggleField('notifications', field)} />
           )}
 
           {activeTab === 'appearance' && (
@@ -618,20 +633,33 @@ function AccountPanel({ profile, updateProfile, userRole, isSaving, dirty, onSav
   );
 }
 
-function NotificationsPanel({ notifications, toggleNotification, setNotifications }) {
+function NotificationsPanel({ notifications, toggleNotification }) {
   return (
     <>
       <section className={styles.card}>
         <SectionHeader title="Alertas de Email" subtitle="O que chega na sua caixa de entrada." />
-        <ToggleRow title="Atualizações de Projetos" description="Mudança de status, entregas e aprovações." checked={notifications.orderUpdates} onChange={() => toggleNotification('orderUpdates')} />
-        <ToggleRow title="Novas Mensagens no Chat" description="Quando alguém te envia uma DM ou responde." checked={notifications.messages} onChange={() => toggleNotification('messages')} />
-        <ToggleRow title="Dicas da Plataforma" description="Conteúdos para te ajudar a vender mais." checked={notifications.marketing} onChange={() => toggleNotification('marketing')} />
+        {EMAIL_NOTIFICATION_OPTIONS.map((option) => (
+          <ToggleRow
+            key={option.field}
+            title={option.title}
+            description={option.description}
+            checked={notifications[option.field]}
+            onChange={() => toggleNotification(option.field)}
+          />
+        ))}
       </section>
 
       <section className={styles.card}>
         <SectionHeader title="Notificações Push (Navegador)" subtitle="Avisos rápidos enquanto usa o PC." />
-        <ToggleRow title="Mensagens e Chats" description="Não deixe o cliente esperando." checked={notifications.pushMessages} onChange={() => toggleNotification('pushMessages')} />
-        <ToggleRow title="Pedidos e Entregas" description="Alertas imediatos sobre dinheiro e projetos." checked={notifications.pushOrders} onChange={() => toggleNotification('pushOrders')} />
+        {PUSH_NOTIFICATION_OPTIONS.map((option) => (
+          <ToggleRow
+            key={option.field}
+            title={option.title}
+            description={option.description}
+            checked={notifications[option.field]}
+            onChange={() => toggleNotification(option.field)}
+          />
+        ))}
       </section>
     </>
   );

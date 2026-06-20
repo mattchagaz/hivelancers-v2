@@ -17,7 +17,7 @@
   width: 100%;
   height: 136px;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.34);
+  border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 18px;
   background: var(--bg-secondary, #f5f6fa);
   color: #fff;
@@ -33,7 +33,7 @@
 .card:hover,
 .card:focus-visible {
   transform: translateY(-2px);
-  border-color: rgba(255, 255, 255, 0.75);
+  border-color: rgba(var(--primary-color-rgb, 62, 115, 230), 0.58);
   box-shadow: 0 18px 42px rgba(var(--shadow-rgb, 15, 23, 42), 0.16);
 }
 
@@ -43,9 +43,10 @@
 }
 
 .active {
-  border-color: #fff;
+  border-color: rgba(var(--primary-color-rgb, 62, 115, 230), 0.82);
   box-shadow:
-    0 0 0 3px rgba(var(--primary-color-rgb, 62, 115, 230), 0.28),
+    inset 0 0 0 1px rgba(var(--primary-color-rgb, 62, 115, 230), 0.48),
+    0 0 0 3px rgba(var(--primary-color-rgb, 62, 115, 230), 0.18),
     0 18px 42px rgba(var(--shadow-rgb, 15, 23, 42), 0.16);
 }
 

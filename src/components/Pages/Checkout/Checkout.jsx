@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { FaCreditCard, FaPix } from 'react-icons/fa6';
 import { toast, Toaster } from 'sonner';
 import { getMyService, getPublicService } from '../../../services/services';
-import { createCheckoutSession, getCheckoutSessionStatus } from '../../../services/payments';
+import { createCheckoutSession, getCheckoutSessionStatus, previewCheckoutCoupon } from '../../../services/payments';
 import styles from './Checkout.module.css';
 
 const PAYMENT_METHODS = [
@@ -64,6 +64,7 @@ function Checkout() {
 
   useEffect(() => {
     let cancelled = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
     setNotFound(false);
 
@@ -107,9 +108,13 @@ function Checkout() {
   const [paymentStatus, setPaymentStatus] = useState(null);
   const [isCheckingPayment, setIsCheckingPayment] = useState(false);
   const [paymentMethodType, setPaymentMethodType] = useState('card');
+  const [couponInput, setCouponInput] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState(null);
+  const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
 
   useEffect(() => {
     if (service?.title) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setOrderTitle((current) => current || `Pedido para ${service.title}`);
     }
   }, [service]);
@@ -214,6 +219,10 @@ function Checkout() {
   const sellerName = getSellerName(service);
   const sellerInitials = getSellerInitials(sellerName);
   const selectedPlanFeatures = getPlanFeatures(selectedPlan);
+  const currentAppliedCoupon = appliedCoupon?.planId === selectedPlan.id ? appliedCoupon : null;
+  const subtotalCents = selectedPlan.priceCents || 0;
+  const discountCents = currentAppliedCoupon?.discountCents || 0;
+  const totalCents = Math.max(0, subtotalCents - discountCents);
 
   const orderSteps = [
     {
@@ -239,6 +248,38 @@ function Checkout() {
     'Histórico de mensagens e entregas centralizado',
     'Suporte ativo caso haja divergência no escopo',
   ];
+
+  const handleApplyCoupon = async () => {
+    const code = couponInput.trim();
+    if (!code) {
+      toast.error('Digite um código de cupom.');
+      return;
+    }
+
+    setIsApplyingCoupon(true);
+
+    try {
+      const preview = await previewCheckoutCoupon({
+        serviceId: service.id,
+        planTier: selectedPlan.tier,
+        couponCode: code,
+      });
+
+      setAppliedCoupon({ ...preview, planId: selectedPlan.id });
+      setCouponInput(preview.coupon.code);
+      toast.success(`Cupom ${preview.coupon.code} aplicado.`);
+    } catch (err) {
+      setAppliedCoupon(null);
+      toast.error(err.message);
+    } finally {
+      setIsApplyingCoupon(false);
+    }
+  };
+
+  const removeCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponInput('');
+  };
 
   const handleSubmit = async () => {
     if (paymentMethodType === 'pix') {
@@ -268,6 +309,7 @@ function Checkout() {
         planTier: selectedPlan.tier,
         requirements,
         paymentMethodType,
+        couponCode: currentAppliedCoupon?.coupon?.code || undefined,
       });
 
       if (!result.checkoutUrl) {
@@ -557,7 +599,7 @@ function Checkout() {
             <div className={styles.priceRows}>
               <div className={styles.priceRow}>
                 <span className={styles.rowLabel}>Pacote <strong>{selectedPlan.title}</strong></span>
-                <span className={styles.rowValue}>{formatPrice(selectedPlan.priceCents)}</span>
+                <span className={styles.rowValue}>{formatPrice(subtotalCents)}</span>
               </div>
               <div className={styles.priceRow}>
                 <span className={styles.rowLabel}>Prazo de Entrega</span>
@@ -567,12 +609,58 @@ function Checkout() {
                 <span className={styles.rowLabel}>Revisões Inclusas</span>
                 <span className={styles.rowValue}>{selectedPlan.revisions}</span>
               </div>
+
+              <div className={styles.couponBox}>
+                <label className={styles.couponLabel} htmlFor="checkout-coupon">
+                  Cupom de desconto
+                </label>
+                <div className={styles.couponForm}>
+                  <input
+                    id="checkout-coupon"
+                    className={styles.couponInput}
+                    type="text"
+                    value={couponInput}
+                    onChange={(event) => {
+                      setCouponInput(event.target.value.toUpperCase());
+                      if (currentAppliedCoupon) setAppliedCoupon(null);
+                    }}
+                    placeholder="Ex: BEMVINDO10"
+                    disabled={isApplyingCoupon || isSubmitting}
+                  />
+                  <button
+                    type="button"
+                    className={styles.couponButton}
+                    onClick={handleApplyCoupon}
+                    disabled={isApplyingCoupon || isSubmitting}
+                  >
+                    {isApplyingCoupon ? 'Validando...' : 'Aplicar'}
+                  </button>
+                </div>
+                {currentAppliedCoupon && (
+                  <div className={styles.appliedCoupon}>
+                    <div>
+                      <strong>{currentAppliedCoupon.coupon.name}</strong>
+                      <span>{currentAppliedCoupon.coupon.description || `Cupom ${currentAppliedCoupon.coupon.code} aplicado.`}</span>
+                    </div>
+                    <button type="button" onClick={removeCoupon} disabled={isSubmitting}>
+                      Remover
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {currentAppliedCoupon && (
+                <div className={`${styles.priceRow} ${styles.discountRow}`}>
+                  <span className={styles.rowLabel}>Desconto ({currentAppliedCoupon.coupon.code})</span>
+                  <span className={styles.rowValue}>- {formatPrice(discountCents)}</span>
+                </div>
+              )}
               
               <div className={styles.divider}></div>
               
               <div className={`${styles.priceRow} ${styles.priceTotal}`}>
                 <span>Total a Pagar</span>
-                <strong>{formatPrice(selectedPlan.priceCents)}</strong>
+                <strong>{formatPrice(totalCents)}</strong>
               </div>
             </div>
 

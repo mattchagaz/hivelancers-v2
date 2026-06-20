@@ -8,6 +8,7 @@ import {
   FaCircleCheck,
   FaClock,
   FaCoins,
+  FaCopy,
   FaGift,
   FaLock,
   FaMedal,
@@ -43,6 +44,22 @@ const formatCurrency = (cents = 0) =>
 
 const clampPercent = (value = 0) => Math.max(0, Math.min(100, Number(value) || 0));
 
+const formatDate = (value) =>
+  value
+    ? new Date(value).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })
+    : null;
+
+const formatCouponDiscount = (coupon) => {
+  if (coupon.discountType === 'PERCENTAGE') {
+    return `${coupon.discountValue}% de desconto`;
+  }
+
+  return `${formatCurrency(coupon.discountValue)} de desconto`;
+};
+
+const getCouponDescription = (coupon) =>
+  coupon.description || `${formatCouponDiscount(coupon)} em serviços elegíveis da Hivelancers.`;
+
 function Rewards() {
   const [loading, setLoading] = useState(true);
   const [rewardsData, setRewardsData] = useState(null);
@@ -69,16 +86,25 @@ function Rewards() {
   const summary = rewardsData?.summary || {};
   const level = rewardsData?.level;
   const nextLevel = rewardsData?.nextLevel;
-  const sources = rewardsData?.sources || [];
   const missions = rewardsData?.missions || [];
   const rewards = rewardsData?.rewards || [];
+  const coupons = rewardsData?.coupons || [];
   const stats = rewardsData?.stats || {};
   const progress = clampPercent(summary.progressToNext);
   const completedMissions = missions.filter((mission) => mission.completed).length;
 
+  const copyCoupon = async (code) => {
+    try {
+      await navigator.clipboard.writeText(code);
+      toast.success(`Cupom ${code} copiado.`);
+    } catch {
+      toast.error('Não foi possível copiar o cupom agora.');
+    }
+  };
+
   const topSources = useMemo(
-    () => [...sources].sort((a, b) => b.xp - a.xp).slice(0, 6),
-    [sources]
+    () => [...(rewardsData?.sources || [])].sort((a, b) => b.xp - a.xp).slice(0, 6),
+    [rewardsData?.sources]
   );
 
   const visibleLevels = useMemo(() => {
@@ -217,6 +243,58 @@ function Rewards() {
                 );
               })}
             </div>
+          </section>
+
+          <section className={styles.panel}>
+            <div className={styles.panelHeader}>
+              <div>
+                <span className={styles.sectionKicker}>Cupons</span>
+                <h2>Cupons disponíveis</h2>
+              </div>
+              <Link className={styles.panelAction} to="/explore">
+                Encontrar serviço <FaArrowRight />
+              </Link>
+            </div>
+
+            {coupons.length ? (
+              <div className={styles.couponGrid}>
+                {coupons.map((coupon) => {
+                  const expiresAt = formatDate(coupon.endsAt);
+
+                  return (
+                    <article key={coupon.id} className={styles.couponCard}>
+                      <div className={styles.couponTop}>
+                        <div className={styles.couponIcon}>
+                          <FaGift />
+                        </div>
+                        <span className={styles.couponDiscount}>{formatCouponDiscount(coupon)}</span>
+                      </div>
+                      <div className={styles.couponCodeRow}>
+                        <strong>{coupon.code}</strong>
+                        <button type="button" onClick={() => copyCoupon(coupon.code)} aria-label={`Copiar cupom ${coupon.code}`}>
+                          <FaCopy />
+                        </button>
+                      </div>
+                      <h3>{coupon.name}</h3>
+                      <p>{getCouponDescription(coupon)}</p>
+                      <div className={styles.couponMeta}>
+                        {coupon.minSubtotalCents ? <span>Mín. {formatCurrency(coupon.minSubtotalCents)}</span> : null}
+                        {coupon.maxDiscountCents ? <span>Máx. {formatCurrency(coupon.maxDiscountCents)}</span> : null}
+                        {expiresAt ? <span>Até {expiresAt}</span> : <span>Sem expiração definida</span>}
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className={styles.couponEmpty}>
+                <FaGift />
+                <div>
+                  <strong>Nenhum cupom disponível agora</strong>
+                  <p>Quando uma campanha estiver ativa, o código e a descrição do desconto aparecem aqui.</p>
+                </div>
+              </div>
+            )}
           </section>
 
           <section className={styles.panel}>
