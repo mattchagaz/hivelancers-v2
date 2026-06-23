@@ -116,14 +116,14 @@ const summaryValue = (summary, key) => {
 const normalizeCode = (value) => String(value || '').toUpperCase();
 
 const tabs = [
-  { id: 'overview', label: 'Visão geral' },
-  { id: 'services', label: 'Serviços' },
-  { id: 'promotions', label: 'Promoções' },
-  { id: 'levels', label: 'Níveis' },
-  { id: 'taxonomy', label: 'Taxonomia' },
-  { id: 'users', label: 'Usuários' },
-  { id: 'finance', label: 'Financeiro' },
-  { id: 'support', label: 'Suporte' },
+  { id: 'overview', label: 'Visão geral', icon: FaArrowTrendUp },
+  { id: 'services', label: 'Serviços', icon: FaLayerGroup },
+  { id: 'promotions', label: 'Promoções', icon: FaGift },
+  { id: 'levels', label: 'Níveis', icon: FaMedal },
+  { id: 'taxonomy', label: 'Taxonomia', icon: FaTags },
+  { id: 'users', label: 'Usuários', icon: FaUsers },
+  { id: 'finance', label: 'Financeiro', icon: FaFileInvoiceDollar },
+  { id: 'support', label: 'Suporte', icon: FaHeadset },
 ];
 
 const slugify = (value) =>
@@ -1431,16 +1431,20 @@ function Admin() {
         </div>
 
         <div className={styles.tabs}>
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              className={`${styles.tab} ${activeTab === tab.id ? styles.tabActive : ''}`}
-              onClick={() => setActiveTab(tab.id)}
-            >
-              {tab.label}
-            </button>
-          ))}
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                className={`${styles.tab} ${activeTab === tab.id ? styles.tabActive : ''}`}
+                onClick={() => setActiveTab(tab.id)}
+              >
+                {Icon && <Icon className={styles.tabIcon} />}
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
         </div>
 
         {activeTab === 'overview' && (
