@@ -3,24 +3,26 @@ import {
   FaArrowTrendUp,
   FaArrowUpRightFromSquare,
   FaBan,
-  FaBell,
   FaBolt,
-  FaChartLine,
   FaCircleCheck,
   FaClock,
   FaCreditCard,
   FaFileInvoiceDollar,
-  FaFlag,
   FaFloppyDisk,
   FaGift,
+  FaHeadset,
   FaDownload,
+  FaInbox,
   FaLayerGroup,
+  FaLifeRing,
   FaMagnifyingGlass,
   FaMedal,
   FaMoneyBillTransfer,
+  FaPaperclip,
   FaPlus,
   FaShieldHalved,
   FaTags,
+  FaTicket,
   FaTrash,
   FaTriangleExclamation,
   FaUserCheck,
@@ -58,6 +60,14 @@ import {
   listAdminPayments,
   retryAdminPaymentTransfer,
 } from '../../../services/payments';
+import {
+  listAdminSupportTickets,
+  normalizeSupportTicketStatus,
+  updateAdminSupportTicket,
+  SUPPORT_TICKET_CATEGORY_LABEL,
+  SUPPORT_TICKET_PRIORITY_LABEL,
+  SUPPORT_TICKET_STATUS_LABEL,
+} from '../../../services/tickets';
 import styles from './Admin.module.css';
 
 const formatCurrency = (value) =>
@@ -68,57 +78,42 @@ const formatCurrency = (value) =>
 
 const formatCents = (value) => formatCurrency((Number(value) || 0) / 100);
 
-const stats = [
-  {
-    label: 'GMV no mês',
-    value: formatCurrency(42890),
-    detail: '+18,4% vs mês anterior',
-    icon: <FaChartLine />,
-    tone: 'blue',
-  },
-  {
-    label: 'Receita da plataforma',
-    value: formatCurrency(6433),
-    detail: 'Take rate médio de 15%',
-    icon: <FaArrowTrendUp />,
-    tone: 'green',
-  },
-  {
-    label: 'Escrow em aberto',
-    value: formatCurrency(18720),
-    detail: '32 pedidos com saldo retido',
-    icon: <FaShieldHalved />,
-    tone: 'purple',
-  },
-  {
-    label: 'Alertas críticos',
-    value: '7',
-    detail: '3 disputas, 4 verificações',
-    icon: <FaTriangleExclamation />,
-    tone: 'orange',
-  },
-];
+const formatNumber = (value) => new Intl.NumberFormat('pt-BR').format(Number(value) || 0);
 
-const healthSignals = [
-  { label: 'Pagamentos aprovados', value: '96,8%', status: 'Saudável', tone: 'success' },
-  { label: 'Tempo médio de resposta', value: '42min', status: 'Dentro do alvo', tone: 'success' },
-  { label: 'Pedidos atrasados', value: '8', status: 'Atenção', tone: 'warning' },
-  { label: 'Chargebacks', value: '0,7%', status: 'Monitorar', tone: 'warning' },
-];
+const pluralize = (value, singular, plural = `${singular}s`) =>
+  `${formatNumber(value)} ${Number(value) === 1 ? singular : plural}`;
 
-const orders = [
-  { id: '#9IZCO4AX', title: 'Landing page para campanha', client: 'Test Teste', freelancer: 'Matheus Chagas', amount: 200, status: 'Concluído', sla: 'No prazo' },
-  { id: '#8LLP21BR', title: 'Identidade visual SaaS', client: 'Studio Orbit', freelancer: 'Ana Prado', amount: 1800, status: 'Em revisão', sla: 'Atenção' },
-  { id: '#7QAZ10MN', title: 'API para checkout', client: 'Nexa Labs', freelancer: 'Rafael Lima', amount: 3200, status: 'Em execução', sla: 'No prazo' },
-  { id: '#6PVV88DA', title: 'Motion para lançamento', client: 'Dobra Co.', freelancer: 'Lia Castro', amount: 940, status: 'Atrasado', sla: 'Crítico' },
-];
+const listItems = (data, keys = []) => {
+  if (Array.isArray(data)) return data;
+  const pools = [...keys, 'items', 'data', 'results'];
+  for (const key of pools) {
+    if (Array.isArray(data?.[key])) return data[key];
+  }
+  if (data?.data && typeof data.data === 'object') return listItems(data.data, keys);
+  return [];
+};
 
-const moderationItems = [
-  { title: 'Perfil com documentos pendentes', owner: 'Ana Prado', type: 'KYC', priority: 'Alta', icon: <FaUserCheck /> },
-  { title: 'Pedido com entrega contestada', owner: 'Studio Orbit', type: 'Disputa', priority: 'Alta', icon: <FaFlag /> },
-  { title: 'Mensagem reportada no chat', owner: 'Cliente #1042', type: 'Moderação', priority: 'Média', icon: <FaBell /> },
-  { title: 'Serviço aguardando revisão', owner: 'Rafael Lima', type: 'Marketplace', priority: 'Baixa', icon: <FaCircleCheck /> },
-];
+const listTotal = (data, items = []) =>
+  Number(
+    data?.total ??
+    data?.totalItems ??
+    data?.totalCount ??
+    data?.count ??
+    data?.meta?.total ??
+    data?.pagination?.total ??
+    data?.data?.total ??
+    data?.data?.totalItems ??
+    data?.data?.totalCount ??
+    items.length
+  ) || 0;
+
+const summaryValue = (summary, key) => {
+  const normalizedKey = String(key).toUpperCase();
+  const entry = Object.entries(summary || {}).find(([itemKey]) => String(itemKey).toUpperCase() === normalizedKey);
+  return Number(entry?.[1] || 0);
+};
+
+const normalizeCode = (value) => String(value || '').toUpperCase();
 
 const tabs = [
   { id: 'overview', label: 'Visão geral' },
@@ -128,8 +123,7 @@ const tabs = [
   { id: 'taxonomy', label: 'Taxonomia' },
   { id: 'users', label: 'Usuários' },
   { id: 'finance', label: 'Financeiro' },
-  { id: 'orders', label: 'Pedidos' },
-  { id: 'moderation', label: 'Moderação' },
+  { id: 'support', label: 'Suporte' },
 ];
 
 const slugify = (value) =>
@@ -261,6 +255,18 @@ const emptyLevelDraft = {
 
 const toUserName = (user) =>
   `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || user?.email || 'Usuário';
+
+const toRequesterName = (ticket) =>
+  ticket?.requester?.name ||
+  toUserName(ticket?.requester) ||
+  ticket?.requester?.email ||
+  'Usuário Hivelancers';
+
+const getTicketReference = (ticket) =>
+  ticket?.relatedOrderId ||
+  ticket?.order?.code ||
+  ticket?.service?.title ||
+  'Sem vínculo';
 
 const formatDate = (value) => {
   if (!value) return 'Nunca';
@@ -400,6 +406,61 @@ const RELEASE_STATUS_LABEL = {
   FAILED: 'Falhou',
 };
 
+const TICKET_STATUS_TONE = {
+  OPEN: 'warning',
+  IN_PROGRESS: 'success',
+  ANSWERED: 'success',
+  RESOLVED: 'success',
+  CLOSED: 'neutral',
+};
+
+const TICKET_PRIORITY_TONE = {
+  LOW: 'neutral',
+  NORMAL: 'neutral',
+  HIGH: 'warning',
+  URGENT: 'danger',
+};
+
+const emptyTicketDraft = {
+  ticketId: '',
+  status: 'OPEN',
+  priority: 'NORMAL',
+  publicReply: '',
+  adminNote: '',
+};
+
+const toTicketDraft = (ticket) => ({
+  ticketId: ticket?.id || '',
+  status: normalizeSupportTicketStatus(ticket?.status),
+  priority: ticket?.priority || 'NORMAL',
+  publicReply: ticket?.publicReply || '',
+  adminNote: ticket?.adminNote || '',
+});
+
+const emptyAdminOverview = {
+  usersTotal: 0,
+  clients: 0,
+  freelancers: 0,
+  activeUsers: 0,
+  identityPending: 0,
+  servicesTotal: 0,
+  servicesPublished: 0,
+  servicesDraft: 0,
+  servicesArchived: 0,
+  ticketsTotal: 0,
+  ticketsOpen: 0,
+  ticketsInProgress: 0,
+  ticketsAnswered: 0,
+  ticketsResolved: 0,
+  ticketsUnanswered: 0,
+  highPriorityUnanswered: 0,
+};
+
+const isTicketUnanswered = (ticket) => {
+  const status = normalizeSupportTicketStatus(ticket?.status);
+  return !ticket?.publicReply && !['ANSWERED', 'RESOLVED', 'CLOSED'].includes(status);
+};
+
 function Admin() {
   const [activeTab, setActiveTab] = useState('overview');
   const [search, setSearch] = useState('');
@@ -449,6 +510,16 @@ function Admin() {
   const [selectedLevelId, setSelectedLevelId] = useState('');
   const [levelDraft, setLevelDraft] = useState(emptyLevelDraft);
   const [levelSaving, setLevelSaving] = useState(false);
+  const [adminTickets, setAdminTickets] = useState([]);
+  const [adminTicketsTotal, setAdminTicketsTotal] = useState(0);
+  const [ticketsLoading, setTicketsLoading] = useState(false);
+  const [ticketStatusFilter, setTicketStatusFilter] = useState('all');
+  const [ticketPriorityFilter, setTicketPriorityFilter] = useState('all');
+  const [selectedTicketId, setSelectedTicketId] = useState('');
+  const [ticketDraft, setTicketDraft] = useState(emptyTicketDraft);
+  const [ticketSaving, setTicketSaving] = useState(false);
+  const [adminOverview, setAdminOverview] = useState(emptyAdminOverview);
+  const [overviewLoading, setOverviewLoading] = useState(false);
 
   const loadCategories = async () => {
     setCategoriesLoading(true);
@@ -473,6 +544,70 @@ function Admin() {
     if (category) setCategoryDraft(toCategoryDraft(category));
   }, [categories, selectedCategoryId]);
 
+  const loadAdminOverview = useCallback(async () => {
+    setOverviewLoading(true);
+    try {
+      const [usersResult, servicesResult, ticketsResult] = await Promise.allSettled([
+        listAdminUsers({ status: 'all', pageSize: 100 }),
+        listAdminServices({ status: 'all', pageSize: 100 }),
+        listAdminSupportTickets({ status: 'all', priority: 'all', pageSize: 100 }),
+      ]);
+
+      const usersData = usersResult.status === 'fulfilled' ? usersResult.value || {} : {};
+      const servicesData = servicesResult.status === 'fulfilled' ? servicesResult.value || {} : {};
+      const ticketsData = ticketsResult.status === 'fulfilled' ? ticketsResult.value || {} : {};
+      const users = listItems(usersData, ['users']);
+      const services = listItems(servicesData, ['services']);
+      const tickets = listItems(ticketsData, ['tickets']);
+      const userSummary = usersData.summary || usersData.counts || usersData.typeCounts || {};
+      const identitySummary = usersData.identitySummary || usersData.identityCounts || usersData.verificationCounts || {};
+      const serviceSummary = servicesData.summary || servicesData.counts || servicesData.statusCounts || {};
+
+      setAdminOverview({
+        usersTotal: listTotal(usersData, users),
+        clients: summaryValue(userSummary, 'CLIENT') || users.filter((user) => normalizeCode(user.userType || user.role) === 'CLIENT').length,
+        freelancers: summaryValue(userSummary, 'FREELANCER') || users.filter((user) => normalizeCode(user.userType || user.role) === 'FREELANCER').length,
+        activeUsers: users.filter((user) => user.activityStatus !== 'inactive').length,
+        identityPending: summaryValue(identitySummary, 'PENDING') || users.filter((user) => getIdentityStatus(user) === 'PENDING').length,
+        servicesTotal: listTotal(servicesData, services),
+        servicesPublished: summaryValue(serviceSummary, 'PUBLISHED') || services.filter((service) => normalizeCode(service.status) === 'PUBLISHED').length,
+        servicesDraft: summaryValue(serviceSummary, 'DRAFT') || services.filter((service) => normalizeCode(service.status) === 'DRAFT').length,
+        servicesArchived: summaryValue(serviceSummary, 'ARCHIVED') || services.filter((service) => normalizeCode(service.status) === 'ARCHIVED').length,
+        ticketsTotal: listTotal(ticketsData, tickets),
+        ticketsOpen: tickets.filter((ticket) => normalizeSupportTicketStatus(ticket.status) === 'OPEN').length,
+        ticketsInProgress: tickets.filter((ticket) => normalizeSupportTicketStatus(ticket.status) === 'IN_PROGRESS').length,
+        ticketsAnswered: tickets.filter((ticket) => (
+          normalizeSupportTicketStatus(ticket.status) === 'ANSWERED' || Boolean(ticket.publicReply)
+        )).length,
+        ticketsResolved: tickets.filter((ticket) => ['RESOLVED', 'CLOSED'].includes(normalizeSupportTicketStatus(ticket.status))).length,
+        ticketsUnanswered: tickets.filter(isTicketUnanswered).length,
+        highPriorityUnanswered: tickets.filter((ticket) => (
+          isTicketUnanswered(ticket) && ['HIGH', 'URGENT'].includes(ticket.priority)
+        )).length,
+      });
+
+      if ([usersResult, servicesResult, ticketsResult].every((result) => result.status === 'rejected')) {
+        toast.error('Não foi possível carregar os indicadores reais do admin.');
+      }
+    } finally {
+      setOverviewLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadAdminOverview();
+  }, [loadAdminOverview]);
+
+  useEffect(() => {
+    const refresh = () => loadAdminOverview();
+    window.addEventListener('support:tickets:changed', refresh);
+    window.addEventListener('storage', refresh);
+    return () => {
+      window.removeEventListener('support:tickets:changed', refresh);
+      window.removeEventListener('storage', refresh);
+    };
+  }, [loadAdminOverview]);
+
   useEffect(() => {
     if (activeTab !== 'users') return undefined;
     let cancelled = false;
@@ -486,9 +621,10 @@ function Admin() {
           pageSize: 100,
         });
         if (cancelled) return;
-        setAdminUsers(data.items || []);
-        setUsersTotal(data.total || 0);
-        setSelectedUserId((current) => current || data.items?.[0]?.id || '');
+        const items = listItems(data, ['users']);
+        setAdminUsers(items);
+        setUsersTotal(listTotal(data, items));
+        setSelectedUserId((current) => current || items[0]?.id || '');
       } catch (err) {
         if (!cancelled) toast.error(err.message);
       } finally {
@@ -558,10 +694,11 @@ function Admin() {
         categoryId: serviceCategoryFilter || undefined,
         pageSize: 100,
       });
-      setAdminServices(data.items || []);
-      setAdminServicesTotal(data.total || 0);
-      setAdminServicesSummary(data.summary || {});
-      setSelectedServiceId((current) => current || data.items?.[0]?.id || '');
+      const items = listItems(data, ['services']);
+      setAdminServices(items);
+      setAdminServicesTotal(listTotal(data, items));
+      setAdminServicesSummary(data.summary || data.counts || data.statusCounts || {});
+      setSelectedServiceId((current) => current || items[0]?.id || '');
     } catch (err) {
       toast.error(err.message);
     } finally {
@@ -618,12 +755,57 @@ function Admin() {
     loadFreelancerLevels();
   }, [activeTab, loadFreelancerLevels]);
 
+  const loadAdminTickets = useCallback(async () => {
+    setTicketsLoading(true);
+    try {
+      const data = await listAdminSupportTickets({
+        q: search.trim() || undefined,
+        status: ticketStatusFilter,
+        priority: ticketPriorityFilter,
+        pageSize: 100,
+      });
+      const items = listItems(data, ['tickets']);
+      setAdminTickets(items);
+      setAdminTicketsTotal(listTotal(data, items));
+      setSelectedTicketId((current) =>
+        current && items.some((ticket) => ticket.id === current)
+          ? current
+          : items[0]?.id || ''
+      );
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setTicketsLoading(false);
+    }
+  }, [search, ticketPriorityFilter, ticketStatusFilter]);
+
+  useEffect(() => {
+    if (activeTab !== 'support') return undefined;
+    const timer = setTimeout(loadAdminTickets, 250);
+    return () => clearTimeout(timer);
+  }, [activeTab, loadAdminTickets]);
+
+  useEffect(() => {
+    if (activeTab !== 'support') return undefined;
+    const refresh = () => loadAdminTickets();
+    window.addEventListener('support:tickets:changed', refresh);
+    window.addEventListener('storage', refresh);
+    return () => {
+      window.removeEventListener('support:tickets:changed', refresh);
+      window.removeEventListener('storage', refresh);
+    };
+  }, [activeTab, loadAdminTickets]);
+
   const selectedCategory = categories.find((item) => item.id === selectedCategoryId);
   const selectedUser = adminUsers.find((item) => item.id === selectedUserId);
   const identityModalUser = adminUsers.find((item) => item.id === identityModalUserId);
   const selectedService = adminServices.find((item) => item.id === selectedServiceId);
   const selectedCoupon = coupons.find((item) => item.id === selectedCouponId);
   const selectedLevel = freelancerLevels.find((item) => item.id === selectedLevelId);
+  const selectedTicket = adminTickets.find((item) => item.id === selectedTicketId);
+  const activeTicketDraft = selectedTicket && ticketDraft.ticketId === selectedTicket.id
+    ? ticketDraft
+    : toTicketDraft(selectedTicket);
   const selectedServiceCategory = categories.find((item) => item.id === serviceDraft.categoryId);
   const selectedServiceSubcategories = selectedServiceCategory?.subcategories || [];
   const identityModalDocuments = useMemo(() => {
@@ -645,6 +827,87 @@ function Admin() {
     const identityVerified = adminUsers.filter((user) => getIdentityStatus(user) === 'VERIFIED').length;
     return { admins, active, freelancers, clients, identityVerified };
   }, [adminUsers]);
+  const ticketStats = useMemo(() => {
+    const open = adminTickets.filter((ticket) => ['OPEN', 'IN_PROGRESS'].includes(normalizeSupportTicketStatus(ticket.status))).length;
+    const unanswered = adminTickets.filter(isTicketUnanswered).length;
+    const answered = adminTickets.filter((ticket) => (
+      normalizeSupportTicketStatus(ticket.status) === 'ANSWERED' || Boolean(ticket.publicReply)
+    )).length;
+    const resolved = adminTickets.filter((ticket) => ['RESOLVED', 'CLOSED'].includes(normalizeSupportTicketStatus(ticket.status))).length;
+    return { open, unanswered, answered, resolved };
+  }, [adminTickets]);
+  const dashboardStats = useMemo(() => [
+    {
+      label: 'Usuários cadastrados',
+      value: formatNumber(adminOverview.usersTotal),
+      detail: `${pluralize(adminOverview.clients, 'cliente')} · ${pluralize(adminOverview.freelancers, 'freelancer')}`,
+      icon: <FaUsers />,
+      tone: 'blue',
+    },
+    {
+      label: 'Serviços cadastrados',
+      value: formatNumber(adminOverview.servicesTotal),
+      detail: `${pluralize(adminOverview.servicesPublished, 'publicado')} · ${pluralize(adminOverview.servicesDraft, 'rascunho')}`,
+      icon: <FaLayerGroup />,
+      tone: 'green',
+    },
+    {
+      label: 'Tickets criados',
+      value: formatNumber(adminOverview.ticketsTotal),
+      detail: `${pluralize(adminOverview.ticketsAnswered, 'respondido')} · ${pluralize(adminOverview.ticketsResolved, 'resolvido')}`,
+      icon: <FaTicket />,
+      tone: 'purple',
+    },
+    {
+      label: 'Tickets sem resposta',
+      value: formatNumber(adminOverview.ticketsUnanswered),
+      detail: `${formatNumber(adminOverview.highPriorityUnanswered)} de alta prioridade`,
+      icon: <FaHeadset />,
+      tone: adminOverview.ticketsUnanswered > 0 ? 'orange' : 'green',
+    },
+  ], [adminOverview]);
+  const overviewSignals = useMemo(() => [
+    { label: 'Clientes', value: formatNumber(adminOverview.clients), status: 'Base real', tone: 'neutral' },
+    { label: 'Freelancers', value: formatNumber(adminOverview.freelancers), status: 'Base real', tone: 'neutral' },
+    {
+      label: 'Verificações pendentes',
+      value: formatNumber(adminOverview.identityPending),
+      status: adminOverview.identityPending > 0 ? 'Revisar' : 'Em dia',
+      tone: adminOverview.identityPending > 0 ? 'warning' : 'success',
+    },
+    {
+      label: 'Serviços em rascunho',
+      value: formatNumber(adminOverview.servicesDraft),
+      status: adminOverview.servicesDraft > 0 ? 'Acompanhar' : 'Em dia',
+      tone: adminOverview.servicesDraft > 0 ? 'warning' : 'success',
+    },
+  ], [adminOverview]);
+  const adminActionItems = useMemo(() => [
+    {
+      title: 'Tickets sem primeira resposta',
+      owner: `${pluralize(adminOverview.ticketsUnanswered, 'chamado')} aguardando atendimento`,
+      type: 'Suporte',
+      priority: adminOverview.ticketsUnanswered > 0 ? 'Prioridade alta' : 'Em dia',
+      tone: adminOverview.ticketsUnanswered > 0 ? 'warning' : 'success',
+      icon: <FaHeadset />,
+    },
+    {
+      title: 'Verificações de conta pendentes',
+      owner: `${pluralize(adminOverview.identityPending, 'conta')} em análise`,
+      type: 'Usuários',
+      priority: adminOverview.identityPending > 0 ? 'Revisar' : 'Em dia',
+      tone: adminOverview.identityPending > 0 ? 'warning' : 'success',
+      icon: <FaUserCheck />,
+    },
+    {
+      title: 'Serviços ainda em rascunho',
+      owner: `${pluralize(adminOverview.servicesDraft, 'serviço')} sem publicação`,
+      type: 'Marketplace',
+      priority: adminOverview.servicesDraft > 0 ? 'Acompanhar' : 'Em dia',
+      tone: adminOverview.servicesDraft > 0 ? 'neutral' : 'success',
+      icon: <FaLayerGroup />,
+    },
+  ], [adminOverview]);
   const taxonomyStats = useMemo(() => {
     const subcategoryCount = categories.reduce(
       (total, category) => total + (Array.isArray(category.subcategories) ? category.subcategories.length : 0),
@@ -789,6 +1052,7 @@ function Admin() {
       });
       setAdminUsers((current) => current.map((user) => (user.id === saved.id ? saved : user)));
       setSelectedUserId(saved.id);
+      loadAdminOverview();
       toast.success('Usuário atualizado.');
     } catch (err) {
       toast.error(err.message);
@@ -804,6 +1068,7 @@ function Admin() {
       const saved = await updateAdminUser(user.id, { isAdmin: !user.isAdmin });
       setAdminUsers((current) => current.map((item) => (item.id === saved.id ? saved : item)));
       if (selectedUserId === saved.id) setUserDraft(toUserDraft(saved));
+      loadAdminOverview();
       toast.success(saved.isAdmin ? 'Usuário agora é admin.' : 'Admin removido do usuário.');
     } catch (err) {
       toast.error(err.message);
@@ -850,6 +1115,7 @@ function Admin() {
       setIdentityModalUserId(result.user.id);
       setIdentityRejecting(false);
       setIdentityReviewNote(result.user.accountVerification?.reviewNote || '');
+      loadAdminOverview();
       toast.success(status === 'VERIFIED' ? 'Identidade aprovada.' : 'Identidade recusada.');
     } catch (err) {
       toast.error(err.message);
@@ -882,6 +1148,7 @@ function Admin() {
       });
       setAdminServices((current) => current.map((service) => (service.id === saved.id ? saved : service)));
       setSelectedServiceId(saved.id);
+      loadAdminOverview();
       toast.success('Serviço atualizado.');
     } catch (err) {
       toast.error(err.message);
@@ -904,6 +1171,7 @@ function Admin() {
       }
       toast.success('Serviço arquivado.');
       await loadAdminServices();
+      loadAdminOverview();
     } catch (err) {
       toast.error(err.message);
     } finally {
@@ -924,6 +1192,7 @@ function Admin() {
       setServiceDraft(emptyServiceDraft);
       toast.success('Serviço excluído permanentemente.');
       await loadAdminServices();
+      loadAdminOverview();
     } catch (err) {
       toast.error(err.message);
     } finally {
@@ -1072,6 +1341,47 @@ function Admin() {
     }
   };
 
+  const updateTicketDraft = (field, value) => {
+    setTicketDraft((current) => {
+      const base = selectedTicket && current.ticketId !== selectedTicket.id
+        ? toTicketDraft(selectedTicket)
+        : current;
+      return { ...base, [field]: value };
+    });
+  };
+
+  const saveTicket = async () => {
+    if (!selectedTicket || ticketSaving) return;
+
+    const publicReply = activeTicketDraft.publicReply.trim();
+    if (activeTicketDraft.status === 'ANSWERED' && !publicReply) {
+      toast.error('Escreva uma resposta antes de marcar o ticket como respondido.');
+      return;
+    }
+
+    setTicketSaving(true);
+    try {
+      const nextStatus = publicReply && !['RESOLVED', 'CLOSED'].includes(activeTicketDraft.status)
+        ? 'ANSWERED'
+        : activeTicketDraft.status;
+      const saved = await updateAdminSupportTicket(selectedTicket.id, {
+        status: nextStatus,
+        priority: activeTicketDraft.priority,
+        publicReply,
+        adminNote: activeTicketDraft.adminNote.trim(),
+      });
+      setAdminTickets((current) => current.map((ticket) => (ticket.id === saved.id ? saved : ticket)));
+      setSelectedTicketId(saved.id);
+      setTicketDraft(toTicketDraft(saved));
+      loadAdminOverview();
+      toast.success('Ticket atualizado.');
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setTicketSaving(false);
+    }
+  };
+
   return (
     <div className={styles.page}>
       <section className={styles.hero}>
@@ -1079,20 +1389,20 @@ function Admin() {
           <span className={styles.eyebrow}>Admin</span>
           <h1>Central de operação Hivelancers</h1>
           <p>
-            Acompanhe usuários, pedidos, repasses, disputas e saúde da plataforma em uma única área de decisão.
+            Acompanhe usuários, serviços e tickets de suporte com indicadores reais da plataforma.
           </p>
         </div>
 
         <div className={styles.commandCard}>
-          <span>Fila operacional</span>
-          <strong>14 itens</strong>
-          <p>7 precisam de análise hoje</p>
-          <button type="button">Abrir fila crítica</button>
+          <span>Fila de suporte</span>
+          <strong>{formatNumber(adminOverview.ticketsUnanswered)}</strong>
+          <p>Tickets sem resposta inicial · SLA de 24h úteis</p>
+          <button type="button" onClick={() => setActiveTab('support')}>Abrir tickets</button>
         </div>
       </section>
 
       <div className={styles.statGrid}>
-        {stats.map((item) => (
+        {dashboardStats.map((item) => (
           <SpotlightCard key={item.label} className={`${styles.statCard} ${styles[item.tone]}`}>
             <div className={styles.statIcon}>{item.icon}</div>
             <span>{item.label}</span>
@@ -1113,7 +1423,7 @@ function Admin() {
             <FaMagnifyingGlass />
             <input
               type="text"
-              placeholder="Buscar usuário, pedido ou transação..."
+              placeholder="Buscar usuário, serviço, cupom ou ticket..."
               value={search}
               onChange={(event) => setSearch(event.target.value)}
             />
@@ -1138,14 +1448,16 @@ function Admin() {
             <section className={styles.panel}>
               <div className={styles.panelHead}>
                 <div>
-                  <span className={styles.sectionKicker}>Saúde</span>
-                  <h3>Sinais da plataforma</h3>
+                  <span className={styles.sectionKicker}>Indicadores</span>
+                  <h3>Base da plataforma</h3>
                 </div>
-                <button type="button" className={styles.ghostButton}>Ver relatório</button>
+                <button type="button" className={styles.ghostButton} onClick={loadAdminOverview} disabled={overviewLoading}>
+                  {overviewLoading ? 'Atualizando...' : 'Atualizar'}
+                </button>
               </div>
 
               <div className={styles.signalGrid}>
-                {healthSignals.map((signal) => (
+                {overviewSignals.map((signal) => (
                   <div key={signal.label} className={styles.signalCard}>
                     <span>{signal.label}</span>
                     <strong>{signal.value}</strong>
@@ -1161,18 +1473,20 @@ function Admin() {
                   <span className={styles.sectionKicker}>Prioridades</span>
                   <h3>Fila de ação</h3>
                 </div>
-                <button type="button" className={styles.primaryButton}>Resolver agora</button>
+                <button type="button" className={styles.primaryButton} onClick={() => setActiveTab('support')}>
+                  Ver suporte
+                </button>
               </div>
 
               <div className={styles.actionList}>
-                {moderationItems.slice(0, 3).map((item) => (
+                {adminActionItems.map((item) => (
                   <article key={item.title} className={styles.actionItem}>
                     <div className={styles.actionIcon}>{item.icon}</div>
                     <div>
                       <strong>{item.title}</strong>
                       <span>{item.owner} · {item.type}</span>
                     </div>
-                    <em className={`${styles.badge} ${getStatusTone(item.priority)}`}>{item.priority}</em>
+                    <em className={`${styles.badge} ${styles[item.tone]}`}>{item.priority}</em>
                   </article>
                 ))}
               </div>
@@ -1206,17 +1520,17 @@ function Admin() {
               <div className={styles.taxonomyStat}>
                 <FaCircleCheck />
                 <span>Publicados</span>
-                <strong>{adminServicesSummary.PUBLISHED || 0}</strong>
+                <strong>{summaryValue(adminServicesSummary, 'PUBLISHED')}</strong>
               </div>
               <div className={styles.taxonomyStat}>
                 <FaClock />
                 <span>Rascunhos</span>
-                <strong>{adminServicesSummary.DRAFT || 0}</strong>
+                <strong>{summaryValue(adminServicesSummary, 'DRAFT')}</strong>
               </div>
               <div className={styles.taxonomyStat}>
                 <FaBan />
                 <span>Arquivados</span>
-                <strong>{adminServicesSummary.ARCHIVED || 0}</strong>
+                <strong>{summaryValue(adminServicesSummary, 'ARCHIVED')}</strong>
               </div>
             </div>
 
@@ -2216,86 +2530,240 @@ function Admin() {
           </section>
         )}
 
-        {activeTab === 'orders' && (
+        {activeTab === 'support' && (
           <section className={styles.panel}>
             <div className={styles.panelHead}>
               <div>
-                <span className={styles.sectionKicker}>Pedidos</span>
-                <h3>Operação comercial</h3>
+                <span className={styles.sectionKicker}>Suporte</span>
+                <h3>Tickets enviados por clientes e freelancers</h3>
               </div>
-              <button type="button" className={styles.primaryButton}>Baixar relatório</button>
+              <div className={styles.buttonGroup}>
+                <button type="button" className={styles.ghostButton} onClick={loadAdminTickets} disabled={ticketsLoading}>
+                  {ticketsLoading ? 'Atualizando...' : 'Atualizar'}
+                </button>
+                <button type="button" className={styles.primaryButton} onClick={saveTicket} disabled={!selectedTicket || ticketSaving}>
+                  <FaFloppyDisk /> {ticketSaving ? 'Salvando...' : 'Salvar ticket'}
+                </button>
+              </div>
             </div>
 
-            <div className={styles.orderList}>
-              {orders.map((order) => (
-                <article key={order.id} className={styles.orderItem}>
-                  <div className={styles.orderMain}>
-                    <span>{order.id}</span>
-                    <strong>{order.title}</strong>
-                    <p>{order.client} contratou {order.freelancer}</p>
+            <div className={styles.userStats}>
+              <div className={styles.taxonomyStat}>
+                <FaTicket />
+                <span>Total filtrado</span>
+                <strong>{adminTicketsTotal}</strong>
+              </div>
+              <div className={styles.taxonomyStat}>
+                <FaHeadset />
+                <span>Em atendimento</span>
+                <strong>{ticketStats.open}</strong>
+              </div>
+              <div className={styles.taxonomyStat}>
+                <FaTriangleExclamation />
+                <span>Sem resposta</span>
+                <strong>{ticketStats.unanswered}</strong>
+              </div>
+              <div className={styles.taxonomyStat}>
+                <FaCircleCheck />
+                <span>Respondidos</span>
+                <strong>{ticketStats.answered}</strong>
+              </div>
+            </div>
+
+            <div className={styles.userFilters}>
+              <select value={ticketStatusFilter} onChange={(event) => setTicketStatusFilter(event.target.value)}>
+                <option value="all">Todos os status</option>
+                {Object.entries(SUPPORT_TICKET_STATUS_LABEL).map(([value, label]) => (
+                  <option key={value} value={value}>{label}</option>
+                ))}
+              </select>
+              <select value={ticketPriorityFilter} onChange={(event) => setTicketPriorityFilter(event.target.value)}>
+                <option value="all">Todas as prioridades</option>
+                {Object.entries(SUPPORT_TICKET_PRIORITY_LABEL).map(([value, label]) => (
+                  <option key={value} value={value}>{label}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className={styles.supportDesk}>
+              <div className={styles.supportQueue}>
+                {ticketsLoading ? (
+                  <div className={styles.taxonomyEmpty}>Carregando tickets...</div>
+                ) : adminTickets.length === 0 ? (
+                  <div className={styles.taxonomyEmpty}>Nenhum ticket encontrado neste filtro.</div>
+                ) : (
+                  adminTickets.map((ticket) => {
+                    const normalizedStatus = normalizeSupportTicketStatus(ticket.status);
+                    return (
+                      <button
+                        type="button"
+                        key={ticket.id}
+                        className={`${styles.supportTicketCard} ${selectedTicketId === ticket.id ? styles.supportTicketCardActive : ''}`}
+                        onClick={() => {
+                          setSelectedTicketId(ticket.id);
+                          setTicketDraft(toTicketDraft(ticket));
+                        }}
+                      >
+                        <span className={styles.supportTicketCode}>{ticket.code || ticket.id}</span>
+                        <strong>{ticket.subject}</strong>
+                        <p>{ticket.description}</p>
+                        <div className={styles.supportTicketBadges}>
+                          <em className={`${styles.badge} ${styles[TICKET_STATUS_TONE[normalizedStatus] || 'neutral']}`}>
+                            {SUPPORT_TICKET_STATUS_LABEL[normalizedStatus] || normalizedStatus}
+                          </em>
+                          <em className={`${styles.badge} ${styles[TICKET_PRIORITY_TONE[ticket.priority] || 'neutral']}`}>
+                            {SUPPORT_TICKET_PRIORITY_LABEL[ticket.priority] || ticket.priority}
+                          </em>
+                          {ticket.attachment?.url && (
+                            <em className={`${styles.badge} ${styles.neutral}`}>
+                              <FaPaperclip /> Anexo
+                            </em>
+                          )}
+                          {ticket.publicReply && (
+                            <em className={`${styles.badge} ${styles.success}`}>
+                              <FaCircleCheck /> Respondido
+                            </em>
+                          )}
+                        </div>
+                        <div className={styles.supportTicketMeta}>
+                          <span>{toRequesterName(ticket)}</span>
+                          <span>{SUPPORT_TICKET_CATEGORY_LABEL[ticket.category] || ticket.category || 'Suporte'}</span>
+                          <span>{formatDate(ticket.updatedAt || ticket.createdAt)}</span>
+                        </div>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+
+              <aside className={styles.supportInspector}>
+                {selectedTicket ? (
+                  <>
+                    <div className={styles.supportInspectorHeader}>
+                      <div className={styles.userAvatar}><FaLifeRing /></div>
+                      <div>
+                        <span className={styles.sectionKicker}>Atendimento</span>
+                        <h4>{selectedTicket.subject}</h4>
+                        <p>{toRequesterName(selectedTicket)} · {selectedTicket.requester?.email || 'sem email'}</p>
+                        <strong>{selectedTicket.code || selectedTicket.id}</strong>
+                      </div>
+                    </div>
+
+                    <div className={styles.ticketDetailBlock}>
+                      <span>Descrição enviada</span>
+                      <p>{selectedTicket.description}</p>
+                    </div>
+
+                    {selectedTicket.attachment?.url && (
+                      <div className={styles.ticketAttachmentBlock}>
+                        <div>
+                          <span>Evidência anexada</span>
+                          <strong>{selectedTicket.attachment.name || 'Imagem enviada pelo usuário'}</strong>
+                        </div>
+                        <img src={selectedTicket.attachment.url} alt="Evidência anexada ao ticket" />
+                        <a href={selectedTicket.attachment.url} target="_blank" rel="noreferrer">
+                          <FaArrowUpRightFromSquare /> Abrir imagem
+                        </a>
+                      </div>
+                    )}
+
+                    <div className={styles.supportMetaGrid}>
+                      <div>
+                        <span>Categoria</span>
+                        <strong>{SUPPORT_TICKET_CATEGORY_LABEL[selectedTicket.category] || selectedTicket.category || 'Suporte'}</strong>
+                      </div>
+                      <div>
+                        <span>Referência</span>
+                        <strong>{getTicketReference(selectedTicket)}</strong>
+                      </div>
+                      <div>
+                        <span>Criado em</span>
+                        <strong>{formatDate(selectedTicket.createdAt)}</strong>
+                      </div>
+                      <div>
+                        <span>Contato</span>
+                        <strong>{selectedTicket.contactPreference || 'EMAIL'}</strong>
+                      </div>
+                    </div>
+
+                    <div className={styles.formGrid}>
+                      <label className={styles.formField}>
+                        <span>Status</span>
+                        <select value={activeTicketDraft.status} onChange={(event) => updateTicketDraft('status', event.target.value)}>
+                          {Object.entries(SUPPORT_TICKET_STATUS_LABEL).map(([value, label]) => (
+                            <option key={value} value={value}>{label}</option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className={styles.formField}>
+                        <span>Prioridade</span>
+                        <select value={activeTicketDraft.priority} onChange={(event) => updateTicketDraft('priority', event.target.value)}>
+                          {Object.entries(SUPPORT_TICKET_PRIORITY_LABEL).map(([value, label]) => (
+                            <option key={value} value={value}>{label}</option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className={`${styles.formField} ${styles.formFieldFull}`}>
+                        <span>Resposta ao usuário</span>
+                        <textarea
+                          rows={5}
+                          value={activeTicketDraft.publicReply}
+                          onChange={(event) => updateTicketDraft('publicReply', event.target.value)}
+                          placeholder="Escreva a resposta que será exibida para o usuário no acompanhamento do ticket."
+                        />
+                      </label>
+                      <label className={`${styles.formField} ${styles.formFieldFull}`}>
+                        <span>Nota interna</span>
+                        <textarea
+                          rows={5}
+                          value={activeTicketDraft.adminNote}
+                          onChange={(event) => updateTicketDraft('adminNote', event.target.value)}
+                          placeholder="Observação operacional apenas para o time admin."
+                        />
+                      </label>
+                    </div>
+
+                    <button type="button" className={styles.primaryButton} onClick={saveTicket} disabled={ticketSaving}>
+                      <FaFloppyDisk /> {ticketSaving ? 'Salvando...' : 'Salvar atendimento'}
+                    </button>
+                  </>
+                ) : (
+                  <div className={styles.taxonomyEmpty}>
+                    <FaInbox /> Selecione um ticket para revisar detalhes, prioridade e status.
                   </div>
-                  <strong>{formatCurrency(order.amount)}</strong>
-                  <em className={`${styles.badge} ${getStatusTone(order.status)}`}>{order.status}</em>
-                  <em className={`${styles.badge} ${getStatusTone(order.sla)}`}>{order.sla}</em>
-                </article>
-              ))}
+                )}
+              </aside>
             </div>
           </section>
         )}
 
-        {activeTab === 'moderation' && (
-          <section className={styles.panel}>
-            <div className={styles.panelHead}>
-              <div>
-                <span className={styles.sectionKicker}>Trust & safety</span>
-                <h3>Moderação e risco</h3>
-              </div>
-              <button type="button" className={styles.primaryButton}>Revisar fila</button>
-            </div>
-
-            <div className={styles.moderationGrid}>
-              {moderationItems.map((item) => (
-                <SpotlightCard key={item.title} className={styles.moderationCard}>
-                  <div className={styles.actionIcon}>{item.icon}</div>
-                  <span>{item.type}</span>
-                  <strong>{item.title}</strong>
-                  <p>{item.owner}</p>
-                  <div className={styles.cardFooter}>
-                    <em className={`${styles.badge} ${getStatusTone(item.priority)}`}>{item.priority}</em>
-                    <button type="button">Analisar</button>
-                  </div>
-                </SpotlightCard>
-              ))}
-            </div>
-          </section>
-        )}
       </section>
 
       <section className={styles.bottomGrid}>
         <SpotlightCard className={styles.securityCard}>
           <FaShieldHalved />
           <div>
-            <span>Compliance</span>
-            <strong>Políticas de risco ativas</strong>
-            <p>KYC, disputas, repasses e denúncias com acompanhamento diário.</p>
+            <span>Verificação</span>
+            <strong>{formatNumber(adminOverview.identityPending)} pendentes</strong>
+            <p>Contas aguardando revisão documental dentro do fluxo admin.</p>
           </div>
         </SpotlightCard>
 
         <SpotlightCard className={styles.securityCard}>
           <FaBolt />
           <div>
-            <span>Automação</span>
-            <strong>4 regras recomendadas</strong>
-            <p>Bloqueio preventivo, revisão de saque, alerta de SLA e triagem de reports.</p>
+            <span>Atendimento</span>
+            <strong>{pluralize(adminOverview.ticketsUnanswered, 'ticket')} sem resposta</strong>
+            <p>Primeira resposta esperada em até 24h úteis após abertura.</p>
           </div>
         </SpotlightCard>
 
         <SpotlightCard className={styles.securityCard}>
           <FaBan />
           <div>
-            <span>Risco</span>
-            <strong>2 contas exigem ação</strong>
-            <p>Limites temporários e verificação documental pendentes.</p>
+            <span>Marketplace</span>
+            <strong>{pluralize(adminOverview.servicesDraft, 'serviço')} em rascunho</strong>
+            <p>Serviços cadastrados que ainda não aparecem como publicados.</p>
           </div>
         </SpotlightCard>
       </section>

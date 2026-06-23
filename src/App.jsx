@@ -27,6 +27,8 @@ import Subscription from './components/Pages/Subscription/Subscription';
 import AccountVerification from './components/Pages/AccountVerification/AccountVerification';
 import Notifications from './components/Pages/Notifications/Notifications';
 import Support from './components/Pages/Support/Support';
+import SupportTicket from './components/Pages/SupportTicket/SupportTicket';
+import SupportTicketDetails from './components/Pages/SupportTicketDetails/SupportTicketDetails';
 import './App.css';
 
 function App() {
@@ -80,6 +82,9 @@ function App() {
             <Route path="/profile/:handle" element={<UserProfile />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/support" element={<Support />} />
+            <Route path="/support/ticket" element={<SupportTicket />} />
+            <Route path="/support/tickets/:id" element={<SupportTicketDetails />} />
+            <Route path="/ticket" element={<SupportTicket />} />
           </Route>
         </Route>
 
