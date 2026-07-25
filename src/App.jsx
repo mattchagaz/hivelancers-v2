@@ -1,40 +1,46 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import LoginP from './components/Auth/Login/Login';
-import SignupP from './components/Auth/Signup/Signup';
-import VerifyOtp from './components/Auth/VerifyOtp/VerifyOtp';
-import ForgetPassword from './components/Auth/ForgetPassword/ForgetPassword';
 import { AdminRoute, ProtectedRoute, PublicOnlyRoute } from './components/Auth/ProtectedRoute';
-import UserSelection from './components/Pages/UserSelection/UserSelection';
-import WelcomeUser from './components/Pages/WelcomeUser/WelcomeUser';
-import AppLayout from './components/Layout/AppLayout';
-import Dashboard from './components/Pages/Dashboard/Dashboard';
-import CreateService from './components/Pages/CreateService/CreateService';
-import ExploreServices from './components/Pages/ExploreServices/ExploreServices';
-import MyServices from './components/Pages/MyServices/MyServices';
-import ServiceDetails from './components/Pages/ServiceDetails/ServiceDetails';
-import Checkout from './components/Pages/Checkout/Checkout';
-import Orders from './components/Pages/Orders/Orders';
-import Settings from './components/Pages/Settings/Settings';
-import UserProfile from './components/Pages/UserProfile/UserProfile';
-import Messages from './components/Pages/Messages/Messages';
-import CustomizeProfile from './components/Pages/CustomizeProfile/CustomizeProfile';
-import ProfileProjectDetails from './components/Pages/ProfileProjectDetails/ProfileProjectDetails';
-import Favorites from './components/Pages/Favorites/Favorites';
-import Finances from './components/Pages/Finances/Finances';
-import Admin from './components/Pages/Admin/Admin';
-import Rewards from './components/Pages/Rewards/Rewards';
-import Subscription from './components/Pages/Subscription/Subscription';
-import AccountVerification from './components/Pages/AccountVerification/AccountVerification';
-import Notifications from './components/Pages/Notifications/Notifications';
-import Support from './components/Pages/Support/Support';
-import SupportTicket from './components/Pages/SupportTicket/SupportTicket';
-import SupportTicketDetails from './components/Pages/SupportTicketDetails/SupportTicketDetails';
 import './App.css';
+
+const LoginP = lazy(() => import('./components/Auth/Login/Login'));
+const SignupP = lazy(() => import('./components/Auth/Signup/Signup'));
+const VerifyOtp = lazy(() => import('./components/Auth/VerifyOtp/VerifyOtp'));
+const ForgetPassword = lazy(() => import('./components/Auth/ForgetPassword/ForgetPassword'));
+const UserSelection = lazy(() => import('./components/Pages/UserSelection/UserSelection'));
+const WelcomeUser = lazy(() => import('./components/Pages/WelcomeUser/WelcomeUser'));
+const AppLayout = lazy(() => import('./components/Layout/AppLayout'));
+const Dashboard = lazy(() => import('./components/Pages/Dashboard/Dashboard'));
+const CreateService = lazy(() => import('./components/Pages/CreateService/CreateService'));
+const ExploreServices = lazy(() => import('./components/Pages/ExploreServices/ExploreServices'));
+const MyServices = lazy(() => import('./components/Pages/MyServices/MyServices'));
+const ServiceDetails = lazy(() => import('./components/Pages/ServiceDetails/ServiceDetails'));
+const Checkout = lazy(() => import('./components/Pages/Checkout/Checkout'));
+const Orders = lazy(() => import('./components/Pages/Orders/Orders'));
+const Settings = lazy(() => import('./components/Pages/Settings/Settings'));
+const UserProfile = lazy(() => import('./components/Pages/UserProfile/UserProfile'));
+const Messages = lazy(() => import('./components/Pages/Messages/Messages'));
+const CustomizeProfile = lazy(() => import('./components/Pages/CustomizeProfile/CustomizeProfile'));
+const ProfileProjectDetails = lazy(() => import('./components/Pages/ProfileProjectDetails/ProfileProjectDetails'));
+const Favorites = lazy(() => import('./components/Pages/Favorites/Favorites'));
+const Finances = lazy(() => import('./components/Pages/Finances/Finances'));
+const Admin = lazy(() => import('./components/Pages/Admin/Admin'));
+const Rewards = lazy(() => import('./components/Pages/Rewards/Rewards'));
+const Subscription = lazy(() => import('./components/Pages/Subscription/Subscription'));
+const AccountVerification = lazy(() => import('./components/Pages/AccountVerification/AccountVerification'));
+const Notifications = lazy(() => import('./components/Pages/Notifications/Notifications'));
+const Support = lazy(() => import('./components/Pages/Support/Support'));
+const SupportTicket = lazy(() => import('./components/Pages/SupportTicket/SupportTicket'));
+const SupportTicketDetails = lazy(() => import('./components/Pages/SupportTicketDetails/SupportTicketDetails'));
+const Legal = lazy(() => import('./components/Pages/Legal/Legal'));
+
+const RouteFallback = () => <div className="route-fallback">Carregando...</div>;
 
 function App() {
   return (
     <Router>
-      <Routes>
+      <Suspense fallback={<RouteFallback />}>
+        <Routes>
         <Route path="/" element={<Navigate to="/login" replace />} />
 
         {/* Auth — públicas (redirecionam se já estiver logado) */}
@@ -46,6 +52,13 @@ function App() {
 
         {/* OTP — acessível mesmo sem sessão (fluxo de pós-cadastro) */}
         <Route path="/verify-otp" element={<VerifyOtp />} />
+
+        {/* Central jurídica — pública para leitura antes ou depois do cadastro */}
+        <Route path="/legal" element={<Navigate to="/privacy" replace />} />
+        <Route path="/terms" element={<Legal />} />
+        <Route path="/privacy" element={<Legal />} />
+        <Route path="/cookies" element={<Legal />} />
+        <Route path="/lgpd" element={<Legal />} />
 
         {/* Onboarding — exige login */}
         <Route element={<ProtectedRoute />}>
@@ -89,7 +102,8 @@ function App() {
         </Route>
 
         <Route path="*" element={<Navigate to="/login" replace />} />
-      </Routes>
+        </Routes>
+      </Suspense>
     </Router>
   );
 }

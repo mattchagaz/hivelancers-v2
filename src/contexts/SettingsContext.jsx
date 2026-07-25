@@ -8,12 +8,12 @@ const DEFAULT_SETTINGS = {
     orderUpdates: true,
     messages: true,
     reviews: true,
-    marketing: false,
-    newsletter: true,
-    pushMessages: true,
-    pushOrders: true,
-    pushPromos: false,
-    emailDigest: 'daily',
+    supportUpdates: true,
+    securityUpdates: true,
+    pushMessages: false,
+    pushOrders: false,
+    pushPayments: false,
+    pushSupport: false,
   },
   appearance: {
     theme: 'light',
@@ -78,7 +78,7 @@ export function SettingsProvider({ children }) {
   }, [settings]);
 
   useEffect(() => {
-    const { theme } = settings.appearance;
+    const theme = settings.appearance.theme;
     const root = document.documentElement;
 
     const apply = (mode) => {

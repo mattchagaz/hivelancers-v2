@@ -24,6 +24,9 @@ export default defineConfig([
     },
     rules: {
       'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
+      // Data fetching and browser subscriptions are intentionally started from effects.
+      // The compiler rule currently reports these established patterns as synchronous updates.
+      'react-hooks/set-state-in-effect': 'off',
     },
   },
 ])

@@ -5,21 +5,24 @@ import {
   FaCalendarDays,
   FaCircleCheck,
   FaClock,
+  FaCreditCard,
   FaFilter,
+  FaHeadset,
   FaInbox,
   FaMagnifyingGlass,
   FaMessage,
   FaReceipt,
   FaRotateRight,
   FaShieldHalved,
+  FaStar,
+  FaUserShield,
 } from 'react-icons/fa6';
 import { toast } from 'sonner';
 import { useAuth } from '../../../contexts/AuthContext';
 import {
-  getNotificationStorageKeys,
   loadNotificationFeed,
-  readStoredNotificationIds,
-  writeStoredNotificationIds,
+  markAllNotificationsRead,
+  markNotificationRead,
 } from '../../../services/notifications';
 import SpotlightCard from '../../UI/SpotlightCard/SpotlightCard';
 import styles from './Notifications.module.css';
@@ -27,8 +30,12 @@ import styles from './Notifications.module.css';
 const TYPE_COPY = {
   all: { label: 'Todos os tipos', icon: <FaBell /> },
   order: { label: 'Pedidos', icon: <FaReceipt /> },
+  payment: { label: 'Pagamentos', icon: <FaCreditCard /> },
   message: { label: 'Mensagens', icon: <FaMessage /> },
+  review: { label: 'Avaliações', icon: <FaStar /> },
   verification: { label: 'Verificação', icon: <FaShieldHalved /> },
+  support: { label: 'Suporte', icon: <FaHeadset /> },
+  admin: { label: 'Administração', icon: <FaUserShield /> },
 };
 
 const STATUS_COPY = {
@@ -93,8 +100,6 @@ function Notifications() {
     endDate: '',
   });
 
-  const storageKeys = useMemo(() => getNotificationStorageKeys(user?.id), [user?.id]);
-
   const loadNotifications = useCallback(async () => {
     if (!user?.id) return;
 
@@ -102,14 +107,14 @@ function Notifications() {
     try {
       const { history } = await loadNotificationFeed(user);
       setNotifications(history);
-      setReadIds(readStoredNotificationIds(storageKeys.read));
-      setClearedIds(readStoredNotificationIds(storageKeys.cleared));
+      setReadIds(history.filter((item) => item.readAt).map((item) => item.id));
+      setClearedIds(history.filter((item) => item.archivedAt).map((item) => item.id));
     } catch (error) {
       toast.error(error.message || 'Não foi possível carregar notificações.');
     } finally {
       setLoading(false);
     }
-  }, [storageKeys.cleared, storageKeys.read, user]);
+  }, [user]);
 
   useEffect(() => {
     loadNotifications();
@@ -150,18 +155,27 @@ function Notifications() {
     };
   }, [clearedIds, notifications, readIds]);
 
-  const markAllRead = () => {
+  const markAllRead = async () => {
     const next = [...new Set([...readIds, ...notifications.map((item) => item.id)])];
     setReadIds(next);
-    writeStoredNotificationIds(storageKeys.read, next);
-    toast.success('Notificações marcadas como lidas.');
+    try {
+      await markAllNotificationsRead();
+      toast.success('Notificações marcadas como lidas.');
+    } catch (error) {
+      toast.error(error.message || 'Não foi possível atualizar as notificações.');
+      loadNotifications();
+    }
   };
 
-  const markRead = (id) => {
+  const markRead = async (id) => {
     if (!id || readIds.includes(id)) return;
     const next = [...new Set([...readIds, id])];
     setReadIds(next);
-    writeStoredNotificationIds(storageKeys.read, next);
+    try {
+      await markNotificationRead(id);
+    } catch {
+      loadNotifications();
+    }
   };
 
   const clearFilters = () => {
@@ -174,7 +188,7 @@ function Notifications() {
         <div>
           <span className={styles.eyebrow}>Notificações</span>
           <h1>Histórico completo da sua conta</h1>
-          <p>Pedidos, mensagens e análises de identidade ficam organizados em uma linha do tempo única.</p>
+          <p>Pedidos, pagamentos, mensagens, suporte e segurança ficam organizados em uma linha do tempo única.</p>
         </div>
 
         <div className={styles.heroPanel}>

@@ -363,6 +363,25 @@
   opacity: 0.85;
 }
 
+.legalLinks {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.legalLinks a {
+  color: var(--text-muted);
+  font-size: 0.74rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.legalLinks a:hover {
+  color: var(--primary-color);
+}
+
 /* ===== Animations ===== */
 @keyframes fadeSlideUp {
   from {

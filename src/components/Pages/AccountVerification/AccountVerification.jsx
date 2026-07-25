@@ -13,8 +13,12 @@ import {
   FaUpload,
   FaUserCheck,
 } from 'react-icons/fa6';
-import { getMyAccountVerification, submitMyAccountVerification } from '../../../services/users';
-import { uploadImageToCloudinary } from '../../../services/cloudinary';
+import {
+  getMyAccountVerification,
+  openMyVerificationDocument,
+  submitMyAccountVerification,
+  uploadVerificationDocument,
+} from '../../../services/users';
 import { useAuth } from '../../../contexts/AuthContext';
 import SpotlightCard from '../../UI/SpotlightCard/SpotlightCard';
 import styles from './AccountVerification.module.css';
@@ -141,7 +145,7 @@ const getSavedCompletion = (verification) => {
   return Math.round((required.filter(Boolean).length / required.length) * 100);
 };
 
-function UploadField({ title, description, value, onChange, active, onUpload }) {
+function UploadField({ title, description, value, active, onOpen, onUpload }) {
   return (
     <div className={styles.uploadField}>
       <div>
@@ -163,19 +167,19 @@ function UploadField({ title, description, value, onChange, active, onUpload }) 
         />
       </label>
       {value && (
-        <a href={value} target="_blank" rel="noreferrer" className={styles.fileLink}>
+        <button type="button" onClick={onOpen} className={styles.fileLink}>
           Arquivo enviado <FaArrowRight />
-        </a>
+        </button>
       )}
-      <input
-        type="url"
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        placeholder="Ou cole uma URL segura do documento"
-      />
     </div>
   );
 }
+
+const DOCUMENT_KIND_BY_FIELD = {
+  documentFrontUrl: 'FRONT',
+  documentBackUrl: 'BACK',
+  proofOfAddressUrl: 'PROOF_OF_ADDRESS',
+};
 
 function AccountVerification() {
   const { user } = useAuth();
@@ -197,7 +201,7 @@ function AccountVerification() {
     try {
       const data = await getMyAccountVerification();
       setState(data);
-      if (data.verification && ['DRAFT', 'REJECTED'].includes(data.status)) {
+      if (data.verification) {
         setForm(formFromVerification(data.verification));
       } else {
         setForm(emptyForm);
@@ -226,8 +230,11 @@ function AccountVerification() {
   const uploadFor = async (field, file) => {
     setActiveUpload(field);
     try {
-      const { url } = await uploadImageToCloudinary(file);
-      updateField(field, url);
+      if (file.size > 10 * 1024 * 1024) {
+        throw new Error('O documento deve ter no máximo 10 MB.');
+      }
+      await uploadVerificationDocument(DOCUMENT_KIND_BY_FIELD[field], file);
+      updateField(field, true);
       toast.success('Arquivo enviado.');
     } catch (error) {
       toast.error(error.message);
@@ -236,13 +243,27 @@ function AccountVerification() {
     }
   };
 
+  const openDocument = async (field) => {
+    try {
+      await openMyVerificationDocument(DOCUMENT_KIND_BY_FIELD[field]);
+    } catch (error) {
+      toast.error(error.message);
+    }
+  };
+
   const saveVerification = async (submitForReview = false) => {
     if (saving) return;
 
     setSaving(true);
     try {
+      const {
+        documentFrontUrl: _documentFrontUrl,
+        documentBackUrl: _documentBackUrl,
+        proofOfAddressUrl: _proofOfAddressUrl,
+        ...personalData
+      } = form;
       const payload = {
-        ...form,
+        ...personalData,
         cpf: onlyDigits(form.cpf).slice(0, 11),
         documentNumber: onlyDigits(form.documentNumber).slice(0, 11),
         phone: onlyDigits(form.phone).slice(0, 11),
@@ -251,9 +272,7 @@ function AccountVerification() {
       };
       const data = await submitMyAccountVerification(payload);
       setState(data);
-      if (submitForReview) {
-        setForm(emptyForm);
-      } else if (data.verification) {
+      if (data.verification) {
         setForm(formFromVerification(data.verification));
       } else {
         setForm(emptyForm);
@@ -463,24 +482,24 @@ function AccountVerification() {
               title="Frente do documento"
               description="RG, CNH ou passaporte em imagem ou PDF"
               value={form.documentFrontUrl}
-              onChange={(value) => updateField('documentFrontUrl', value)}
               active={activeUpload === 'documentFrontUrl'}
+              onOpen={() => openDocument('documentFrontUrl')}
               onUpload={(file) => uploadFor('documentFrontUrl', file)}
             />
             <UploadField
               title="Verso do documento"
               description="Imagem ou PDF quando o documento tiver verso"
               value={form.documentBackUrl}
-              onChange={(value) => updateField('documentBackUrl', value)}
               active={activeUpload === 'documentBackUrl'}
+              onOpen={() => openDocument('documentBackUrl')}
               onUpload={(file) => uploadFor('documentBackUrl', file)}
             />
             <UploadField
               title="Comprovante de endereço"
               description="Conta de consumo ou documento recente em imagem ou PDF"
               value={form.proofOfAddressUrl}
-              onChange={(value) => updateField('proofOfAddressUrl', value)}
               active={activeUpload === 'proofOfAddressUrl'}
+              onOpen={() => openDocument('proofOfAddressUrl')}
               onUpload={(file) => uploadFor('proofOfAddressUrl', file)}
             />
           </div>

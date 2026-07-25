@@ -54,6 +54,42 @@ export const rejectOrder = async (id, payload = {}) => {
   }
 };
 
+export const cancelOrder = async (id, payload) => {
+  try {
+    const { data } = await api.post(`/orders/${id}/cancel`, payload);
+    return data;
+  } catch (error) {
+    throw new Error(extractMessage(error, 'Não foi possível cancelar o pedido.'));
+  }
+};
+
+export const openOrderDispute = async (id, payload) => {
+  try {
+    const { data } = await api.post(`/orders/${id}/disputes`, payload);
+    return data;
+  } catch (error) {
+    throw new Error(extractMessage(error, 'Não foi possível abrir a disputa.'));
+  }
+};
+
+export const listAdminDisputes = async (params = {}) => {
+  try {
+    const { data } = await api.get('/orders/admin/disputes', { params });
+    return data;
+  } catch (error) {
+    throw new Error(extractMessage(error, 'Não foi possível carregar as disputas.'));
+  }
+};
+
+export const resolveAdminDispute = async (id, payload) => {
+  try {
+    const { data } = await api.patch(`/orders/admin/disputes/${id}/resolve`, payload);
+    return data;
+  } catch (error) {
+    throw new Error(extractMessage(error, 'Não foi possível resolver a disputa.'));
+  }
+};
+
 export const deliverOrder = async (id, payload) => {
   try {
     const { data } = await api.post(`/orders/${id}/deliver`, payload);

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Link, Outlet } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import Sidebar from './Sidebar/Sidebar';
 import TopBar from '../TopBar/TopBar';
@@ -47,6 +47,15 @@ function AppLayout() {
         <main className={styles.content}>
           <Outlet />
         </main>
+        <footer className={styles.legalFooter}>
+          <span>© 2026 Hivelancers</span>
+          <nav aria-label="Links jurídicos">
+            <Link to="/terms">Termos</Link>
+            <Link to="/privacy">Privacidade</Link>
+            <Link to="/cookies">Cookies</Link>
+            <Link to="/lgpd">Direitos LGPD</Link>
+          </nav>
+        </footer>
       </div>
 
       <Toaster position="top-center" richColors />

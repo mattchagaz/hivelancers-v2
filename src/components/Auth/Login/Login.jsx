@@ -216,6 +216,11 @@ function Login() {
               Cadastre-se gratuitamente
             </Link>
           </p>
+          <nav className={styles.legalLinks} aria-label="Documentos jurídicos">
+            <Link to="/terms">Termos</Link>
+            <Link to="/privacy">Privacidade</Link>
+            <Link to="/lgpd">Direitos LGPD</Link>
+          </nav>
         </div>
       </div>
 

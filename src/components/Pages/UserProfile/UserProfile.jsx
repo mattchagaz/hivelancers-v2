@@ -116,16 +116,23 @@ function UserProfile() {
   useEffect(() => {
     if (lightboxImages.length === 0) return undefined;
     const handleKeyDown = (event) => {
-      if (event.key === 'Escape') closeLightbox();
-      if (event.key === 'ArrowLeft' && lightboxImages.length > 1) showPrevImage();
-      if (event.key === 'ArrowRight' && lightboxImages.length > 1) showNextImage();
+      if (event.key === 'Escape') {
+        setLightboxImages([]);
+        setLightboxIndex(0);
+      }
+      if (event.key === 'ArrowLeft' && lightboxImages.length > 1) {
+        setLightboxIndex((prev) => (prev - 1 + lightboxImages.length) % lightboxImages.length);
+      }
+      if (event.key === 'ArrowRight' && lightboxImages.length > 1) {
+        setLightboxIndex((prev) => (prev + 1) % lightboxImages.length);
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [lightboxImages.length]);
 
   useEffect(() => {
-    if (!profile?.id || (user && profile.id === user.id)) return;
+    if (!profile?.id || profile.id === user?.id) return;
     getMyFavorites()
       .then((data) => {
         setIsFavoriteFreelancer((data.freelancerIds || []).includes(profile.id));

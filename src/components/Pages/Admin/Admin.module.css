@@ -288,6 +288,14 @@
   margin-bottom: 18px;
 }
 
+.panelDescription {
+  max-width: 680px;
+  margin: 8px 0 0;
+  color: var(--text-secondary, #6c6d72);
+  font-size: 0.84rem;
+  line-height: 1.55;
+}
+
 .buttonGroup {
   display: flex;
   flex-wrap: wrap;
@@ -646,6 +654,71 @@
   font-size: 0.84rem;
 }
 
+.auditFilter {
+  max-width: 520px;
+  margin-bottom: 16px;
+}
+
+.auditFilter input {
+  width: 100%;
+}
+
+.auditHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+  color: var(--text-secondary, #6c6d72);
+  font-size: 0.84rem;
+}
+
+.auditHeader p {
+  margin: 0;
+  text-align: right;
+}
+
+.auditList {
+  display: grid;
+  gap: 12px;
+}
+
+.auditRow {
+  display: grid;
+  grid-template-columns: minmax(260px, 1.5fr) repeat(3, minmax(150px, 0.65fr));
+  gap: 18px;
+  align-items: center;
+  padding: 18px;
+  border: 1px solid var(--border-light, #f0f0f5);
+  border-radius: 16px;
+  background: var(--bg-primary, #fff);
+}
+
+.auditRow > div {
+  min-width: 0;
+}
+
+.auditRow span {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--text-muted, #a0a0ab);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.auditRow strong,
+.auditRow p {
+  overflow-wrap: anywhere;
+}
+
+.auditRow p {
+  margin: 5px 0 0;
+  color: var(--text-secondary, #6c6d72);
+  font-size: 0.8rem;
+}
+
 .ledgerRow,
 .orderItem {
   display: grid;
@@ -754,6 +827,53 @@
   margin-bottom: 16px;
 }
 
+.accountViewSwitch {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--border-color, #e8e8ef);
+  border-radius: 14px;
+  background: var(--bg-secondary, #f5f6fa);
+}
+
+.accountViewButton {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  gap: 7px;
+  padding: 0 12px;
+  border-radius: 10px;
+  color: var(--text-secondary, #6c6d72);
+  font-size: 0.79rem;
+  font-weight: 800;
+  transition: background-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.accountViewButtonActive {
+  background: var(--bg-primary, #fff);
+  color: var(--primary-color, #3e73e6);
+  box-shadow: 0 3px 10px rgba(var(--shadow-rgb, 15, 23, 42), 0.08);
+}
+
+.deletedUsersNotice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding: 13px 15px;
+  border: 1px solid rgba(var(--primary-color-rgb, 62, 115, 230), 0.16);
+  border-radius: 14px;
+  background: rgba(var(--primary-color-rgb, 62, 115, 230), 0.05);
+  color: var(--text-secondary, #6c6d72);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.deletedUsersNotice svg {
+  flex: 0 0 auto;
+  color: var(--primary-color, #3e73e6);
+}
+
 .userFilters select,
 .formField select {
   min-height: 44px;
@@ -777,6 +897,10 @@
   grid-template-columns: minmax(0, 1fr) 360px;
   gap: 16px;
   align-items: start;
+}
+
+.deletedUsersGrid {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .tableRowActive td {
@@ -857,6 +981,22 @@
   width: 18px;
   height: 18px;
   accent-color: var(--primary-color, #3e73e6);
+}
+
+.userSwitches label:has(input:disabled) {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.userPermissionNote {
+  margin: -2px 0 0;
+  padding: 11px 13px;
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  border-radius: 12px;
+  background: rgba(245, 158, 11, 0.08);
+  color: var(--text-secondary, #6c6d72);
+  font-size: 0.78rem;
+  line-height: 1.5;
 }
 
 .taxonomyStat {
@@ -1581,7 +1721,8 @@
 }
 
 .identityLinks a,
-.identityDocument a {
+.identityDocument a,
+.identityDocument button {
   display: inline-flex;
   min-height: 34px;
   align-items: center;
@@ -1595,13 +1736,16 @@
   font-size: 0.82rem;
   font-weight: 850;
   text-decoration: none;
+  cursor: pointer;
 }
 
-.identityDocument > div:last-child a {
+.identityDocument > div:last-child a,
+.identityDocument > div:last-child button {
   flex: 1;
 }
 
-.identityDocument a:last-child {
+.identityDocument a:last-child,
+.identityDocument button:last-child {
   border-color: var(--border-color, #e8e8ef);
   background: var(--bg-secondary, #f5f6fa);
   color: var(--text-primary, #1a1a2e);
@@ -1808,6 +1952,7 @@
   .taxonomyLayout,
   .userManagementGrid,
   .supportDesk,
+  .auditRow,
   .levelLayout {
     grid-template-columns: 1fr;
   }
@@ -1827,6 +1972,15 @@
 
   .searchWrap {
     width: 100%;
+  }
+
+  .auditHeader {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .auditHeader p {
+    text-align: left;
   }
 }
 

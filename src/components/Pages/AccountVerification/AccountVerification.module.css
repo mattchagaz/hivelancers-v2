@@ -422,6 +422,9 @@
   display: inline-flex;
   width: fit-content;
   align-items: center;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
   gap: 8px;
   color: var(--success-color, #059669);
   font-size: 0.86rem;

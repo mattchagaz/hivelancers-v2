@@ -42,6 +42,7 @@ function SignupP() {
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [isFadingOut, setIsFadingOut] = useState(false);
+  const [legalAccepted, setLegalAccepted] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { setUser } = useAuth();
@@ -146,6 +147,10 @@ function SignupP() {
       toast.error('E-mail inválido.');
       return false;
     }
+    if (!legalAccepted) {
+      toast.error('Aceite os Termos de Uso e o Aviso de Privacidade para continuar.');
+      return false;
+    }
     return true;
   };
 
@@ -179,6 +184,7 @@ function SignupP() {
         phone: formData.phone,
         email: formData.email.trim().toLowerCase(),
         password: formData.password,
+        legalAccepted: true,
       });
       toast.success('Conta criada! Enviamos um código para seu e-mail.');
       setIsFadingOut(true);
@@ -193,8 +199,12 @@ function SignupP() {
   };
 
   const handleGoogleSignup = () => {
+    if (!legalAccepted) {
+      toast.error('Aceite os Termos de Uso e o Aviso de Privacidade para continuar com Google.');
+      return;
+    }
     setIsGoogleLoading(true);
-    window.location.assign(getGoogleLoginUrl('/signup'));
+    window.location.assign(getGoogleLoginUrl('/signup', true));
   };
 
   const allPasswordValid = Object.values(passwordRules).every(Boolean);
@@ -351,6 +361,18 @@ function SignupP() {
                     />
                   </div>
                 </div>
+
+                <label className={styles.legalCheck}>
+                  <input
+                    type="checkbox"
+                    checked={legalAccepted}
+                    onChange={(event) => setLegalAccepted(event.target.checked)}
+                  />
+                  <span>
+                    Li e aceito os <Link to="/terms">Termos de Uso</Link> e o{' '}
+                    <Link to="/privacy">Aviso de Privacidade</Link>.
+                  </span>
+                </label>
 
                 <button
                   type="button"
@@ -521,8 +543,8 @@ function SignupP() {
           {step === 2 && (
             <p className={styles.termsText}>
               Ao criar sua conta, você concorda com nossos{' '}
-              <a href="/terms" className={styles.termsLink}>Termos de Uso</a> e{' '}
-              <a href="/privacy" className={styles.termsLink}>Política de Privacidade</a>.
+              <Link to="/terms" className={styles.termsLink}>Termos de Uso</Link> e{' '}
+              <Link to="/privacy" className={styles.termsLink}>Política de Privacidade</Link>.
             </p>
           )}
         </div>

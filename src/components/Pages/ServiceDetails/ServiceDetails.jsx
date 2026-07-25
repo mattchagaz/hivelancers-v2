@@ -7,6 +7,7 @@ import { addFavoriteService, getMyFavorites, getPublicProfile, removeFavoriteSer
 import { useAuth } from '../../../contexts/AuthContext';
 import { CategoryIcon } from '../../../utils/categoryIcons';
 import { recordRecentActivity } from '../../../utils/clientRecentActivity';
+import { getReviewAuthor } from '../../../utils/reviews';
 import styles from './ServiceDetails.module.css';
 
 const formatPrice = (cents) =>
@@ -204,7 +205,6 @@ function ServiceDetails() {
   const subcategoryName = service.subcategoryName || '';
   const minPriceCents = getServiceMinPrice(service);
   const minDeliveryDays = getServiceMinDelivery(service);
-  const maxRevisions = Math.max(...service.plans.map((plan) => plan.revisions || 0));
   const reviews = service.reviews || [];
   const averageRating = service.reviewSummary?.averageRating;
   const reviewCount = service.reviewSummary?.count || reviews.length;
@@ -576,14 +576,18 @@ function ServiceDetails() {
 
                 <div className={styles.reviewList}>
                   {reviews.slice(0, 6).map((review) => {
-                    const clientName = `${review.client?.firstName || ''} ${review.client?.lastName || ''}`.trim() || review.client?.username || 'Cliente';
+                    const author = getReviewAuthor(review);
                     return (
                       <article key={review.id} className={styles.reviewCard}>
                         <div className={styles.reviewHead}>
                           <div className={styles.reviewAuthor}>
-                            <div className={styles.reviewAvatar}>{clientName.slice(0, 2).toUpperCase()}</div>
+                            <div className={styles.reviewAvatar}>
+                              {author.avatarUrl ? (
+                                <img src={author.avatarUrl} alt={`Foto de ${author.name}`} />
+                              ) : author.initials}
+                            </div>
                             <div>
-                              <h3>{clientName}</h3>
+                              <h3>{author.name}</h3>
                               <div className={styles.reviewMeta}>
                                 <span className={styles.reviewStars}>{'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}</span>
                                 <span className={styles.reviewDate}>{new Date(review.createdAt).toLocaleDateString('pt-BR')}</span>

@@ -1,10 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { toast, Toaster } from 'sonner';
 import { FaBell, FaPalette, FaShieldHalved, FaUserCheck, FaArrowUpRightFromSquare } from 'react-icons/fa6';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useSettings } from '../../../contexts/SettingsContext';
-import { updateProfile as apiUpdateProfile, updateUserType } from '../../../services/users';
+import {
+  deleteMyAccount,
+  exportMyData,
+  updateProfile as apiUpdateProfile,
+  updateUserType,
+} from '../../../services/users';
 import {
   createMyStripeConnectDashboardLink,
   createMyStripeConnectOnboardingLink,
@@ -33,38 +38,31 @@ const DENSITY_LABEL = {
   spacious: 'Espaçosa',
 };
 
-const DIGEST_LABEL = {
-  realtime: 'Tempo real',
-  daily: 'Diário',
-  weekly: 'Semanal',
-  never: 'Desativado',
-};
-
-const EMAIL_NOTIFICATION_OPTIONS = [
+const IN_APP_NOTIFICATION_OPTIONS = [
   {
     field: 'orderUpdates',
-    title: 'Atualizações de Projetos',
-    description: 'Mudança de status, entregas e aprovações.',
+    title: 'Pedidos e pagamentos',
+    description: 'Contratações, prazos, entregas, disputas, reembolsos e repasses.',
   },
   {
     field: 'messages',
-    title: 'Novas Mensagens no Chat',
-    description: 'Quando alguém te envia uma DM ou responde.',
+    title: 'Mensagens',
+    description: 'Quando alguém envia uma mensagem nova no chat.',
   },
   {
     field: 'reviews',
-    title: 'Avaliações e Revisões',
-    description: 'Notas, comentários e pedidos de ajuste em entregas.',
+    title: 'Avaliações e revisões',
+    description: 'Notas recebidas e solicitações de ajuste em entregas.',
   },
   {
-    field: 'marketing',
-    title: 'Dicas da Plataforma',
-    description: 'Conteúdos para te ajudar a vender mais.',
+    field: 'supportUpdates',
+    title: 'Suporte',
+    description: 'Respostas e mudanças de status nos seus tickets.',
   },
   {
-    field: 'newsletter',
-    title: 'Resumo e Novidades',
-    description: 'Atualizações importantes da Hivelancers no seu email.',
+    field: 'securityUpdates',
+    title: 'Segurança e verificação',
+    description: 'Identidade, acesso à conta e alertas administrativos importantes.',
   },
 ];
 
@@ -77,12 +75,17 @@ const PUSH_NOTIFICATION_OPTIONS = [
   {
     field: 'pushOrders',
     title: 'Pedidos e Entregas',
-    description: 'Alertas imediatos sobre dinheiro e projetos.',
+    description: 'Mudanças de etapa, prazos, entregas e disputas.',
   },
   {
-    field: 'pushPromos',
-    title: 'Promoções e Cupons',
-    description: 'Avisos sobre campanhas, bônus e oportunidades.',
+    field: 'pushPayments',
+    title: 'Pagamentos',
+    description: 'Confirmações, reembolsos, repasses e falhas financeiras.',
+  },
+  {
+    field: 'pushSupport',
+    title: 'Suporte e segurança',
+    description: 'Respostas de tickets, verificação e ações que exigem atenção.',
   },
 ];
 
@@ -174,7 +177,7 @@ function Settings() {
     return Math.round((filled / checklist.length) * 100);
   }, [profile]);
 
-  const emailEnabledCount = EMAIL_NOTIFICATION_OPTIONS
+  const inAppEnabledCount = IN_APP_NOTIFICATION_OPTIONS
     .filter(({ field }) => Boolean(notifications[field]))
     .length;
 
@@ -228,6 +231,28 @@ function Settings() {
 
   const updateProfileField = (field, value) => {
     setProfile((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const toggleNotificationPreference = async (field) => {
+    const enablingBrowserNotification = field.startsWith('push') && !notifications[field];
+
+    if (enablingBrowserNotification) {
+      if (!('Notification' in window)) {
+        toast.error('Este navegador não oferece notificações do sistema.');
+        return;
+      }
+
+      const permission = window.Notification.permission === 'default'
+        ? await window.Notification.requestPermission()
+        : window.Notification.permission;
+
+      if (permission !== 'granted') {
+        toast.error('Permita notificações nas configurações do navegador para ativar este canal.');
+        return;
+      }
+    }
+
+    toggleField('notifications', field);
   };
 
   const resetProfileFields = (fields) => {
@@ -295,7 +320,7 @@ function Settings() {
     { label: 'Perfil público', value: `${profileCompletion}%`, helper: profileCompletion >= 80 ? 'Excelente' : 'Complete mais itens', icon: <FaUserCheck />, tone: 'blue' },
     { label: 'Tema ativo', value: THEME_LABEL[appearance.theme] || 'Claro', helper: `Espaçamento ${DENSITY_LABEL[appearance.density] || 'Confortável'}`, icon: <FaPalette />, tone: 'purple' },
     { label: 'Privacidade', value: privacy.profilePublic ? 'Público' : 'Privado', helper: privacy.allowDm === 'everyone' ? 'DM aberto' : 'Filtro ativo', icon: <FaShieldHalved />, tone: 'green' },
-    { label: 'Alertas', value: `${emailEnabledCount + pushEnabledCount} ativos`, helper: `Resumo ${DIGEST_LABEL[notifications.emailDigest] || 'Diário'}`, icon: <FaBell />, tone: 'orange' },
+    { label: 'Alertas', value: `${inAppEnabledCount + pushEnabledCount} ativos`, helper: 'Histórico sempre disponível', icon: <FaBell />, tone: 'orange' },
   ];
 
   const checklist = [
@@ -441,7 +466,7 @@ function Settings() {
           )}
 
           {activeTab === 'notifications' && (
-            <NotificationsPanel notifications={notifications} toggleNotification={(field) => toggleField('notifications', field)} />
+            <NotificationsPanel notifications={notifications} toggleNotification={toggleNotificationPreference} />
           )}
 
           {activeTab === 'appearance' && (
@@ -637,8 +662,11 @@ function NotificationsPanel({ notifications, toggleNotification }) {
   return (
     <>
       <section className={styles.card}>
-        <SectionHeader title="Alertas de Email" subtitle="O que chega na sua caixa de entrada." />
-        {EMAIL_NOTIFICATION_OPTIONS.map((option) => (
+        <SectionHeader
+          title="Alertas dentro da plataforma"
+          subtitle="Escolha quais eventos geram aviso visual e sonoro. Eventos críticos continuam no histórico."
+        />
+        {IN_APP_NOTIFICATION_OPTIONS.map((option) => (
           <ToggleRow
             key={option.field}
             title={option.title}
@@ -650,7 +678,10 @@ function NotificationsPanel({ notifications, toggleNotification }) {
       </section>
 
       <section className={styles.card}>
-        <SectionHeader title="Notificações Push (Navegador)" subtitle="Avisos rápidos enquanto usa o PC." />
+        <SectionHeader
+          title="Notificações do navegador"
+          subtitle="Avisos do sistema operacional enquanto a Hivelancers estiver aberta."
+        />
         {PUSH_NOTIFICATION_OPTIONS.map((option) => (
           <ToggleRow
             key={option.field}
@@ -694,12 +725,23 @@ function AppearancePanel({ appearance, setAppearance }) {
 
 function PrivacyPanel({ privacy, togglePrivacy }) {
   return (
-    <section className={styles.card}>
-      <SectionHeader title="Visibilidade do perfil" subtitle="Controle como outras pessoas encontram você." />
-      <ToggleRow title="Perfil público" description="Permite aparecer nas buscas e em links compartilhados." checked={privacy.profilePublic} onChange={() => togglePrivacy('profilePublic')} />
-      <ToggleRow title="Mostrar status online" description="Mostra quando você está ativo na plataforma." checked={privacy.showOnline} onChange={() => togglePrivacy('showOnline')} />
-      <ToggleRow title="Mostrar ganhos totais" description="Exibe seu faturamento acumulado como prova social." checked={privacy.showEarnings} onChange={() => togglePrivacy('showEarnings')} />
-    </section>
+    <>
+      <section className={styles.card}>
+        <SectionHeader title="Visibilidade do perfil" subtitle="Controle como outras pessoas encontram você." />
+        <ToggleRow title="Perfil público" description="Permite aparecer nas buscas e em links compartilhados." checked={privacy.profilePublic} onChange={() => togglePrivacy('profilePublic')} />
+        <ToggleRow title="Mostrar status online" description="Mostra quando você está ativo na plataforma." checked={privacy.showOnline} onChange={() => togglePrivacy('showOnline')} />
+        <ToggleRow title="Mostrar ganhos totais" description="Exibe seu faturamento acumulado como prova social." checked={privacy.showEarnings} onChange={() => togglePrivacy('showEarnings')} />
+      </section>
+      <section className={styles.card}>
+        <SectionHeader title="Transparência e seus dados" subtitle="Leia os documentos ou exerça seus direitos de titular." />
+        <div className={styles.legalDocumentGrid}>
+          <Link to="/privacy">Aviso de Privacidade</Link>
+          <Link to="/terms">Termos de Uso</Link>
+          <Link to="/cookies">Cookies e armazenamento</Link>
+          <Link to="/lgpd">Seus direitos na LGPD</Link>
+        </div>
+      </section>
+    </>
   );
 }
 
@@ -802,17 +844,115 @@ function LanguagePanel({ language, setLanguage }) {
 }
 
 function DangerPanel() {
+  const navigate = useNavigate();
+  const { user, setUser } = useAuth();
+  const [emailConfirmation, setEmailConfirmation] = useState('');
+  const [phraseConfirmation, setPhraseConfirmation] = useState('');
+  const [exporting, setExporting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const canDelete =
+    emailConfirmation.trim().toLowerCase() === String(user?.email || '').toLowerCase() &&
+    phraseConfirmation.trim() === 'EXCLUIR MINHA CONTA';
+
+  const handleExport = async () => {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      await exportMyData();
+      toast.success('Arquivo com seus dados preparado com sucesso.');
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!canDelete || deleting) return;
+    setDeleting(true);
+    try {
+      await deleteMyAccount({
+        email: emailConfirmation.trim(),
+        confirmation: phraseConfirmation.trim(),
+      });
+      setUser(null);
+      navigate('/login', { replace: true });
+      toast.success('Sua conta foi encerrada e os dados pessoais foram anonimizados.');
+    } catch (err) {
+      toast.error(err.message);
+      setDeleting(false);
+    }
+  };
+
   return (
-    <section className={`${styles.card} ${styles.dangerCard}`}>
-      <SectionHeader title="Encerramento da conta" subtitle="Ações irreversíveis." />
-      <div className={styles.listRow}>
-        <div className={styles.listCopy}>
-          <strong>Excluir conta permanentemente</strong>
-          <span>Remove histórico, mensagens e dados financeiros.</span>
+    <>
+      <section className={styles.card}>
+        <SectionHeader
+          title="Portabilidade dos seus dados"
+          subtitle="Baixe uma cópia em JSON com perfil, serviços, pedidos, mensagens, pagamentos e verificações."
+        />
+        <div className={styles.accountDataAction}>
+          <div className={styles.listCopy}>
+            <strong>Exportar dados da conta</strong>
+            <span>O arquivo é gerado de forma privada e baixado somente neste navegador.</span>
+          </div>
+          <button
+            type="button"
+            className={`${styles.btnGhost} ${styles.accountActionButton}`}
+            onClick={handleExport}
+            disabled={exporting}
+          >
+            {exporting ? 'Preparando...' : 'Baixar meus dados'}
+          </button>
         </div>
-        <button className={styles.rowActionDanger}>Solicitar exclusão</button>
-      </div>
-    </section>
+      </section>
+
+      <section className={`${styles.card} ${styles.dangerCard}`}>
+        <SectionHeader
+          title="Encerramento da conta"
+          subtitle="A conta será desativada e os dados pessoais serão anonimizados. Registros financeiros e contratuais podem ser retidos quando a lei exigir."
+        />
+        <div className={styles.dangerConfirmGrid}>
+          <Field label="Confirme seu e-mail">
+            <input
+              className={styles.input}
+              type="email"
+              autoComplete="email"
+              value={emailConfirmation}
+              onChange={(event) => setEmailConfirmation(event.target.value)}
+              placeholder={user?.email || 'seu@email.com'}
+            />
+          </Field>
+          <Field label='Digite "EXCLUIR MINHA CONTA"'>
+            <input
+              className={styles.input}
+              value={phraseConfirmation}
+              onChange={(event) => setPhraseConfirmation(event.target.value)}
+              autoComplete="off"
+            />
+          </Field>
+        </div>
+
+        <div className={styles.dangerActionBar}>
+          <div className={styles.dangerActionCopy}>
+            <strong>Excluir conta permanentemente</strong>
+            <span>Pedidos em andamento, valores retidos ou assinatura ativa precisam ser resolvidos antes.</span>
+          </div>
+          <div className={styles.dangerButtonGroup}>
+            <small>{canDelete ? 'Confirmações concluídas' : 'Complete as duas confirmações acima'}</small>
+            <button
+              type="button"
+              className={styles.rowActionDanger}
+              disabled={!canDelete || deleting}
+              onClick={handleDelete}
+            >
+              {deleting ? 'Excluindo...' : 'Excluir definitivamente'}
+            </button>
+          </div>
+        </div>
+      </section>
+    </>
   );
 }
 

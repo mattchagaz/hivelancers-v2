@@ -10,6 +10,12 @@ import ConfirmDialog from '../../UI/ConfirmDialog/ConfirmDialog';
 const TIER_BY_INDEX = ['BASIC', 'STANDARD', 'PREMIUM'];
 const TIER_NAME = { BASIC: 'Básico', STANDARD: 'Padrão', PREMIUM: 'Premium' };
 
+const createEmptyPlans = () => [
+  { name: 'Básico', price: '', delivery: '', revisions: '', features: [''] },
+  { name: 'Padrão', price: '', delivery: '', revisions: '', features: [''] },
+  { name: 'Premium', price: '', delivery: '', revisions: '', features: [''] },
+];
+
 const featuresFromDescription = (desc = '') =>
   desc
     .split('\n')
@@ -40,11 +46,7 @@ function CreateService() {
   const [tagInput, setTagInput] = useState('');
 
   // Step 1 — Planos de preço
-  const [plans, setPlans] = useState([
-    { name: 'Básico', price: '', delivery: '', revisions: '', features: [''] },
-    { name: 'Padrão', price: '', delivery: '', revisions: '', features: [''] },
-    { name: 'Premium', price: '', delivery: '', revisions: '', features: [''] },
-  ]);
+  const [plans, setPlans] = useState(createEmptyPlans);
   const [activePlans, setActivePlans] = useState([true, true, true]);
 
   // Step 2 — Portfólio
@@ -80,7 +82,7 @@ function CreateService() {
         setTags(Array.isArray(svc.tags) ? svc.tags : []);
         setExistingStatus(svc.status || 'DRAFT');
 
-        const loadedPlans = [...plans];
+        const loadedPlans = createEmptyPlans();
         const loadedActive = [false, false, false];
         (svc.plans || []).forEach((p) => {
           const idx = TIER_BY_INDEX.indexOf(p.tier);
@@ -112,7 +114,7 @@ function CreateService() {
       }
     })();
     return () => { cancelled = true; };
-  }, [isEditMode, editId]);
+  }, [isEditMode, editId, navigate]);
 
   const steps = [
     { label: 'Informações', desc: 'Título, descrição e categoria' },

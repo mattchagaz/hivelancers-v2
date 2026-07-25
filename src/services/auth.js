@@ -5,10 +5,21 @@ const apiBaseURL = import.meta.env.VITE_API_URL || 'http://localhost:3333';
 
 const extractMessage = (error, fallback) => {
   const data = error?.response?.data;
+
+  if (error?.response?.status === 429) {
+    const retryAfter = Number(error.response.headers?.['retry-after']);
+    const wait = Number.isFinite(retryAfter) && retryAfter > 0
+      ? ` Aguarde cerca de ${Math.max(1, Math.ceil(retryAfter / 60))} minuto(s).`
+      : ' Aguarde alguns minutos antes de tentar novamente.';
+
+    return `${data?.message || 'Muitas tentativas de acesso.'}${wait}`;
+  }
+
   if (data?.details) {
     const first = Object.values(data.details).flat()[0];
     if (first) return first;
   }
+  if (typeof data === 'string' && data.trim()) return data;
   return data?.message || fallback;
 };
 
@@ -82,13 +93,14 @@ export const getMe = async () => {
   return data.user;
 };
 
-export const getGoogleLoginUrl = (redirectPath = '/login') => {
+export const getGoogleLoginUrl = (redirectPath = '/login', legalAccepted = false) => {
   const redirectTo = `${window.location.origin}${redirectPath}`;
   const configuredUrl = import.meta.env.VITE_GOOGLE_AUTH_URL;
   if (configuredUrl) {
     try {
       const url = new URL(configuredUrl);
       url.searchParams.set('redirectTo', redirectTo);
+      url.searchParams.set('legalAccepted', String(legalAccepted));
       return url.toString();
     } catch {
       return configuredUrl;
@@ -97,6 +109,7 @@ export const getGoogleLoginUrl = (redirectPath = '/login') => {
 
   const url = new URL('/auth/google', apiBaseURL);
   url.searchParams.set('redirectTo', redirectTo);
+  url.searchParams.set('legalAccepted', String(legalAccepted));
   return url.toString();
 };
 
@@ -156,7 +169,11 @@ export const logoutUser = async () => {
 
 export const forgotPassword = async (email) => {
   try {
-    const { data } = await api.post('/auth/forgot-password', { email });
+    const { data } = await api.post(
+      '/auth/forgot-password',
+      { email },
+      { withCredentials: false }
+    );
     return data;
   } catch (error) {
     throw new Error(extractMessage(error, 'Não foi possível enviar o código.'));
@@ -165,7 +182,11 @@ export const forgotPassword = async (email) => {
 
 export const resetPassword = async ({ email, code, newPassword }) => {
   try {
-    const { data } = await api.post('/auth/reset-password', { email, code, newPassword });
+    const { data } = await api.post(
+      '/auth/reset-password',
+      { email, code, newPassword },
+      { withCredentials: false }
+    );
     return data;
   } catch (error) {
     throw new Error(extractMessage(error, 'Não foi possível redefinir a senha.'));

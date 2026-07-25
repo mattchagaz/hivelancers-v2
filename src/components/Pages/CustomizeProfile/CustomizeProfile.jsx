@@ -28,7 +28,6 @@ import {
   getPublicProfilePath,
   mergeProfileEnhancements,
 } from '../../../utils/profileEnhancements';
-import { getProfileLinkMeta } from '../../../utils/profileLinks';
 import { buildCustomizeProfileErrors, normalizeExternalUrl } from '../../../utils/profileValidation';
 import { SKILL_SUGGESTIONS } from '../../../utils/skillSuggestions';
 import ConfirmDialog from '../../UI/ConfirmDialog/ConfirmDialog';
@@ -136,7 +135,7 @@ function CustomizeProfile() {
     return () => {
       cancelled = true;
     };
-  }, [user?.id]);
+  }, [user]);
 
   const previewProfile = useMemo(
     () =>
@@ -299,7 +298,7 @@ function CustomizeProfile() {
         setUser(updated);
         setProfile((prev) => ({ ...prev, avatarUrl: updated.avatarUrl || url }));
         toast.success('Foto de perfil atualizada.');
-      } catch (err) {
+      } catch {
         toast.error('A foto foi enviada, mas não conseguimos salvar no perfil agora.');
       }
     } catch (err) {

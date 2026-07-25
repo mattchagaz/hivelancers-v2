@@ -1,6 +1,4 @@
-import { listConversations } from './messages';
-import { listOrders } from './orders';
-import { getMyAccountVerification } from './users';
+import { api } from './api';
 
 const HISTORY_LIMIT = 220;
 
@@ -127,6 +125,15 @@ export const getOrderNotification = (order, userId) => {
     };
   }
 
+  if (order.status === 'DISPUTED') {
+    return {
+      ...base,
+      tone: 'red',
+      title: 'Pedido em disputa',
+      description: `${serviceTitle} aguarda uma decisão administrativa.`,
+    };
+  }
+
   if (order.status === 'COMPLETED') {
     return {
       ...base,
@@ -216,25 +223,13 @@ export const getVerificationNotification = (verificationState) => {
 
 export const loadNotificationFeed = async (user) => {
   if (!user?.id) return { live: [], history: [] };
-
-  const [ordersResult, conversationsResult, verificationResult] = await Promise.allSettled([
-    listOrders({ role: 'all' }),
-    listConversations(),
-    getMyAccountVerification(),
-  ]);
-
-  const orderItems = ordersResult.status === 'fulfilled' ? ordersResult.value?.items || [] : [];
-  const conversationItems = conversationsResult.status === 'fulfilled' ? conversationsResult.value || [] : [];
-  const verificationState = verificationResult.status === 'fulfilled' ? verificationResult.value : null;
-
-  const live = sortNotifications([
-    ...orderItems.map((order) => getOrderNotification(order, user.id)).filter(Boolean),
-    ...conversationItems.map((conversation) => getConversationNotification(conversation, user.id)).filter(Boolean),
-    getVerificationNotification(verificationState),
-  ].filter(Boolean));
-
-  return {
-    live,
-    history: mergeNotificationHistory(user.id, live),
-  };
+  const { data } = await api.get('/notifications', {
+    params: { includeArchived: 'true', limit: HISTORY_LIMIT },
+  });
+  const history = Array.isArray(data?.items) ? data.items : [];
+  return { live: history.filter((item) => !item.archivedAt), history };
 };
+
+export const markNotificationRead = (id) => api.patch(`/notifications/${id}/read`);
+export const markAllNotificationsRead = () => api.patch('/notifications/read-all');
+export const archiveNotifications = (ids) => api.post('/notifications/archive', { ids });

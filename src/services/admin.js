@@ -18,6 +18,15 @@ export const listAdminCoupons = async (params = {}) => {
   }
 };
 
+export const listAdminAuditLogs = async (params = {}) => {
+  try {
+    const { data } = await api.get('/admin/audit-logs', { params });
+    return data;
+  } catch (error) {
+    throw new Error(extractMessage(error, 'Não foi possível carregar a auditoria.'));
+  }
+};
+
 export const createAdminCoupon = async (payload) => {
   try {
     const { data } = await api.post('/admin/coupons', payload);

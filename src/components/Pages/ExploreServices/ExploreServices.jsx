@@ -84,7 +84,6 @@ function ExploreServices() {
     const subcategoryFromUrl = searchParams.get('subcategory');
     const queryFromUrl = searchParams.get('q');
     if (categoryFromUrl) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setActiveCategorySlug(categoryFromUrl);
     }
     if (subcategoryFromUrl) {
@@ -108,13 +107,11 @@ function ExploreServices() {
   }, [priceRange]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPage(1);
   }, [debouncedSearch, activeCategorySlug, activeSubcategorySlug, debouncedPrice, deliveryMax, sort]);
 
   useEffect(() => {
     let cancelled = false;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
 
     const params = { page, pageSize, sort };
@@ -192,7 +189,6 @@ function ExploreServices() {
     if (!categoriesLoaded || activeCategorySlug === 'all') return;
     if (categoryChips.some((cat) => cat.slug === activeCategorySlug)) return;
 
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setActiveCategorySlug('all');
     setActiveSubcategorySlug('');
   }, [activeCategorySlug, categoriesLoaded, categoryChips]);

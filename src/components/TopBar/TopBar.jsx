@@ -2,15 +2,16 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useAuth } from '../../contexts/AuthContext';
-import { loadNotificationFeed } from '../../services/notifications';
+import { useSettings } from '../../contexts/SettingsContext';
+import {
+  archiveNotifications,
+  loadNotificationFeed,
+  markAllNotificationsRead as persistAllNotificationsRead,
+  markNotificationRead as persistNotificationRead,
+} from '../../services/notifications';
 import { connectSocket, getSocket } from '../../services/socket';
 import { getPublicProfilePath } from '../../utils/profileEnhancements';
 import styles from './TopBar.module.css';
-
-const toId = (value) => (value === undefined || value === null ? '' : String(value));
-
-const getPersonName = (person) =>
-  `${person?.firstName || ''} ${person?.lastName || ''}`.trim() || person?.username || 'Usuário';
 
 const formatRelativeTime = (value) => {
   if (!value) return 'Agora';
@@ -58,6 +59,26 @@ const playNotificationSound = () => {
   }
 };
 
+const inAppPreferenceFor = (type) => ({
+  message: 'messages',
+  review: 'reviews',
+  support: 'supportUpdates',
+  verification: 'securityUpdates',
+  admin: 'securityUpdates',
+  payment: 'orderUpdates',
+  order: 'orderUpdates',
+}[type] || 'securityUpdates');
+
+const browserPreferenceFor = (type) => ({
+  message: 'pushMessages',
+  order: 'pushOrders',
+  review: 'pushOrders',
+  payment: 'pushPayments',
+  support: 'pushSupport',
+  verification: 'pushSupport',
+  admin: 'pushSupport',
+}[type] || 'pushSupport');
+
 function TopBar({ userName = '', userRole = 'freelancer', avatarUrl = '', onMenuToggle }) {
   const [searchFocused, setSearchFocused] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -69,10 +90,11 @@ function TopBar({ userName = '', userRole = 'freelancer', avatarUrl = '', onMenu
   const [notificationsLoading, setNotificationsLoading] = useState(false);
   const menuRef = useRef(null);
   const notificationRef = useRef(null);
+  const knownNotificationIdsRef = useRef(null);
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const notificationStorageKey = user?.id ? `hivelancers:notification-read:${user.id}` : '';
-  const notificationClearStorageKey = user?.id ? `hivelancers:notification-cleared:${user.id}` : '';
+  const { settings } = useSettings();
+  const notificationSettings = settings.notifications;
 
   useEffect(() => {
     const onClick = (e) => {
@@ -83,89 +105,79 @@ function TopBar({ userName = '', userRole = 'freelancer', avatarUrl = '', onMenu
     return () => document.removeEventListener('mousedown', onClick);
   }, []);
 
-  useEffect(() => {
-    if (!notificationStorageKey) {
-      setReadNotificationIds([]);
-      return;
-    }
-
-    try {
-      const stored = JSON.parse(localStorage.getItem(notificationStorageKey) || '[]');
-      setReadNotificationIds(Array.isArray(stored) ? stored : []);
-    } catch {
-      setReadNotificationIds([]);
-    }
-  }, [notificationStorageKey]);
-
-  useEffect(() => {
-    if (!notificationClearStorageKey) {
-      setClearedNotificationIds([]);
-      return;
-    }
-
-    try {
-      const stored = JSON.parse(localStorage.getItem(notificationClearStorageKey) || '[]');
-      setClearedNotificationIds(Array.isArray(stored) ? stored : []);
-    } catch {
-      setClearedNotificationIds([]);
-    }
-  }, [notificationClearStorageKey]);
-
-  const persistReadIds = useCallback((nextIds) => {
-    setReadNotificationIds(nextIds);
-    if (!notificationStorageKey) return;
-    localStorage.setItem(notificationStorageKey, JSON.stringify(nextIds.slice(-120)));
-  }, [notificationStorageKey]);
-
-  const persistClearedIds = useCallback((nextIds) => {
-    setClearedNotificationIds(nextIds);
-    if (!notificationClearStorageKey) return;
-    localStorage.setItem(notificationClearStorageKey, JSON.stringify(nextIds.slice(-160)));
-  }, [notificationClearStorageKey]);
-
   const loadNotifications = useCallback(async () => {
     if (!user?.id) return;
 
     setNotificationsLoading(true);
     try {
-      const { live } = await loadNotificationFeed(user);
+      const { live, history } = await loadNotificationFeed(user);
+      const knownIds = knownNotificationIdsRef.current;
+      const currentIds = new Set(history.map((item) => item.id));
+
+      if (knownIds) {
+        const incoming = live.filter((item) => !knownIds.has(item.id) && !item.readAt);
+        const newest = incoming[0];
+
+        if (newest) {
+          knownNotificationIdsRef.current = currentIds;
+
+          if (notificationSettings[inAppPreferenceFor(newest.type)]) {
+            playNotificationSound();
+            toast(newest.title, { description: newest.description });
+          }
+
+          if (
+            notificationSettings[browserPreferenceFor(newest.type)] &&
+            'Notification' in window &&
+            window.Notification.permission === 'granted'
+          ) {
+            const browserNotification = new window.Notification(newest.title, {
+              body: newest.description,
+              tag: newest.id,
+            });
+            browserNotification.onclick = () => {
+              window.focus();
+              navigate(newest.to || '/notifications');
+              browserNotification.close();
+            };
+          }
+        }
+      }
+
+      knownNotificationIdsRef.current = currentIds;
       setNotifications(live.slice(0, 14));
+      setReadNotificationIds(history.filter((item) => item.readAt).map((item) => item.id));
+      setClearedNotificationIds(history.filter((item) => item.archivedAt).map((item) => item.id));
     } finally {
       setNotificationsLoading(false);
     }
-  }, [user]);
+  }, [navigate, notificationSettings, user]);
 
   useEffect(() => {
+    knownNotificationIdsRef.current = null;
     loadNotifications();
-  }, [loadNotifications]);
+  }, [loadNotifications, user?.id]);
 
   useEffect(() => {
     if (!user?.id) return undefined;
 
     const socket = connectSocket();
     const refresh = () => loadNotifications();
-    const handleNewOrder = (payload) => {
-      const order = payload?.order;
-      const isSeller = toId(order?.freelancerId) === toId(user.id);
 
-      if (isSeller && order?.status === 'PENDING') {
-        playNotificationSound();
-        toast.success('Novo pedido recebido.', {
-          description: `${getPersonName(order.client)} contratou ${order.service?.title || order.planTitle || 'um serviço'}.`,
-        });
-      }
+    const refreshEvents = [
+      'order:new',
+      'order:updated',
+      'order:event',
+      'message:new',
+      'conversation:message',
+      'conversation:new',
+      'notifications:refresh',
+    ];
 
-      loadNotifications();
-    };
-
-    const refreshEvents = ['order:updated', 'order:event', 'message:new', 'conversation:message', 'conversation:new'];
-
-    socket.on('order:new', handleNewOrder);
     refreshEvents.forEach((event) => socket.on(event, refresh));
 
     return () => {
       const current = getSocket();
-      current.off('order:new', handleNewOrder);
       refreshEvents.forEach((event) => current.off(event, refresh));
     };
   }, [loadNotifications, user?.id]);
@@ -193,21 +205,37 @@ function TopBar({ userName = '', userRole = 'freelancer', avatarUrl = '', onMenu
     [readNotificationIds, visibleNotifications]
   );
 
-  const markNotificationRead = (id) => {
+  const markNotificationRead = async (id) => {
     if (!id || readNotificationIds.includes(id)) return;
-    persistReadIds([...readNotificationIds, id]);
+    setReadNotificationIds([...readNotificationIds, id]);
+    try {
+      await persistNotificationRead(id);
+    } catch {
+      loadNotifications();
+    }
   };
 
-  const markAllNotificationsRead = () => {
-    persistReadIds([...new Set([...readNotificationIds, ...visibleNotifications.map((item) => item.id)])]);
+  const markAllNotificationsRead = async () => {
+    setReadNotificationIds([...new Set([...readNotificationIds, ...visibleNotifications.map((item) => item.id)])]);
+    try {
+      await persistAllNotificationsRead();
+    } catch {
+      loadNotifications();
+    }
   };
 
-  const clearNotifications = () => {
+  const clearNotifications = async () => {
     if (visibleNotifications.length === 0) return;
     const visibleIds = visibleNotifications.map((item) => item.id);
-    persistReadIds([...new Set([...readNotificationIds, ...visibleIds])]);
-    persistClearedIds([...new Set([...clearedNotificationIds, ...visibleIds])]);
-    toast.success('Notificações limpas.');
+    setReadNotificationIds([...new Set([...readNotificationIds, ...visibleIds])]);
+    setClearedNotificationIds([...new Set([...clearedNotificationIds, ...visibleIds])]);
+    try {
+      await archiveNotifications(visibleIds);
+      toast.success('Notificações limpas.');
+    } catch (error) {
+      toast.error(error.message || 'Não foi possível limpar as notificações.');
+      loadNotifications();
+    }
   };
 
   const handleSearchSubmit = (event) => {

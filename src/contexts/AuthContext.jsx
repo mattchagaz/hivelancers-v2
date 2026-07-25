@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { AUTH_UNAUTHORIZED_EVENT } from '../services/authEvents';
 import { tokenStorage } from '../services/tokenStorage';
 import { getMe, loginUser, logoutUser } from '../services/auth';
 
@@ -10,13 +11,6 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     const hydrate = async () => {
-      const access = tokenStorage.getAccess();
-      const refresh = tokenStorage.getRefresh();
-      if (!access && !refresh) {
-        setUser(null);
-        setIsInitializing(false);
-        return;
-      }
       try {
         const fresh = await getMe();
         setUser(fresh);
@@ -28,6 +22,17 @@ export function AuthProvider({ children }) {
       }
     };
     hydrate();
+  }, []);
+
+  useEffect(() => {
+    const handleUnauthorized = () => {
+      tokenStorage.clear();
+      setUser(null);
+      setIsInitializing(false);
+    };
+
+    window.addEventListener(AUTH_UNAUTHORIZED_EVENT, handleUnauthorized);
+    return () => window.removeEventListener(AUTH_UNAUTHORIZED_EVENT, handleUnauthorized);
   }, []);
 
   const login = useCallback(async (credentials) => {

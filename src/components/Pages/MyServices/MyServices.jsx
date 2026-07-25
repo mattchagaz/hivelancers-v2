@@ -2,7 +2,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
+  FaBoxArchive,
+  FaCircleCheck,
   FaEye,
+  FaLayerGroup,
   FaMagnifyingGlass,
   FaPenToSquare,
   FaPlus,
@@ -12,6 +15,7 @@ import { SERVICE_GRADIENTS } from '../../../data/services';
 import { listMyServices } from '../../../services/services';
 import { CategoryIcon } from '../../../utils/categoryIcons';
 import EmptyState from '../../UI/EmptyState/EmptyState';
+import SpotlightCard from '../../UI/SpotlightCard/SpotlightCard';
 import styles from './MyServices.module.css';
 
 const STATUS_LABEL = {
@@ -61,13 +65,14 @@ const getMinPlan = (plans = []) => {
   }, null);
 };
 
-function StatCard({ label, value, detail, tone }) {
+function StatCard({ icon, label, value, detail, tone }) {
   return (
-    <div className={`${styles.statCard} ${tone ? styles[tone] : ''}`}>
+    <SpotlightCard className={`${styles.statCard} ${tone ? styles[tone] : ''}`}>
+      <div className={styles.statIcon}>{icon}</div>
       <span>{label}</span>
       <strong>{value}</strong>
       <p>{detail}</p>
-    </div>
+    </SpotlightCard>
   );
 }
 
@@ -90,7 +95,6 @@ function MyServices() {
   }, []);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadServices();
   }, [loadServices]);
 
@@ -160,10 +164,10 @@ function MyServices() {
       </section>
 
       <section className={styles.statGrid} aria-label="Resumo dos serviços">
-        <StatCard label="Total" value={stats.total} detail="Todos os serviços criados" />
-        <StatCard label="Publicados" value={stats.published} detail="Visíveis no marketplace" tone="green" />
-        <StatCard label="Rascunhos" value={stats.drafts} detail="Ainda em edição" tone="orange" />
-        <StatCard label="Arquivados" value={stats.archived} detail="Fora da vitrine" tone="muted" />
+        <StatCard icon={<FaLayerGroup />} label="Total" value={stats.total} detail="Todos os serviços criados" />
+        <StatCard icon={<FaCircleCheck />} label="Publicados" value={stats.published} detail="Visíveis no marketplace" tone="green" />
+        <StatCard icon={<FaPenToSquare />} label="Rascunhos" value={stats.drafts} detail="Ainda em edição" tone="orange" />
+        <StatCard icon={<FaBoxArchive />} label="Arquivados" value={stats.archived} detail="Fora da vitrine" tone="muted" />
       </section>
 
       <section className={styles.toolbar}>

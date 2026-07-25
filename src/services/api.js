@@ -1,13 +1,20 @@
 import axios from 'axios';
+import { emitAuthUnauthorized } from './authEvents';
 import { tokenStorage } from './tokenStorage';
 
 const baseURL = import.meta.env.VITE_API_URL || 'https://hivelancers-backend.fly.dev';
 
-export const api = axios.create({ baseURL });
+export const api = axios.create({ baseURL, withCredentials: true });
 
 api.interceptors.request.use((config) => {
   const token = tokenStorage.getAccess();
-  if (token) config.headers.Authorization = `Bearer ${token}`;
+  const publicPasswordEndpoint =
+    config.url?.includes('/auth/forgot-password') ||
+    config.url?.includes('/auth/reset-password');
+
+  if (token && !publicPasswordEndpoint) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
   return config;
 });
 
@@ -28,16 +35,16 @@ api.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    const refreshToken = tokenStorage.getRefresh();
-    if (!refreshToken) {
-      tokenStorage.clear();
-      return Promise.reject(error);
-    }
+    const legacyRefreshToken = tokenStorage.getRefresh();
 
     original._retry = true;
     try {
       refreshPromise = refreshPromise ||
-        axios.post(`${baseURL}/auth/refresh`, { refreshToken }).finally(() => {
+        axios.post(
+          `${baseURL}/auth/refresh`,
+          legacyRefreshToken ? { refreshToken: legacyRefreshToken } : {},
+          { withCredentials: true }
+        ).finally(() => {
           refreshPromise = null;
         });
       const { data } = await refreshPromise;
@@ -46,7 +53,7 @@ api.interceptors.response.use(
       return api(original);
     } catch (refreshErr) {
       tokenStorage.clear();
-      window.location.href = '/login';
+      emitAuthUnauthorized();
       return Promise.reject(refreshErr);
     }
   }

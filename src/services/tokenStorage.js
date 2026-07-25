@@ -11,7 +11,8 @@ export const tokenStorage = {
   },
   setTokens: ({ accessToken, refreshToken }) => {
     if (accessToken) localStorage.setItem(ACCESS_KEY, accessToken);
-    if (refreshToken) localStorage.setItem(REFRESH_KEY, refreshToken);
+    // Refresh tokens now live in an HttpOnly cookie. Remove legacy copies after migration.
+    if (refreshToken || localStorage.getItem(REFRESH_KEY)) localStorage.removeItem(REFRESH_KEY);
   },
   setUser: (user) => localStorage.setItem(USER_KEY, JSON.stringify(user)),
   clear: () => {

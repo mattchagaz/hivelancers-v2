@@ -104,3 +104,11 @@ input, textarea, select {
   background: rgba(var(--primary-color-rgb), 0.15);
   color: var(--text-primary);
 }
+.route-fallback {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background: var(--bg-secondary, #f5f6fa);
+  color: var(--text-secondary, #6c6d72);
+  font-weight: 700;
+}

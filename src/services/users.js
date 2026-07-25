@@ -20,6 +20,34 @@ export const updateProfile = async (payload) => {
   }
 };
 
+export const exportMyData = async () => {
+  try {
+    const response = await api.get('/users/me/privacy-export', { responseType: 'blob' });
+    const objectUrl = URL.createObjectURL(response.data);
+    const link = document.createElement('a');
+    link.href = objectUrl;
+    link.download = `hivelancers-dados-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
+  } catch (error) {
+    throw new Error(extractMessage(error, 'Não foi possível exportar seus dados.'));
+  }
+};
+
+export const deleteMyAccount = async ({ email, confirmation }) => {
+  try {
+    const { data } = await api.delete('/users/me', {
+      data: { email, confirmation },
+    });
+    tokenStorage.clear();
+    return data;
+  } catch (error) {
+    throw new Error(extractMessage(error, 'Não foi possível excluir sua conta.'));
+  }
+};
+
 export const getMyProfileCustomization = async () => {
   try {
     const { data } = await api.get('/users/me/profile-customization');
@@ -73,6 +101,45 @@ export const submitMyAccountVerification = async (payload) => {
     return data;
   } catch (error) {
     throw new Error(extractMessage(error, 'Não foi possível enviar sua verificação.'));
+  }
+};
+
+const accessVerificationDocument = async (url, { download = false } = {}) => {
+  const response = await api.get(url, { responseType: 'blob' });
+  const objectUrl = URL.createObjectURL(response.data);
+  const link = document.createElement('a');
+  link.href = objectUrl;
+  link.target = download ? '_self' : '_blank';
+  link.rel = 'noreferrer';
+  if (download) link.download = 'documento-verificacao';
+  link.click();
+  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
+};
+
+export const uploadVerificationDocument = async (kind, file) => {
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    const { data } = await api.post(`/users/me/account-verification/documents/${kind}`, formData);
+    return data.document;
+  } catch (error) {
+    throw new Error(extractMessage(error, 'Não foi possível enviar o documento.'));
+  }
+};
+
+export const openMyVerificationDocument = async (kind, options) => {
+  try {
+    await accessVerificationDocument(`/users/me/account-verification/documents/${kind}`, options);
+  } catch (error) {
+    throw new Error(extractMessage(error, 'Não foi possível abrir o documento.'));
+  }
+};
+
+export const openAdminVerificationDocument = async (userId, kind, options) => {
+  try {
+    await accessVerificationDocument(`/users/admin/${userId}/account-verification/documents/${kind}`, options);
+  } catch (error) {
+    throw new Error(extractMessage(error, 'Não foi possível abrir o documento.'));
   }
 };
 

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   FaArrowTrendUp,
   FaArrowUpRightFromSquare,
@@ -31,6 +32,7 @@ import {
 } from 'react-icons/fa6';
 import { toast, Toaster } from 'sonner';
 import SpotlightCard from '../../UI/SpotlightCard/SpotlightCard';
+import { useAuth } from '../../../contexts/AuthContext';
 import { CategoryIcon } from '../../../utils/categoryIcons';
 import {
   createCategory,
@@ -46,13 +48,19 @@ import {
   createRewardLevel,
   deleteAdminCoupon,
   deleteRewardLevel,
+  listAdminAuditLogs,
   listAdminCoupons,
   listRewardLevels,
   updateAdminCoupon,
   updateRewardLevel,
 } from '../../../services/admin';
 import {
+  listAdminDisputes,
+  resolveAdminDispute,
+} from '../../../services/orders';
+import {
   listAdminUsers,
+  openAdminVerificationDocument,
   reviewAdminAccountVerification,
   updateAdminUser,
 } from '../../../services/users';
@@ -123,7 +131,9 @@ const tabs = [
   { id: 'taxonomy', label: 'Taxonomia', icon: FaTags },
   { id: 'users', label: 'Usuários', icon: FaUsers },
   { id: 'finance', label: 'Financeiro', icon: FaFileInvoiceDollar },
+  { id: 'disputes', label: 'Disputas', icon: FaTriangleExclamation },
   { id: 'support', label: 'Suporte', icon: FaHeadset },
+  { id: 'audit', label: 'Auditoria', icon: FaShieldHalved },
 ];
 
 const slugify = (value) =>
@@ -320,14 +330,6 @@ const toUserDraft = (user) => ({
 
 const getIdentityStatus = (user) => user?.accountVerification?.status || (user?.identityVerifiedAt ? 'VERIFIED' : 'NOT_STARTED');
 
-const isPdfUrl = (url = '') => /\.pdf(?:$|\?)/i.test(url);
-
-const getDownloadUrl = (url = '') => {
-  if (!url.includes('res.cloudinary.com') || !url.includes('/upload/')) return url;
-  if (url.includes('/upload/fl_attachment/')) return url;
-  return url.replace('/upload/', '/upload/fl_attachment/');
-};
-
 const maskCpf = (cpf) => {
   if (!cpf) return 'CPF não informado';
   const digits = String(cpf).replace(/\D/g, '');
@@ -406,6 +408,22 @@ const RELEASE_STATUS_LABEL = {
   FAILED: 'Falhou',
 };
 
+const DISPUTE_STATUS_LABEL = {
+  OPEN: 'Em análise',
+  RESOLVED_CLIENT: 'Reembolso ao cliente',
+  RESOLVED_FREELANCER: 'Liberação ao freelancer',
+};
+
+const DISPUTE_REASON_LABEL = {
+  CANCELLATION_REQUESTED: 'Cancelamento solicitado',
+  SCOPE_MISMATCH: 'Escopo diferente do combinado',
+  MISSED_DEADLINE: 'Prazo não cumprido',
+  DELIVERY_QUALITY: 'Qualidade da entrega',
+  COMMUNICATION: 'Problemas de comunicação',
+  FRAUD_OR_ABUSE: 'Fraude ou abuso',
+  OTHER: 'Outro motivo',
+};
+
 const TICKET_STATUS_TONE = {
   OPEN: 'warning',
   IN_PROGRESS: 'success',
@@ -462,7 +480,12 @@ const isTicketUnanswered = (ticket) => {
 };
 
 function Admin() {
-  const [activeTab, setActiveTab] = useState('overview');
+  const { user: currentUser } = useAuth();
+  const [searchParams] = useSearchParams();
+  const requestedTab = searchParams.get('tab');
+  const [activeTab, setActiveTab] = useState(
+    tabs.some((tab) => tab.id === requestedTab) ? requestedTab : 'overview'
+  );
   const [search, setSearch] = useState('');
   const [categories, setCategories] = useState([]);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
@@ -477,6 +500,7 @@ function Admin() {
   const [identityModalUserId, setIdentityModalUserId] = useState('');
   const [identityRejecting, setIdentityRejecting] = useState(false);
   const [identityReviewNote, setIdentityReviewNote] = useState('');
+  const [userAccountState, setUserAccountState] = useState('active');
   const [userStatusFilter, setUserStatusFilter] = useState('all');
   const [userTypeFilter, setUserTypeFilter] = useState('');
   const [selectedUserId, setSelectedUserId] = useState('');
@@ -518,6 +542,18 @@ function Admin() {
   const [selectedTicketId, setSelectedTicketId] = useState('');
   const [ticketDraft, setTicketDraft] = useState(emptyTicketDraft);
   const [ticketSaving, setTicketSaving] = useState(false);
+  const [adminDisputes, setAdminDisputes] = useState([]);
+  const [adminDisputesTotal, setAdminDisputesTotal] = useState(0);
+  const [disputesLoading, setDisputesLoading] = useState(false);
+  const [disputeStatusFilter, setDisputeStatusFilter] = useState('OPEN');
+  const [selectedDisputeId, setSelectedDisputeId] = useState('');
+  const [disputeOutcome, setDisputeOutcome] = useState('REFUND_CLIENT');
+  const [disputeResolutionNote, setDisputeResolutionNote] = useState('');
+  const [disputeSaving, setDisputeSaving] = useState(false);
+  const [auditLogs, setAuditLogs] = useState([]);
+  const [auditLogsTotal, setAuditLogsTotal] = useState(0);
+  const [auditLoading, setAuditLoading] = useState(false);
+  const [auditActionFilter, setAuditActionFilter] = useState('');
   const [adminOverview, setAdminOverview] = useState(emptyAdminOverview);
   const [overviewLoading, setOverviewLoading] = useState(false);
 
@@ -548,7 +584,7 @@ function Admin() {
     setOverviewLoading(true);
     try {
       const [usersResult, servicesResult, ticketsResult] = await Promise.allSettled([
-        listAdminUsers({ status: 'all', pageSize: 100 }),
+        listAdminUsers({ accountState: 'active', status: 'all', pageSize: 100 }),
         listAdminServices({ status: 'all', pageSize: 100 }),
         listAdminSupportTickets({ status: 'all', priority: 'all', pageSize: 100 }),
       ]);
@@ -616,6 +652,7 @@ function Admin() {
       try {
         const data = await listAdminUsers({
           q: search.trim() || undefined,
+          accountState: userAccountState,
           status: userStatusFilter,
           userType: userTypeFilter || undefined,
           pageSize: 100,
@@ -624,7 +661,10 @@ function Admin() {
         const items = listItems(data, ['users']);
         setAdminUsers(items);
         setUsersTotal(listTotal(data, items));
-        setSelectedUserId((current) => current || items[0]?.id || '');
+        setSelectedUserId((current) => {
+          if (userAccountState === 'deleted') return '';
+          return items.some((item) => item.id === current) ? current : items[0]?.id || '';
+        });
       } catch (err) {
         if (!cancelled) toast.error(err.message);
       } finally {
@@ -636,7 +676,7 @@ function Admin() {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [activeTab, search, userStatusFilter, userTypeFilter]);
+  }, [activeTab, search, userAccountState, userStatusFilter, userTypeFilter]);
 
   useEffect(() => {
     const user = adminUsers.find((item) => item.id === selectedUserId);
@@ -796,6 +836,56 @@ function Admin() {
     };
   }, [activeTab, loadAdminTickets]);
 
+  const loadDisputes = useCallback(async () => {
+    setDisputesLoading(true);
+    try {
+      const data = await listAdminDisputes({
+        ...(disputeStatusFilter ? { status: disputeStatusFilter } : {}),
+        pageSize: 50,
+      });
+      const items = data.items || [];
+      setAdminDisputes(items);
+      setAdminDisputesTotal(data.total || 0);
+      setSelectedDisputeId((current) =>
+        current && items.some((dispute) => dispute.id === current)
+          ? current
+          : items[0]?.id || ''
+      );
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setDisputesLoading(false);
+    }
+  }, [disputeStatusFilter]);
+
+  useEffect(() => {
+    if (activeTab !== 'disputes') return undefined;
+    loadDisputes();
+    return undefined;
+  }, [activeTab, loadDisputes]);
+
+  const loadAuditLogs = useCallback(async () => {
+    setAuditLoading(true);
+    try {
+      const data = await listAdminAuditLogs({
+        ...(auditActionFilter.trim() ? { action: auditActionFilter.trim() } : {}),
+        pageSize: 100,
+      });
+      setAuditLogs(data.items || []);
+      setAuditLogsTotal(data.total || 0);
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setAuditLoading(false);
+    }
+  }, [auditActionFilter]);
+
+  useEffect(() => {
+    if (activeTab !== 'audit') return undefined;
+    const timer = setTimeout(loadAuditLogs, 250);
+    return () => clearTimeout(timer);
+  }, [activeTab, loadAuditLogs]);
+
   const selectedCategory = categories.find((item) => item.id === selectedCategoryId);
   const selectedUser = adminUsers.find((item) => item.id === selectedUserId);
   const identityModalUser = adminUsers.find((item) => item.id === identityModalUserId);
@@ -803,6 +893,7 @@ function Admin() {
   const selectedCoupon = coupons.find((item) => item.id === selectedCouponId);
   const selectedLevel = freelancerLevels.find((item) => item.id === selectedLevelId);
   const selectedTicket = adminTickets.find((item) => item.id === selectedTicketId);
+  const selectedDispute = adminDisputes.find((item) => item.id === selectedDisputeId);
   const activeTicketDraft = selectedTicket && ticketDraft.ticketId === selectedTicket.id
     ? ticketDraft
     : toTicketDraft(selectedTicket);
@@ -813,11 +904,20 @@ function Admin() {
     if (!verification) return [];
 
     return [
-      ['Frente do documento', verification.documentFrontUrl],
-      ['Verso do documento', verification.documentBackUrl],
-      ['Comprovante de endereço', verification.proofOfAddressUrl],
-    ].filter(([, url]) => Boolean(url));
+      ['Frente do documento', 'FRONT', verification.documentFrontUrl],
+      ['Verso do documento', 'BACK', verification.documentBackUrl],
+      ['Comprovante de endereço', 'PROOF_OF_ADDRESS', verification.proofOfAddressUrl],
+    ].filter(([, , url]) => Boolean(url));
   }, [identityModalUser?.accountVerification]);
+
+  const accessIdentityDocument = async (kind, download = false) => {
+    if (!identityModalUser?.id) return;
+    try {
+      await openAdminVerificationDocument(identityModalUser.id, kind, { download });
+    } catch (error) {
+      toast.error(error.message);
+    }
+  };
   const identityModalStatus = getIdentityStatus(identityModalUser);
   const usersStats = useMemo(() => {
     const admins = adminUsers.filter((user) => user.isAdmin).length;
@@ -826,6 +926,16 @@ function Admin() {
     const clients = adminUsers.filter((user) => user.userType === 'CLIENT').length;
     const identityVerified = adminUsers.filter((user) => getIdentityStatus(user) === 'VERIFIED').length;
     return { admins, active, freelancers, clients, identityVerified };
+  }, [adminUsers]);
+  const deletedUsersStats = useMemo(() => {
+    const orders = adminUsers.reduce((total, user) => total + (user.counts?.orders || 0), 0);
+    const messages = adminUsers.reduce((total, user) => total + (user.counts?.messages || 0), 0);
+    const withHistory = adminUsers.filter((user) => (
+      (user.counts?.orders || 0) > 0
+      || (user.counts?.messages || 0) > 0
+      || (user.counts?.services || 0) > 0
+    )).length;
+    return { orders, messages, withHistory };
   }, [adminUsers]);
   const ticketStats = useMemo(() => {
     const open = adminTickets.filter((ticket) => ['OPEN', 'IN_PROGRESS'].includes(normalizeSupportTicketStatus(ticket.status))).length;
@@ -1379,6 +1489,34 @@ function Admin() {
       toast.error(err.message);
     } finally {
       setTicketSaving(false);
+    }
+  };
+
+  const saveDisputeResolution = async () => {
+    if (!selectedDispute || selectedDispute.status !== 'OPEN' || disputeSaving) return;
+    if (disputeResolutionNote.trim().length < 10) {
+      toast.error('Registre a fundamentação da decisão com pelo menos 10 caracteres.');
+      return;
+    }
+
+    setDisputeSaving(true);
+    try {
+      await resolveAdminDispute(selectedDispute.id, {
+        outcome: disputeOutcome,
+        note: disputeResolutionNote.trim(),
+      });
+      setDisputeResolutionNote('');
+      toast.success(
+        disputeOutcome === 'REFUND_CLIENT'
+          ? 'Disputa resolvida com reembolso ao cliente.'
+          : 'Disputa resolvida com liberação ao freelancer.'
+      );
+      await loadDisputes();
+      await loadAuditLogs();
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setDisputeSaving(false);
     }
   };
 
@@ -2177,83 +2315,188 @@ function Admin() {
             <div className={styles.panelHead}>
               <div>
                 <span className={styles.sectionKicker}>Usuários</span>
-                <h3>Contas reais da plataforma</h3>
+                <h3>
+                  {userAccountState === 'deleted'
+                    ? 'Contas excluídas e anonimizadas'
+                    : 'Contas reais da plataforma'}
+                </h3>
+                <p className={styles.panelDescription}>
+                  {userAccountState === 'deleted'
+                    ? 'Registros mínimos preservados exclusivamente para integridade operacional e auditoria.'
+                    : 'Gerencie perfis, permissões e verificações das contas em operação.'}
+                </p>
               </div>
               <div className={styles.buttonGroup}>
-                <button type="button" className={styles.ghostButton} onClick={() => setUserStatusFilter('active')}>
-                  Ver ativos
-                </button>
-                <button type="button" className={styles.primaryButton} onClick={saveUser} disabled={!selectedUser || userSaving}>
-                  <FaFloppyDisk /> {userSaving ? 'Salvando...' : 'Salvar usuário'}
-                </button>
+                <div className={styles.accountViewSwitch} aria-label="Visualização de contas">
+                  <button
+                    type="button"
+                    className={`${styles.accountViewButton} ${userAccountState === 'active' ? styles.accountViewButtonActive : ''}`}
+                    onClick={() => {
+                      setUserAccountState('active');
+                      setUserStatusFilter('all');
+                      setUserTypeFilter('');
+                    }}
+                  >
+                    <FaUsers /> Contas ativas
+                  </button>
+                  <button
+                    type="button"
+                    className={`${styles.accountViewButton} ${userAccountState === 'deleted' ? styles.accountViewButtonActive : ''}`}
+                    onClick={() => {
+                      setUserAccountState('deleted');
+                      setUserStatusFilter('all');
+                      setUserTypeFilter('');
+                      setSelectedUserId('');
+                    }}
+                  >
+                    <FaTrash /> Excluídas
+                  </button>
+                </div>
+                {userAccountState === 'active' && (
+                  <button type="button" className={styles.primaryButton} onClick={saveUser} disabled={!selectedUser || userSaving}>
+                    <FaFloppyDisk /> {userSaving ? 'Salvando...' : 'Salvar usuário'}
+                  </button>
+                )}
               </div>
             </div>
 
             <div className={styles.userStats}>
-              <div className={styles.taxonomyStat}>
-                <FaUsers />
-                <span>Total filtrado</span>
-                <strong>{usersTotal}</strong>
-              </div>
-              <div className={styles.taxonomyStat}>
-                <FaCircleCheck />
-                <span>Ativos</span>
-                <strong>{usersStats.active}</strong>
-              </div>
-              <div className={styles.taxonomyStat}>
-                <FaUserCheck />
-                <span>Identidade verificada</span>
-                <strong>{usersStats.identityVerified}</strong>
-              </div>
-              <div className={styles.taxonomyStat}>
-                <FaBolt />
-                <span>Freelancers / Clientes</span>
-                <strong>{usersStats.freelancers}/{usersStats.clients}</strong>
-              </div>
+              {userAccountState === 'deleted' ? (
+                <>
+                  <div className={styles.taxonomyStat}>
+                    <FaTrash />
+                    <span>Total excluído</span>
+                    <strong>{usersTotal}</strong>
+                  </div>
+                  <div className={styles.taxonomyStat}>
+                    <FaClock />
+                    <span>Com histórico vinculado</span>
+                    <strong>{deletedUsersStats.withHistory}</strong>
+                  </div>
+                  <div className={styles.taxonomyStat}>
+                    <FaInbox />
+                    <span>Pedidos preservados</span>
+                    <strong>{deletedUsersStats.orders}</strong>
+                  </div>
+                  <div className={styles.taxonomyStat}>
+                    <FaShieldHalved />
+                    <span>Dados pessoais</span>
+                    <strong>Anonimizados</strong>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className={styles.taxonomyStat}>
+                    <FaUsers />
+                    <span>Total filtrado</span>
+                    <strong>{usersTotal}</strong>
+                  </div>
+                  <div className={styles.taxonomyStat}>
+                    <FaCircleCheck />
+                    <span>Ativos</span>
+                    <strong>{usersStats.active}</strong>
+                  </div>
+                  <div className={styles.taxonomyStat}>
+                    <FaUserCheck />
+                    <span>Identidade verificada</span>
+                    <strong>{usersStats.identityVerified}</strong>
+                  </div>
+                  <div className={styles.taxonomyStat}>
+                    <FaBolt />
+                    <span>Freelancers / Clientes</span>
+                    <strong>{usersStats.freelancers}/{usersStats.clients}</strong>
+                  </div>
+                </>
+              )}
             </div>
 
-            <div className={styles.userFilters}>
-              <select value={userStatusFilter} onChange={(event) => setUserStatusFilter(event.target.value)}>
-                <option value="all">Todos os status</option>
-                <option value="active">Ativos</option>
-                <option value="inactive">Inativos</option>
-                <option value="verified">Email verificado</option>
-                <option value="unverified">Email pendente</option>
-                <option value="identity_verified">Identidade verificada</option>
-                <option value="identity_pending">Identidade em análise</option>
-                <option value="identity_rejected">Identidade recusada</option>
-                <option value="admin">Admins</option>
-              </select>
-              <select value={userTypeFilter} onChange={(event) => setUserTypeFilter(event.target.value)}>
-                <option value="">Todos os tipos</option>
-                <option value="FREELANCER">Freelancers</option>
-                <option value="CLIENT">Clientes</option>
-              </select>
-            </div>
+            {userAccountState === 'active' ? (
+              <div className={styles.userFilters}>
+                <select value={userStatusFilter} onChange={(event) => setUserStatusFilter(event.target.value)}>
+                  <option value="all">Todos os status</option>
+                  <option value="active">Ativos</option>
+                  <option value="inactive">Inativos</option>
+                  <option value="verified">Email verificado</option>
+                  <option value="unverified">Email pendente</option>
+                  <option value="identity_verified">Identidade verificada</option>
+                  <option value="identity_pending">Identidade em análise</option>
+                  <option value="identity_rejected">Identidade recusada</option>
+                  <option value="admin">Admins</option>
+                </select>
+                <select value={userTypeFilter} onChange={(event) => setUserTypeFilter(event.target.value)}>
+                  <option value="">Todos os tipos</option>
+                  <option value="FREELANCER">Freelancers</option>
+                  <option value="CLIENT">Clientes</option>
+                </select>
+              </div>
+            ) : (
+              <div className={styles.deletedUsersNotice}>
+                <FaShieldHalved />
+                <span>
+                  Dados de identificação não são exibidos. O acesso a estes registros deve ser usado somente para auditoria.
+                </span>
+              </div>
+            )}
 
-            <div className={styles.userManagementGrid}>
+            <div className={`${styles.userManagementGrid} ${userAccountState === 'deleted' ? styles.deletedUsersGrid : ''}`}>
               <div className={styles.tableWrap}>
                 <table className={styles.table}>
                   <thead>
-                    <tr>
-                      <th>Usuário</th>
-                      <th>Tipo</th>
-                      <th>Atividade</th>
-                      <th>Identidade</th>
-                      <th>Uso</th>
-                      <th>Admin</th>
-                      <th>Ações</th>
-                    </tr>
+                    {userAccountState === 'deleted' ? (
+                      <tr>
+                        <th>Registro</th>
+                        <th>Excluída em</th>
+                        <th>Histórico preservado</th>
+                        <th>Estado</th>
+                      </tr>
+                    ) : (
+                      <tr>
+                        <th>Usuário</th>
+                        <th>Tipo</th>
+                        <th>Atividade</th>
+                        <th>Identidade</th>
+                        <th>Uso</th>
+                        <th>Admin</th>
+                        <th>Ações</th>
+                      </tr>
+                    )}
                   </thead>
                   <tbody>
                     {usersLoading ? (
                       <tr>
-                        <td colSpan="7">Carregando usuários...</td>
+                        <td colSpan={userAccountState === 'deleted' ? 4 : 7}>Carregando usuários...</td>
                       </tr>
                     ) : adminUsers.length === 0 ? (
                       <tr>
-                        <td colSpan="7">Nenhum usuário encontrado.</td>
+                        <td colSpan={userAccountState === 'deleted' ? 4 : 7}>
+                          {userAccountState === 'deleted'
+                            ? 'Nenhuma conta excluída encontrada.'
+                            : 'Nenhum usuário encontrado.'}
+                        </td>
                       </tr>
+                    ) : userAccountState === 'deleted' ? (
+                      adminUsers.map((user) => (
+                        <tr key={user.id}>
+                          <td>
+                            <strong>Conta excluída</strong>
+                            <span>ID: {user.id}</span>
+                          </td>
+                          <td>
+                            <strong>{formatDate(user.deletedAt)}</strong>
+                            <span>Exclusão solicitada pelo titular</span>
+                          </td>
+                          <td>
+                            <strong>{user.counts?.orders || 0} pedidos</strong>
+                            <span>
+                              {user.counts?.services || 0} serviços · {user.counts?.messages || 0} mensagens
+                            </span>
+                          </td>
+                          <td>
+                            <em className={`${styles.badge} ${styles.neutral}`}>Anonimizada</em>
+                            <span>Fora da visão operacional</span>
+                          </td>
+                        </tr>
+                      ))
                     ) : (
                       adminUsers.map((user) => (
                         <tr
@@ -2312,7 +2555,8 @@ function Admin() {
                 </table>
               </div>
 
-              <aside className={styles.userEditor}>
+              {userAccountState === 'active' && (
+                <aside className={styles.userEditor}>
                 {selectedUser ? (
                   <>
                     <div className={styles.userEditorHeader}>
@@ -2372,6 +2616,7 @@ function Admin() {
                           type="checkbox"
                           checked={userDraft.isAdmin}
                           onChange={(event) => updateUserDraft('isAdmin', event.target.checked)}
+                          disabled={selectedUser?.id === currentUser?.id}
                         />
                         <span>Administrador</span>
                       </label>
@@ -2393,6 +2638,12 @@ function Admin() {
                       </label>
                     </div>
 
+                    {selectedUser?.id === currentUser?.id && (
+                      <p className={styles.userPermissionNote}>
+                        Você não pode remover o próprio acesso administrativo. Promova outra conta e use essa conta para alterar a sua permissão.
+                      </p>
+                    )}
+
                     <button type="button" className={styles.primaryButton} onClick={saveUser} disabled={userSaving}>
                       <FaFloppyDisk /> {userSaving ? 'Salvando...' : 'Salvar alterações'}
                     </button>
@@ -2402,7 +2653,8 @@ function Admin() {
                     Selecione um usuário para editar permissões, perfil e estado da conta.
                   </div>
                 )}
-              </aside>
+                </aside>
+              )}
             </div>
           </section>
         )}
@@ -2530,6 +2782,155 @@ function Admin() {
               ) : (
                 <div className={styles.taxonomyEmpty}>Nenhum pagamento encontrado neste filtro.</div>
               )}
+            </div>
+          </section>
+        )}
+
+        {activeTab === 'disputes' && (
+          <section className={styles.panel}>
+            <div className={styles.panelHead}>
+              <div>
+                <span className={styles.sectionKicker}>Mediação financeira</span>
+                <h3>Disputas abertas por clientes e freelancers</h3>
+              </div>
+              <div className={styles.buttonGroup}>
+                <button type="button" className={styles.ghostButton} onClick={loadDisputes} disabled={disputesLoading}>
+                  {disputesLoading ? 'Atualizando...' : 'Atualizar'}
+                </button>
+                <button
+                  type="button"
+                  className={styles.primaryButton}
+                  onClick={saveDisputeResolution}
+                  disabled={!selectedDispute || selectedDispute.status !== 'OPEN' || disputeSaving}
+                >
+                  <FaCircleCheck /> {disputeSaving ? 'Resolvendo...' : 'Registrar decisão'}
+                </button>
+              </div>
+            </div>
+
+            <div className={styles.userFilters}>
+              <select value={disputeStatusFilter} onChange={(event) => setDisputeStatusFilter(event.target.value)}>
+                <option value="">Todos os status</option>
+                {Object.entries(DISPUTE_STATUS_LABEL).map(([value, label]) => (
+                  <option key={value} value={value}>{label}</option>
+                ))}
+              </select>
+              <span>{adminDisputesTotal} registros encontrados</span>
+            </div>
+
+            <div className={styles.supportDesk}>
+              <div className={styles.supportQueue}>
+                {disputesLoading ? (
+                  <div className={styles.taxonomyEmpty}>Carregando disputas...</div>
+                ) : adminDisputes.length === 0 ? (
+                  <div className={styles.taxonomyEmpty}>Nenhuma disputa encontrada neste filtro.</div>
+                ) : (
+                  adminDisputes.map((dispute) => (
+                    <button
+                      type="button"
+                      key={dispute.id}
+                      className={`${styles.supportTicketCard} ${selectedDisputeId === dispute.id ? styles.supportTicketCardActive : ''}`}
+                      onClick={() => {
+                        setSelectedDisputeId(dispute.id);
+                        setDisputeResolutionNote(dispute.resolutionNote || '');
+                      }}
+                    >
+                      <span className={styles.supportTicketCode}>
+                        Pedido #{dispute.order.id.slice(-8).toUpperCase()}
+                      </span>
+                      <strong>{dispute.order.service?.title || dispute.order.planTitle}</strong>
+                      <p>{dispute.description}</p>
+                      <div className={styles.supportTicketBadges}>
+                        <em className={`${styles.badge} ${dispute.status === 'OPEN' ? styles.warning : styles.success}`}>
+                          {DISPUTE_STATUS_LABEL[dispute.status] || dispute.status}
+                        </em>
+                        <em className={`${styles.badge} ${styles.neutral}`}>
+                          {DISPUTE_REASON_LABEL[dispute.reason] || dispute.reason}
+                        </em>
+                      </div>
+                      <div className={styles.supportTicketMeta}>
+                        <span>{toUserName(dispute.openedBy)}</span>
+                        <span>{formatCents(dispute.order.priceCents)}</span>
+                        <span>{formatDate(dispute.createdAt)}</span>
+                      </div>
+                    </button>
+                  ))
+                )}
+              </div>
+
+              <aside className={styles.supportInspector}>
+                {selectedDispute ? (
+                  <>
+                    <div className={styles.supportInspectorHeader}>
+                      <div className={styles.userAvatar}><FaTriangleExclamation /></div>
+                      <div>
+                        <span className={styles.sectionKicker}>Análise de disputa</span>
+                        <h4>{selectedDispute.order.service?.title || selectedDispute.order.planTitle}</h4>
+                        <p>Pedido #{selectedDispute.order.id.slice(-8).toUpperCase()}</p>
+                        <strong>{DISPUTE_REASON_LABEL[selectedDispute.reason] || selectedDispute.reason}</strong>
+                      </div>
+                    </div>
+
+                    <div className={styles.ticketDetailBlock}>
+                      <span>Relato enviado</span>
+                      <p>{selectedDispute.description}</p>
+                    </div>
+
+                    <div className={styles.supportMetaGrid}>
+                      <div>
+                        <span>Cliente</span>
+                        <strong>{toUserName(selectedDispute.order.client)}</strong>
+                      </div>
+                      <div>
+                        <span>Freelancer</span>
+                        <strong>{toUserName(selectedDispute.order.freelancer)}</strong>
+                      </div>
+                      <div>
+                        <span>Valor</span>
+                        <strong>{formatCents(selectedDispute.order.priceCents)}</strong>
+                      </div>
+                      <div>
+                        <span>Pagamento</span>
+                        <strong>
+                          {selectedDispute.order.payment
+                            ? `${PAYMENT_STATUS_LABEL[selectedDispute.order.payment.status] || selectedDispute.order.payment.status} · ${RELEASE_STATUS_LABEL[selectedDispute.order.payment.releaseStatus] || selectedDispute.order.payment.releaseStatus}`
+                            : 'Sem pagamento'}
+                        </strong>
+                      </div>
+                    </div>
+
+                    {selectedDispute.status === 'OPEN' ? (
+                      <div className={styles.formGrid}>
+                        <label className={`${styles.formField} ${styles.formFieldFull}`}>
+                          <span>Decisão financeira</span>
+                          <select value={disputeOutcome} onChange={(event) => setDisputeOutcome(event.target.value)}>
+                            <option value="REFUND_CLIENT">Reembolsar o cliente e cancelar</option>
+                            <option value="RELEASE_FREELANCER">Liberar ao freelancer e concluir</option>
+                          </select>
+                        </label>
+                        <label className={`${styles.formField} ${styles.formFieldFull}`}>
+                          <span>Fundamentação da decisão</span>
+                          <textarea
+                            rows={6}
+                            value={disputeResolutionNote}
+                            onChange={(event) => setDisputeResolutionNote(event.target.value)}
+                            placeholder="Registre fatos analisados, evidências e justificativa da decisão."
+                          />
+                        </label>
+                      </div>
+                    ) : (
+                      <div className={styles.ticketDetailBlock}>
+                        <span>Decisão registrada</span>
+                        <p>{selectedDispute.resolutionNote || 'Sem nota registrada.'}</p>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className={styles.taxonomyEmpty}>
+                    <FaInbox /> Selecione uma disputa para analisar o pedido e o pagamento.
+                  </div>
+                )}
+              </aside>
             </div>
           </section>
         )}
@@ -2741,6 +3142,66 @@ function Admin() {
           </section>
         )}
 
+        {activeTab === 'audit' && (
+          <section className={styles.panel}>
+            <div className={styles.panelHead}>
+              <div>
+                <span className={styles.sectionKicker}>Rastreabilidade</span>
+                <h3>Auditoria de ações administrativas e acessos sensíveis</h3>
+              </div>
+              <button type="button" className={styles.ghostButton} onClick={loadAuditLogs} disabled={auditLoading}>
+                {auditLoading ? 'Atualizando...' : 'Atualizar'}
+              </button>
+            </div>
+
+            <label className={`${styles.formField} ${styles.auditFilter}`}>
+              <span>Filtrar por ação</span>
+              <input
+                value={auditActionFilter}
+                onChange={(event) => setAuditActionFilter(event.target.value)}
+                placeholder="Ex.: VERIFICATION, DISPUTE ou PATCH"
+              />
+            </label>
+
+            <div className={styles.auditHeader}>
+              <span>{auditLogsTotal} registros encontrados</span>
+              <p>Os metadados registram contexto operacional sem armazenar senhas ou conteúdo de documentos.</p>
+            </div>
+
+            <div className={styles.auditList}>
+              {auditLoading ? (
+                <div className={styles.taxonomyEmpty}>Carregando auditoria...</div>
+              ) : auditLogs.length === 0 ? (
+                <div className={styles.taxonomyEmpty}>Nenhum evento encontrado neste filtro.</div>
+              ) : (
+                auditLogs.map((log) => (
+                  <article key={log.id} className={styles.auditRow}>
+                    <div>
+                      <span className={styles.supportTicketCode}>{log.entityType}</span>
+                      <strong>{log.action}</strong>
+                      <p>
+                        {log.actor ? `${toUserName(log.actor)} · ${log.actor.email}` : 'Ação de sistema'}
+                      </p>
+                    </div>
+                    <div>
+                      <span>Entidade</span>
+                      <strong>{log.entityId || 'Sem identificador'}</strong>
+                    </div>
+                    <div>
+                      <span>Origem</span>
+                      <strong>{log.ipAddress || 'IP não informado'}</strong>
+                    </div>
+                    <div>
+                      <span>Data</span>
+                      <strong>{formatDate(log.createdAt)}</strong>
+                    </div>
+                  </article>
+                ))
+              )}
+            </div>
+          </section>
+        )}
+
       </section>
 
       <section className={styles.bottomGrid}>
@@ -2831,19 +3292,19 @@ function Admin() {
                 </div>
 
                 <div className={styles.identityLinks}>
-                  {identityModalDocuments.length > 0 ? identityModalDocuments.map(([label, url]) => (
+                  {identityModalDocuments.length > 0 ? identityModalDocuments.map(([label, kind]) => (
                     <div key={label} className={styles.identityDocument}>
                       <div>
                         <strong>{label}</strong>
-                        <span>{isPdfUrl(url) ? 'PDF anexado' : 'Imagem anexada'}</span>
+                        <span>Arquivo privado</span>
                       </div>
                       <div>
-                        <a href={url} target="_blank" rel="noreferrer">
+                        <button type="button" onClick={() => accessIdentityDocument(kind)}>
                           <FaArrowUpRightFromSquare /> Abrir
-                        </a>
-                        <a href={getDownloadUrl(url)} target="_blank" rel="noreferrer" download>
+                        </button>
+                        <button type="button" onClick={() => accessIdentityDocument(kind, true)}>
                           <FaDownload /> Baixar
-                        </a>
+                        </button>
                       </div>
                     </div>
                   )) : (

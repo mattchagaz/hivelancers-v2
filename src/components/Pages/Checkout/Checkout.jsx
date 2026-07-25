@@ -64,7 +64,7 @@ function Checkout() {
 
   useEffect(() => {
     let cancelled = false;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+
     setLoading(true);
     setNotFound(false);
 
@@ -114,7 +114,7 @@ function Checkout() {
 
   useEffect(() => {
     if (service?.title) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+
       setOrderTitle((current) => current || `Pedido para ${service.title}`);
     }
   }, [service]);

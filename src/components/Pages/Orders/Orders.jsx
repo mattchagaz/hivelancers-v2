@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
@@ -12,9 +12,11 @@ import { useAuth } from '../../../contexts/AuthContext';
 import {
   acceptOrder,
   approveOrder,
+  cancelOrder,
   deliverOrder,
   getOrder,
   listOrders,
+  openOrderDispute,
   rejectOrder,
   reviewOrder,
   requestOrderRevision,
@@ -33,6 +35,7 @@ const STATUS_LABEL = {
   PENDING: 'Aguardando resposta',
   IN_PROGRESS: 'Em andamento',
   DELIVERED: 'Entregue',
+  DISPUTED: 'Em disputa',
   COMPLETED: 'Concluído',
   REJECTED: 'Recusado',
   CANCELED: 'Cancelado',
@@ -46,6 +49,18 @@ const EVENT_LABEL = {
   REVISION_REQUESTED: 'Revisão solicitada',
   COMPLETED: 'Pedido aprovado',
   CANCELED: 'Pedido cancelado',
+  DISPUTE_OPENED: 'Disputa aberta',
+  DISPUTE_RESOLVED: 'Disputa resolvida',
+};
+
+const DISPUTE_REASON_LABEL = {
+  CANCELLATION_REQUESTED: 'Cancelamento solicitado',
+  SCOPE_MISMATCH: 'Escopo diferente do combinado',
+  MISSED_DEADLINE: 'Prazo não cumprido',
+  DELIVERY_QUALITY: 'Qualidade da entrega',
+  COMMUNICATION: 'Problemas de comunicação',
+  FRAUD_OR_ABUSE: 'Fraude ou abuso',
+  OTHER: 'Outro motivo',
 };
 
 const STATUS_OPTIONS = [
@@ -53,8 +68,10 @@ const STATUS_OPTIONS = [
   { value: 'PENDING', label: STATUS_LABEL.PENDING },
   { value: 'IN_PROGRESS', label: STATUS_LABEL.IN_PROGRESS },
   { value: 'DELIVERED', label: STATUS_LABEL.DELIVERED },
+  { value: 'DISPUTED', label: STATUS_LABEL.DISPUTED },
   { value: 'COMPLETED', label: STATUS_LABEL.COMPLETED },
   { value: 'REJECTED', label: STATUS_LABEL.REJECTED },
+  { value: 'CANCELED', label: STATUS_LABEL.CANCELED },
 ];
 
 const ORDER_STAGES = [
@@ -125,16 +142,37 @@ const getInitials = (person) =>
     .join('')
     .toUpperCase() || 'U';
 
+function UserAvatar({ person, className }) {
+  const [imageFailed, setImageFailed] = useState(false);
+  const avatarUrl = person?.avatarUrl;
+
+  useEffect(() => {
+    setImageFailed(false);
+  }, [avatarUrl]);
+
+  return (
+    <div className={className}>
+      {avatarUrl && !imageFailed ? (
+        <img
+          src={avatarUrl}
+          alt={`Foto de ${getName(person)}`}
+          onError={() => setImageFailed(true)}
+        />
+      ) : getInitials(person)}
+    </div>
+  );
+}
+
 const getStatusTone = (status) => {
   if (status === 'COMPLETED') return 'Green';
   if (status === 'DELIVERED') return 'Violet';
   if (status === 'IN_PROGRESS') return 'Blue';
-  if (status === 'REJECTED' || status === 'CANCELED') return 'Red';
+  if (status === 'DISPUTED' || status === 'REJECTED' || status === 'CANCELED') return 'Red';
   return 'Amber';
 };
 
 const getOrderStageState = (orderStatus, stageKey) => {
-  if (orderStatus === 'REJECTED' || orderStatus === 'CANCELED') {
+  if (orderStatus === 'REJECTED' || orderStatus === 'CANCELED' || orderStatus === 'DISPUTED') {
     return stageKey === 'PENDING' ? 'Done' : 'Idle';
   }
 
@@ -155,6 +193,7 @@ const getFlowProgress = (orderStatus) => {
   if (orderStatus === 'COMPLETED') return 100;
   if (orderStatus === 'DELIVERED') return 72;
   if (orderStatus === 'IN_PROGRESS') return 48;
+  if (orderStatus === 'DISPUTED') return 48;
   if (orderStatus === 'PENDING') return 18;
   if (orderStatus === 'REJECTED' || orderStatus === 'CANCELED') return 12;
   return 0;
@@ -167,6 +206,7 @@ const getCurrentStageLabel = (orderStatus) => {
   if (orderStatus === 'PENDING') return 'Aguardando aceite';
   if (orderStatus === 'REJECTED') return 'Pedido recusado';
   if (orderStatus === 'CANCELED') return 'Pedido cancelado';
+  if (orderStatus === 'DISPUTED') return 'Análise administrativa';
   return 'Fluxo do pedido';
 };
 
@@ -202,6 +242,10 @@ const getNextActionCopy = (order, userId) => {
     return 'O pedido foi encerrado antes da etapa de execução.';
   }
 
+  if (order.status === 'DISPUTED') {
+    return 'As ações financeiras e operacionais estão pausadas até a decisão da equipe Hivelancers.';
+  }
+
   return 'Este pedido saiu do fluxo principal.';
 };
 
@@ -225,6 +269,7 @@ function Orders() {
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const selectedOrderId = searchParams.get('id');
+  const setSearchParamsRef = useRef(setSearchParams);
 
   const defaultRole = useMemo(() => toRoleValue(user?.userType), [user?.userType]);
 
@@ -239,14 +284,27 @@ function Orders() {
   const [deliveryNote, setDeliveryNote] = useState('');
   const [deliveryAssets, setDeliveryAssets] = useState('');
   const [revisionNote, setRevisionNote] = useState('');
+  const [cancelReason, setCancelReason] = useState('');
+  const [disputeReason, setDisputeReason] = useState('CANCELLATION_REQUESTED');
+  const [disputeDescription, setDisputeDescription] = useState('');
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewComment, setReviewComment] = useState('');
+  const selectedOrderRequestRef = useRef(0);
+
+  useEffect(() => {
+    setSearchParamsRef.current = setSearchParams;
+  }, [setSearchParams]);
 
   useEffect(() => {
     setRole(defaultRole);
   }, [defaultRole]);
 
-  const loadOrders = async (nextRole = role, nextStatus = status, preserveSelection = true) => {
+  const loadOrders = useCallback(async (
+    nextRole,
+    nextStatus,
+    preserveSelection = true,
+    currentSelectedOrderId = null
+  ) => {
     setLoadingList(true);
     try {
       const result = await listOrders({
@@ -257,48 +315,57 @@ function Orders() {
       const items = result.items || [];
       setOrders(items);
 
-      const nextSelectedId = preserveSelection ? selectedOrderId : null;
+      const nextSelectedId = preserveSelection ? currentSelectedOrderId : null;
       const fallbackId = nextSelectedId || items[0]?.id || null;
 
       if (!fallbackId) {
         setSelectedOrder(null);
-        if (selectedOrderId) setSearchParams({}, { replace: true });
-      } else if (fallbackId !== selectedOrderId) {
-        setSearchParams({ id: fallbackId }, { replace: true });
+        if (currentSelectedOrderId) setSearchParamsRef.current({}, { replace: true });
+      } else if (fallbackId !== currentSelectedOrderId) {
+        setSearchParamsRef.current({ id: fallbackId }, { replace: true });
       }
     } catch (err) {
       toast.error(err.message);
     } finally {
       setLoadingList(false);
     }
-  };
+  }, []);
 
-  const loadSelectedOrder = async (orderId) => {
+  const loadSelectedOrder = useCallback(async (orderId) => {
+    const requestId = ++selectedOrderRequestRef.current;
+
     if (!orderId) {
       setSelectedOrder(null);
+      setLoadingOrder(false);
       return;
     }
 
     setLoadingOrder(true);
+    setSelectedOrder((current) => (current?.id === orderId ? current : null));
     try {
       const order = await getOrder(orderId);
-      setSelectedOrder(order);
+      if (requestId === selectedOrderRequestRef.current) {
+        setSelectedOrder(order);
+      }
     } catch (err) {
-      toast.error(err.message);
-      setSelectedOrder(null);
+      if (requestId === selectedOrderRequestRef.current) {
+        toast.error(err.message);
+        setSelectedOrder(null);
+      }
     } finally {
-      setLoadingOrder(false);
+      if (requestId === selectedOrderRequestRef.current) {
+        setLoadingOrder(false);
+      }
     }
-  };
+  }, []);
 
   useEffect(() => {
     loadOrders(defaultRole, '', false);
-  }, [defaultRole]);
+  }, [defaultRole, loadOrders]);
 
   useEffect(() => {
-    if (!selectedOrderId) return;
     loadSelectedOrder(selectedOrderId);
-  }, [selectedOrderId]);
+  }, [selectedOrderId, loadSelectedOrder]);
 
   useEffect(() => {
     const socket = connectSocket();
@@ -379,6 +446,9 @@ function Orders() {
       setDeliveryNote('');
       setDeliveryAssets('');
       setRevisionNote('');
+      setCancelReason('');
+      setDisputeReason('CANCELLATION_REQUESTED');
+      setDisputeDescription('');
       setReviewComment('');
     } catch (err) {
       toast.error(err.message);
@@ -508,7 +578,7 @@ function Orders() {
             <button
               type="button"
               className={styles.ghostButton}
-              onClick={() => loadOrders(role, status, true)}
+              onClick={() => loadOrders(role, status, true, selectedOrderId)}
               disabled={loadingList}
             >
               {loadingList ? 'Atualizando...' : 'Atualizar pedidos'}
@@ -575,9 +645,10 @@ function Orders() {
                   >
                     <div className={styles.orderCardTop}>
                       <div className={styles.orderIdentity}>
-                        <div className={`${styles.orderAvatar} ${styles[`avatar${tone}`]}`}>
-                          {getInitials(otherUser)}
-                        </div>
+                        <UserAvatar
+                          person={otherUser}
+                          className={`${styles.orderAvatar} ${styles[`avatar${tone}`]}`}
+                        />
                         <div>
                           <strong className={styles.orderTitle}>{order.service?.title || order.planTitle}</strong>
                           <p className={styles.orderMeta}>
@@ -675,9 +746,10 @@ function Orders() {
                   {isNewSellerPending ? (
                     <div className={styles.decisionCard}>
                       <div className={styles.personCard}>
-                        <div className={`${styles.personAvatar} ${styles[`avatar${selectedTone}`]}`}>
-                          {getInitials(selectedOrder.client)}
-                        </div>
+                        <UserAvatar
+                          person={selectedOrder.client}
+                          className={`${styles.personAvatar} ${styles[`avatar${selectedTone}`]}`}
+                        />
                         <div>
                           <span className={styles.personLabel}>Cliente deste pedido</span>
                           <strong>{getName(selectedOrder.client)}</strong>
@@ -744,9 +816,10 @@ function Orders() {
                   ) : (
                     <>
                       <div className={styles.personCard}>
-                        <div className={`${styles.personAvatar} ${styles[`avatar${selectedTone}`]}`}>
-                          {getInitials(counterparty)}
-                        </div>
+                        <UserAvatar
+                          person={counterparty}
+                          className={`${styles.personAvatar} ${styles[`avatar${selectedTone}`]}`}
+                        />
                         <div>
                           <span className={styles.personLabel}>
                             {isSeller ? 'Cliente deste pedido' : 'Freelancer deste pedido'}
@@ -886,6 +959,115 @@ function Orders() {
                       <strong>{formatRelativeDate(selectedOrder.updatedAt)}</strong>
                     </div>
                   </div>
+
+                  {selectedOrder.dispute && (
+                    <div className={`${styles.sideCard} ${styles.disputeCard}`}>
+                      <span className={styles.sideCardLabel}>
+                        {selectedOrder.dispute.status === 'OPEN' ? 'Disputa em análise' : 'Decisão da disputa'}
+                      </span>
+                      <div className={styles.disputeSummary}>
+                        <strong>
+                          {DISPUTE_REASON_LABEL[selectedOrder.dispute.reason] || selectedOrder.dispute.reason}
+                        </strong>
+                        <p>{selectedOrder.dispute.description}</p>
+                        <span>
+                          Aberta por {getName(selectedOrder.dispute.openedBy)} em{' '}
+                          {formatDateTime(selectedOrder.dispute.createdAt)}
+                        </span>
+                      </div>
+                      {selectedOrder.dispute.resolutionNote && (
+                        <div className={styles.resolutionBox}>
+                          <strong>
+                            {selectedOrder.dispute.status === 'RESOLVED_CLIENT'
+                              ? 'Reembolso decidido para o cliente'
+                              : 'Pagamento liberado ao freelancer'}
+                          </strong>
+                          <p>{selectedOrder.dispute.resolutionNote}</p>
+                          <span>{formatDateTime(selectedOrder.dispute.resolvedAt)}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {isBuyer && selectedOrder.status === 'PENDING' && (
+                    <div className={styles.sideCard}>
+                      <span className={styles.sideCardLabel}>Cancelar antes do início</span>
+                      <p className={styles.sideHelp}>
+                        O cancelamento só é permitido enquanto o freelancer ainda não aceitou.
+                      </p>
+                      <textarea
+                        className={styles.textarea}
+                        rows={4}
+                        value={cancelReason}
+                        onChange={(event) => setCancelReason(event.target.value)}
+                        placeholder="Explique o motivo do cancelamento (mínimo de 10 caracteres)."
+                      />
+                      <button
+                        type="button"
+                        className={styles.dangerButton}
+                        disabled={actionLoading === 'cancel'}
+                        onClick={() => {
+                          if (cancelReason.trim().length < 10) {
+                            toast.error('Explique o cancelamento com pelo menos 10 caracteres.');
+                            return;
+                          }
+                          runAction(
+                            'cancel',
+                            () => cancelOrder(selectedOrder.id, { reason: cancelReason.trim() }),
+                            'Pedido cancelado e pagamento devolvido quando aplicável.'
+                          );
+                        }}
+                      >
+                        {actionLoading === 'cancel' ? 'Cancelando...' : 'Cancelar pedido'}
+                      </button>
+                    </div>
+                  )}
+
+                  {(isBuyer || isSeller) && ['IN_PROGRESS', 'DELIVERED'].includes(selectedOrder.status) && (
+                    <div className={`${styles.sideCard} ${styles.disputeCard}`}>
+                      <span className={styles.sideCardLabel}>Precisa de mediação?</span>
+                      <p className={styles.sideHelp}>
+                        Abrir uma disputa pausa o fluxo do pedido até uma decisão administrativa.
+                      </p>
+                      <select
+                        className={`${styles.select} ${styles.sideSelect}`}
+                        value={disputeReason}
+                        onChange={(event) => setDisputeReason(event.target.value)}
+                      >
+                        {Object.entries(DISPUTE_REASON_LABEL).map(([value, label]) => (
+                          <option key={value} value={value}>{label}</option>
+                        ))}
+                      </select>
+                      <textarea
+                        className={styles.textarea}
+                        rows={5}
+                        value={disputeDescription}
+                        onChange={(event) => setDisputeDescription(event.target.value)}
+                        placeholder="Descreva o ocorrido com datas e fatos relevantes (mínimo de 20 caracteres)."
+                      />
+                      <button
+                        type="button"
+                        className={styles.dangerButton}
+                        disabled={actionLoading === 'dispute'}
+                        onClick={() => {
+                          if (disputeDescription.trim().length < 20) {
+                            toast.error('Descreva o problema com pelo menos 20 caracteres.');
+                            return;
+                          }
+                          runAction(
+                            'dispute',
+                            () => openOrderDispute(selectedOrder.id, {
+                              reason: disputeReason,
+                              description: disputeDescription.trim(),
+                            }),
+                            'Disputa aberta. O pedido foi pausado para análise.'
+                          );
+                        }}
+                      >
+                        {actionLoading === 'dispute' ? 'Abrindo disputa...' : 'Abrir disputa'}
+                      </button>
+                    </div>
+                  )}
 
                   {isSeller && selectedOrder.status === 'PENDING' && !isNewSellerPending && (
                     <div className={styles.sideCard}>
