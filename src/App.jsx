@@ -10,6 +10,7 @@ const ForgetPassword = lazy(() => import('./components/Auth/ForgetPassword/Forge
 const UserSelection = lazy(() => import('./components/Pages/UserSelection/UserSelection'));
 const WelcomeUser = lazy(() => import('./components/Pages/WelcomeUser/WelcomeUser'));
 const AppLayout = lazy(() => import('./components/Layout/AppLayout'));
+const MarketplaceLayout = lazy(() => import('./components/Layout/MarketplaceLayout'));
 const Dashboard = lazy(() => import('./components/Pages/Dashboard/Dashboard'));
 const CreateService = lazy(() => import('./components/Pages/CreateService/CreateService'));
 const ExploreServices = lazy(() => import('./components/Pages/ExploreServices/ExploreServices'));
@@ -33,6 +34,10 @@ const Support = lazy(() => import('./components/Pages/Support/Support'));
 const SupportTicket = lazy(() => import('./components/Pages/SupportTicket/SupportTicket'));
 const SupportTicketDetails = lazy(() => import('./components/Pages/SupportTicketDetails/SupportTicketDetails'));
 const Legal = lazy(() => import('./components/Pages/Legal/Legal'));
+const Projects = lazy(() => import('./components/Pages/Projects/Projects'));
+const ProjectDetails = lazy(() => import('./components/Pages/ProjectDetails/ProjectDetails'));
+const CreateProject = lazy(() => import('./components/Pages/CreateProject/CreateProject'));
+const MyProjects = lazy(() => import('./components/Pages/MyProjects/MyProjects'));
 
 const RouteFallback = () => <div className="route-fallback">Carregando...</div>;
 
@@ -60,6 +65,16 @@ function App() {
         <Route path="/cookies" element={<Legal />} />
         <Route path="/lgpd" element={<Legal />} />
 
+        {/* Marketplace — leitura pública, ações transacionais exigem login */}
+        <Route element={<MarketplaceLayout />}>
+          <Route path="/explore" element={<ExploreServices />} />
+          <Route path="/services/:id" element={<ServiceDetails />} />
+          <Route path="/profile/:handle" element={<UserProfile />} />
+          <Route path="/profile/:handle/projects/:projectId" element={<ProfileProjectDetails />} />
+          <Route path="/projects" element={<Projects />} />
+          <Route path="/projects/:id" element={<ProjectDetails />} />
+        </Route>
+
         {/* Onboarding — exige login */}
         <Route element={<ProtectedRoute />}>
           <Route path="/user-selection" element={<UserSelection />} />
@@ -79,10 +94,8 @@ function App() {
             <Route path="/services/new" element={<CreateService />} />
             <Route path="/services" element={<MyServices />} />
             <Route path="/services/:id/edit" element={<CreateService />} />
-            <Route path="/services/:id" element={<ServiceDetails />} />
             <Route path="/checkout/:id" element={<Checkout />} />
             <Route path="/orders" element={<Orders />} />
-            <Route path="/explore" element={<ExploreServices />} />
             <Route path="/messages" element={<Messages />} />
             <Route path="/favorites" element={<Favorites />} />
             <Route path="/finances" element={<Finances />} />
@@ -91,13 +104,13 @@ function App() {
             <Route path="/verification" element={<AccountVerification />} />
             <Route path="/notifications" element={<Notifications />} />
             <Route path="/profile/customize" element={<CustomizeProfile />} />
-            <Route path="/profile/:handle/projects/:projectId" element={<ProfileProjectDetails />} />
-            <Route path="/profile/:handle" element={<UserProfile />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/support" element={<Support />} />
             <Route path="/support/ticket" element={<SupportTicket />} />
             <Route path="/support/tickets/:id" element={<SupportTicketDetails />} />
             <Route path="/ticket" element={<SupportTicket />} />
+            <Route path="/projects/new" element={<CreateProject />} />
+            <Route path="/projects/mine" element={<MyProjects />} />
           </Route>
         </Route>
 

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { toast, Toaster } from 'sonner';
 import {
   FaMagnifyingGlass,
@@ -9,6 +9,7 @@ import { SERVICE_GRADIENTS } from '../../../data/services';
 import { listCategories, listPublicServices } from '../../../services/services';
 import { addFavoriteService, getMyFavorites, removeFavoriteService } from '../../../services/users';
 import { CategoryIcon } from '../../../utils/categoryIcons';
+import { useAuth } from '../../../contexts/AuthContext';
 import EmptyState from '../../UI/EmptyState/EmptyState';
 import CategoryCarousel from '../../UI/CategoryCarousel/CategoryCarousel';
 import styles from './ExploreServices.module.css';
@@ -23,6 +24,9 @@ const normalizeSubcategories = (category) =>
   Array.isArray(category?.subcategories) ? category.subcategories : [];
 
 function ExploreServices() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const filtersRef = useRef(null);
   const [categories, setCategories] = useState([]);
@@ -48,6 +52,13 @@ function ExploreServices() {
   const pageSize = 12;
 
   const toggleFavorite = (id) => {
+    if (!user) {
+      navigate('/login', {
+        state: { from: `${location.pathname}${location.search}` },
+      });
+      return;
+    }
+
     const alreadyFavorite = favorites.includes(id);
     setFavorites((prev) =>
       alreadyFavorite ? prev.filter((item) => item !== id) : [...prev, id]
@@ -74,10 +85,15 @@ function ExploreServices() {
   }, []);
 
   useEffect(() => {
+    if (!user?.id) {
+      setFavorites([]);
+      return;
+    }
+
     getMyFavorites()
       .then((data) => setFavorites(data.serviceIds || []))
       .catch(() => {});
-  }, []);
+  }, [user?.id]);
 
   useEffect(() => {
     const categoryFromUrl = searchParams.get('category');

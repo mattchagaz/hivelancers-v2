@@ -57,6 +57,7 @@ function Sidebar({ userRole = 'freelancer', isAdmin = false, collapsed, mobileOp
       ? [
         { label: 'Dashboard', path: '/dashboard', icon: 'dashboard' },
         { label: 'Meus Serviços', path: '/services', icon: 'services' },
+        { label: 'Encontrar Projetos', path: '/projects', icon: 'briefcase' },
         { label: 'Pedidos', path: '/orders', icon: 'orders', badge: ordersBadge },
         { label: 'Mensagens', path: '/messages', icon: 'messages', badge: messagesBadge },
         { label: 'Notificações', path: '/notifications', icon: 'notifications' },
@@ -68,6 +69,8 @@ function Sidebar({ userRole = 'freelancer', isAdmin = false, collapsed, mobileOp
       : [
       { label: 'Dashboard', path: '/dashboard', icon: 'dashboard' },
       { label: 'Explorar', path: '/explore', icon: 'explore' },
+      { label: 'Publicar Projeto', path: '/projects/new', icon: 'briefcase' },
+      { label: 'Meus Projetos', path: '/projects/mine', icon: 'projects' },
       { label: 'Meus Pedidos', path: '/orders', icon: 'cart', badge: ordersBadge },
       { label: 'Mensagens', path: '/messages', icon: 'messages', badge: messagesBadge },
       { label: 'Notificações', path: '/notifications', icon: 'notifications' },
@@ -145,6 +148,23 @@ function Sidebar({ userRole = 'freelancer', isAdmin = false, collapsed, mobileOp
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
         <circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" />
         <path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6" />
+      </svg>
+    ),
+    briefcase: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="7" width="18" height="13" rx="2" />
+        <path d="M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2" />
+        <path d="M3 12h18" />
+      </svg>
+    ),
+    projects: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M8 6h13" />
+        <path d="M8 12h13" />
+        <path d="M8 18h13" />
+        <path d="M3 6h.01" />
+        <path d="M3 12h.01" />
+        <path d="M3 18h.01" />
       </svg>
     ),
     heart: (

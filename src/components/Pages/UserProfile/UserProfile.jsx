@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { FaArrowLeft, FaArrowRight, FaCircleCheck, FaHeart, FaArrowUpRightFromSquare, FaXmark, FaRegHeart } from 'react-icons/fa6';
 import { toast, Toaster } from 'sonner';
 import { useAuth } from '../../../contexts/AuthContext';
@@ -53,6 +53,7 @@ const formatLastSeen = (iso) => {
 function UserProfile() {
   const { handle } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -132,7 +133,10 @@ function UserProfile() {
   }, [lightboxImages.length]);
 
   useEffect(() => {
-    if (!profile?.id || profile.id === user?.id) return;
+    if (!user?.id || !profile?.id || profile.id === user.id) {
+      setIsFavoriteFreelancer(false);
+      return;
+    }
     getMyFavorites()
       .then((data) => {
         setIsFavoriteFreelancer((data.freelancerIds || []).includes(profile.id));
@@ -243,6 +247,13 @@ function UserProfile() {
   ];
 
   const handleStartChat = async () => {
+    if (!user) {
+      navigate('/login', {
+        state: { from: `${location.pathname}${location.search}` },
+      });
+      return;
+    }
+
     if (!profile?.id || startingChat) return;
     setStartingChat(true);
     try {
@@ -256,6 +267,13 @@ function UserProfile() {
   };
 
   const handleProposalRequest = async () => {
+    if (!user) {
+      navigate('/login', {
+        state: { from: `${location.pathname}${location.search}` },
+      });
+      return;
+    }
+
     if (!profile?.id || startingChat) return;
     setStartingChat(true);
     try {
@@ -300,6 +318,13 @@ function UserProfile() {
   };
 
   const handleFavoriteFreelancer = async () => {
+    if (!user) {
+      navigate('/login', {
+        state: { from: `${location.pathname}${location.search}` },
+      });
+      return;
+    }
+
     if (!profile?.id || isOwner) return;
     const nextValue = !isFavoriteFreelancer;
     setIsFavoriteFreelancer(nextValue);

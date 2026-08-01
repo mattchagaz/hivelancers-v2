@@ -7,6 +7,11 @@ import { useAuth } from '../../../contexts/AuthContext';
 import { completeGoogleLogin, getGoogleLoginUrl, resendOtp } from '../../../services/auth';
 import { nextRouteAfterAuth } from '../../../utils/authFlow';
 
+const destinationAfterLogin = (user, returnTo) => {
+  const expected = nextRouteAfterAuth(user);
+  return returnTo && expected === '/dashboard' ? returnTo : expected;
+};
+
 function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -16,6 +21,9 @@ function Login() {
   const navigate = useNavigate();
   const location = useLocation();
   const { login, setUser } = useAuth();
+  const returnTo = typeof location.state?.from === 'string' && location.state.from.startsWith('/')
+    ? location.state.from
+    : null;
 
   useEffect(() => {
     let isMounted = true;
@@ -40,7 +48,7 @@ function Login() {
 
         setUser(data.user);
         toast.success('Login com Google realizado com sucesso!');
-        navigate(nextRouteAfterAuth(data.user), { replace: true });
+        navigate(destinationAfterLogin(data.user, returnTo), { replace: true });
       } catch (err) {
         toast.error(err.message || 'Não foi possível entrar com Google.');
         navigate('/login', { replace: true });
@@ -54,7 +62,7 @@ function Login() {
     return () => {
       isMounted = false;
     };
-  }, [location.search, navigate, setUser]);
+  }, [location.search, navigate, returnTo, setUser]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -68,7 +76,7 @@ function Login() {
     try {
       const data = await login({ email: email.trim().toLowerCase(), password });
       toast.success('Login realizado com sucesso!');
-      navigate(nextRouteAfterAuth(data.user));
+      navigate(destinationAfterLogin(data.user, returnTo));
     } catch (err) {
       if (err.code === 'EMAIL_NOT_VERIFIED') {
         const normalized = email.trim().toLowerCase();

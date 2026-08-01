@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { FaArrowLeft, FaArrowRight, FaArrowUpRightFromSquare, FaChartLine, FaEye, FaXmark } from 'react-icons/fa6';
 import { toast, Toaster } from 'sonner';
 import { useAuth } from '../../../contexts/AuthContext';
@@ -13,6 +13,7 @@ import styles from './ProfileProjectDetails.module.css';
 function ProfileProjectDetails() {
   const { handle, projectId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const [profile, setProfile] = useState(null);
   const [project, setProject] = useState(null);
@@ -108,6 +109,13 @@ function ProfileProjectDetails() {
   }, [project?.id, project?.title, profile?.id, profile?.username, profile?.firstName, profile?.lastName, handle, user?.id, user?.userType]);
 
   const handleRequestProposal = async () => {
+    if (!user) {
+      navigate('/login', {
+        state: { from: `${location.pathname}${location.search}` },
+      });
+      return;
+    }
+
     if (!profile?.id || startingChat) return;
     setStartingChat(true);
     try {

@@ -1,0 +1,83 @@
+.page { max-width: 1180px; margin: 0 auto; }
+.back { display: inline-flex; align-items: center; gap: 8px; color: var(--text-secondary); font-size: .8rem; font-weight: 800; }
+.layout { margin-top: 18px; display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 22px; align-items: start; }
+.main { display: flex; flex-direction: column; gap: 16px; }
+.hero, .card, .clientCard, .proposalForm, .ownerActions { border: 1px solid var(--border-color); border-radius: 18px; background: var(--bg-primary); }
+.hero { padding: 30px; background: linear-gradient(145deg, var(--bg-primary), var(--bg-accent-soft)); }
+.heroMeta { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+.category { display: inline-flex; align-items: center; gap: 7px; color: var(--primary-color); font-size: .75rem; font-weight: 800; }
+.status, .proposalStatus { padding: 6px 9px; border-radius: 999px; font-size: .65rem; font-weight: 800; }
+.open, .pending { color: var(--success-color); background: var(--success-bg); }
+.in_progress, .accepted { color: var(--info-color); background: var(--info-bg); }
+.completed { color: var(--purple-color); background: var(--purple-bg); }
+.canceled, .rejected { color: var(--danger-color); background: var(--danger-bg); }
+.draft, .withdrawn { color: var(--text-secondary); background: var(--bg-tertiary); }
+.hero h1 { max-width: 760px; margin-top: 22px; color: var(--text-primary); font-size: clamp(1.7rem, 4vw, 2.6rem); letter-spacing: -.045em; }
+.published { margin-top: 9px; color: var(--text-muted); font-size: .75rem; }
+.heroStats { margin-top: 27px; padding-top: 20px; border-top: 1px solid var(--border-light); display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.heroStats div { display: flex; flex-direction: column; gap: 4px; }
+.heroStats small { color: var(--text-muted); display: inline-flex; align-items: center; gap: 5px; font-size: .68rem; }
+.heroStats strong { font-size: .9rem; }
+.card { padding: 26px; }
+.card > h2, .sectionHead h2 { font-size: 1.05rem; }
+.description { margin-top: 16px; color: var(--text-secondary); font-size: .9rem; line-height: 1.75; white-space: pre-wrap; }
+.skills { margin-top: 15px; display: flex; flex-wrap: wrap; gap: 7px; }
+.skills span { padding: 7px 10px; border-radius: 8px; color: var(--info-color); background: var(--info-bg); font-size: .73rem; font-weight: 700; }
+.references { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
+.references a { padding: 10px 12px; border: 1px solid var(--border-light); border-radius: 9px; color: var(--text-secondary); display: flex; align-items: center; justify-content: space-between; font-size: .78rem; font-weight: 700; }
+.sidebar { position: sticky; top: 94px; display: flex; flex-direction: column; gap: 14px; }
+.clientCard, .proposalForm, .ownerActions { padding: 22px; }
+.asideLabel, .sectionHead span { color: var(--primary-color); font-size: .68rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+.client { margin-top: 15px; display: flex; align-items: center; gap: 11px; }
+.clientAvatar, .avatar { overflow: hidden; border-radius: 50%; display: grid; place-items: center; color: #fff; background: linear-gradient(140deg, var(--primary-color), #7459e8); font-weight: 800; }
+.clientAvatar { width: 46px; height: 46px; }
+.clientAvatar img, .avatar img { width: 100%; height: 100%; object-fit: cover; }
+.client > div:last-child { display: flex; flex-direction: column; }
+.client strong { font-size: .86rem; }
+.client span { color: var(--text-muted); font-size: .7rem; }
+.clientCard ul { margin-top: 18px; padding-top: 15px; border-top: 1px solid var(--border-light); list-style: none; display: flex; flex-direction: column; gap: 9px; }
+.clientCard li { color: var(--text-secondary); display: flex; align-items: center; gap: 8px; font-size: .73rem; }
+.clientCard li svg { color: var(--primary-color); }
+.proposalForm h2 { margin-top: 8px; font-size: 1.02rem; }
+.proposalForm > p { margin: 6px 0 16px; color: var(--text-secondary); font-size: .77rem; }
+.proposalForm label { margin-top: 13px; display: flex; flex-direction: column; gap: 6px; color: var(--text-secondary); font-size: .72rem; font-weight: 800; }
+.proposalForm input, .proposalForm textarea { width: 100%; border: 1px solid var(--border-color); border-radius: 9px; outline: 0; background: var(--bg-subtle); }
+.proposalForm input { min-height: 42px; padding: 0 11px; }
+.proposalForm textarea { padding: 11px; resize: vertical; line-height: 1.5; }
+.proposalForm input:focus, .proposalForm textarea:focus { border-color: var(--primary-color); box-shadow: 0 0 0 3px rgba(var(--primary-color-rgb), .1); }
+.money { position: relative; }
+.money span { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--text-muted); }
+.money input { padding-left: 38px; }
+.formRow { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+.submit, .createAccount { width: 100%; min-height: 44px; margin-top: 16px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: .78rem; font-weight: 800; }
+.submit { color: #fff; background: var(--primary-color); }
+.createAccount { margin-top: 8px; color: var(--text-secondary); border: 1px solid var(--border-color); }
+.proposalForm > small { display: block; margin-top: 8px; color: var(--text-muted); text-align: center; font-size: .64rem; }
+.sectionHead { display: flex; align-items: center; justify-content: space-between; }
+.sectionHead > div { display: flex; flex-direction: column; gap: 5px; }
+.sectionHead > strong { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; color: var(--primary-color); background: var(--info-bg); }
+.proposals { margin-top: 18px; display: flex; flex-direction: column; gap: 12px; }
+.proposalCard { padding: 18px; border: 1px solid var(--border-light); border-radius: 13px; background: var(--bg-subtle); }
+.freelancer { display: flex; align-items: center; gap: 10px; }
+.avatar { width: 40px; height: 40px; flex: 0 0 auto; }
+.freelancer > div:nth-child(2) { display: flex; flex-direction: column; }
+.freelancer a { color: var(--text-primary); font-size: .82rem; font-weight: 800; }
+.freelancer span { color: var(--text-muted); font-size: .68rem; }
+.verified { margin-left: auto; display: inline-flex; align-items: center; gap: 5px; color: var(--success-color) !important; font-weight: 800; }
+.proposalCard > p { margin-top: 15px; color: var(--text-secondary); font-size: .8rem; line-height: 1.6; white-space: pre-wrap; }
+.proposalMeta { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border-light); display: flex; align-items: center; gap: 24px; }
+.proposalMeta div { display: flex; flex-direction: column; gap: 2px; }
+.proposalMeta small { color: var(--text-muted); font-size: .65rem; }
+.proposalMeta strong { font-size: .77rem; }
+.proposalStatus { margin-left: auto; }
+.proposalActions { margin-top: 15px; display: flex; justify-content: flex-end; gap: 8px; }
+.proposalActions button { min-height: 38px; padding: 0 13px; border-radius: 8px; font-size: .74rem; font-weight: 800; }
+.reject { color: var(--danger-color); border: 1px solid color-mix(in srgb, var(--danger-color) 25%, var(--border-color)); }
+.accept { color: #fff; background: var(--primary-color); display: inline-flex; align-items: center; gap: 7px; }
+.inlineState, .state { padding: 52px 20px; color: var(--text-secondary); text-align: center; }
+.state { min-height: 50vh; display: grid; place-items: center; }
+.ownerActions { display: flex; flex-direction: column; gap: 8px; }
+.ownerActions a, .ownerActions button { min-height: 40px; padding: 0 11px; border: 1px solid var(--border-color); border-radius: 9px; display: flex; align-items: center; justify-content: center; gap: 7px; color: var(--text-secondary); font-size: .73rem; font-weight: 800; }
+.ownerActions .complete { color: var(--success-color); border-color: color-mix(in srgb, var(--success-color) 25%, var(--border-color)); }
+@media (max-width: 900px) { .layout { grid-template-columns: 1fr; } .sidebar { position: static; } }
+@media (max-width: 620px) { .hero, .card { padding: 21px 17px; } .heroStats { grid-template-columns: 1fr; } .proposalMeta { align-items: flex-start; flex-wrap: wrap; gap: 14px; } .proposalStatus { margin-left: 0; } }

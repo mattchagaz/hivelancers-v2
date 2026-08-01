@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { toast, Toaster } from 'sonner';
 import { getPublicService, getMyService } from '../../../services/services';
 import { startConversation } from '../../../services/messages';
@@ -45,6 +45,7 @@ const STATUS_LABEL = {
 
 function ServiceDetails() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { id } = useParams();
   const { user } = useAuth();
 
@@ -91,6 +92,11 @@ function ServiceDetails() {
   }, [service]);
 
   useEffect(() => {
+    if (!user?.id) {
+      setIsFavorite(false);
+      return;
+    }
+
     getMyFavorites()
       .then((data) => {
         if (service?.id) {
@@ -98,7 +104,7 @@ function ServiceDetails() {
         }
       })
       .catch(() => {});
-  }, [service?.id]);
+  }, [service?.id, user?.id]);
 
   useEffect(() => {
     const ownerHandle = service?.owner?.username || service?.owner?.id || service?.ownerId;
@@ -210,6 +216,13 @@ function ServiceDetails() {
   const reviewCount = service.reviewSummary?.count || reviews.length;
 
   const handleOrder = () => {
+    if (!user) {
+      navigate('/login', {
+        state: { from: `${location.pathname}${location.search}` },
+      });
+      return;
+    }
+
     if (isOwner) {
       toast.info('Este é o seu próprio serviço.');
       return;
@@ -218,6 +231,13 @@ function ServiceDetails() {
   };
 
   const handleContact = async () => {
+    if (!user) {
+      navigate('/login', {
+        state: { from: `${location.pathname}${location.search}` },
+      });
+      return;
+    }
+
     if (contactingOwner) return;
     setContactingOwner(true);
     try {
@@ -232,6 +252,13 @@ function ServiceDetails() {
   };
 
   const handleFavorite = async () => {
+    if (!user) {
+      navigate('/login', {
+        state: { from: `${location.pathname}${location.search}` },
+      });
+      return;
+    }
+
     if (isOwner) {
       toast.info('Você não pode favoritar o próprio serviço.');
       return;
@@ -267,7 +294,7 @@ function ServiceDetails() {
   return (
     <div className={styles.page}>
       <div className={styles.breadcrumbs}>
-        <Link to="/dashboard">Dashboard</Link>
+        <Link to={user ? '/dashboard' : '/explore'}>{user ? 'Dashboard' : 'Marketplace'}</Link>
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 18l6-6-6-6"/></svg>
         <Link to="/explore">Serviços</Link>
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 18l6-6-6-6"/></svg>
