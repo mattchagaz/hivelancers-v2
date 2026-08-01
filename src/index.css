@@ -112,10 +112,13 @@
   scroll-behavior: auto !important;
 }
 
+html {
+  overflow-x: hidden;
+}
+
 html, body {
   min-height: 100%;
   width: 100%;
-  overflow-x: hidden;
 }
 
 body {

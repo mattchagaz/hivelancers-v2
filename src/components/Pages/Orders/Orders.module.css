@@ -891,12 +891,12 @@
 }
 
 .infoGrid {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
 }
 
 .detailContentGrid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 16px;
   min-width: 0;
 }
@@ -909,7 +909,7 @@
 }
 
 .infoCard strong {
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .infoLabel,

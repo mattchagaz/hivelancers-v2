@@ -1,11 +1,20 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { FaArrowRight, FaBriefcase, FaCalendarDays, FaMagnifyingGlass } from 'react-icons/fa6';
+import {
+  FaArrowRight,
+  FaBriefcase,
+  FaCalendarDays,
+  FaClock,
+  FaInbox,
+  FaLayerGroup,
+  FaMagnifyingGlass,
+} from 'react-icons/fa6';
 import { toast } from 'sonner';
 import { useAuth } from '../../../contexts/AuthContext';
 import { listCategories } from '../../../services/services';
 import { listPublicProjects } from '../../../services/projects';
 import { CategoryIcon } from '../../../utils/categoryIcons';
+import SpotlightCard from '../../UI/SpotlightCard/SpotlightCard';
 import styles from './Projects.module.css';
 
 const formatMoney = (cents = 0) =>
@@ -20,6 +29,17 @@ const formatDeadline = (value) => {
   if (!value) return 'Prazo a combinar';
   return `Até ${new Date(value).toLocaleDateString('pt-BR')}`;
 };
+
+function StatCard({ icon, label, value, detail, tone }) {
+  return (
+    <SpotlightCard className={`${styles.statCard} ${tone ? styles[tone] : ''}`}>
+      <div className={styles.statIcon}>{icon}</div>
+      <span>{label}</span>
+      <strong>{value}</strong>
+      <p>{detail}</p>
+    </SpotlightCard>
+  );
+}
 
 function Projects() {
   const { user } = useAuth();
@@ -78,6 +98,12 @@ function Projects() {
     [categories, category]
   );
 
+  const stats = useMemo(() => ({
+    visible: items.length,
+    withDeadline: items.filter((project) => Boolean(project.deadline)).length,
+    proposals: items.reduce((sum, project) => sum + Number(project.proposalCount || 0), 0),
+  }), [items]);
+
   const updateFilters = (changes) => {
     const next = new URLSearchParams(searchParams);
     Object.entries(changes).forEach(([key, value]) => {
@@ -96,7 +122,7 @@ function Projects() {
   return (
     <div className={styles.page}>
       <section className={styles.hero}>
-        <div>
+        <div className={styles.heroCopy}>
           <span className={styles.eyebrow}>Projetos abertos</span>
           <h1>Encontre trabalhos que combinam com a sua especialidade.</h1>
           <p>
@@ -118,11 +144,41 @@ function Projects() {
             )}
           </div>
         </div>
-        <div className={styles.heroMetric}>
-          <FaBriefcase />
+        <div className={styles.commandPanel}>
+          <span>Oportunidades abertas</span>
           <strong>{loading ? '…' : total}</strong>
-          <span>{total === 1 ? 'projeto recebendo propostas' : 'projetos recebendo propostas'}</span>
+          <p>{total === 1 ? 'projeto recebendo propostas' : 'projetos recebendo propostas'}</p>
         </div>
+      </section>
+
+      <section className={styles.statGrid} aria-label="Resumo das oportunidades">
+        <StatCard
+          icon={<FaLayerGroup />}
+          label="Total filtrado"
+          value={loading ? '…' : total}
+          detail="Oportunidades disponíveis"
+        />
+        <StatCard
+          icon={<FaBriefcase />}
+          label="Nesta página"
+          value={loading ? '…' : stats.visible}
+          detail="Projetos exibidos agora"
+          tone="green"
+        />
+        <StatCard
+          icon={<FaClock />}
+          label="Com prazo"
+          value={loading ? '…' : stats.withDeadline}
+          detail="Data de entrega definida"
+          tone="orange"
+        />
+        <StatCard
+          icon={<FaInbox />}
+          label="Propostas"
+          value={loading ? '…' : stats.proposals}
+          detail="Concorrência nesta página"
+          tone="purple"
+        />
       </section>
 
       <section className={styles.filters}>
