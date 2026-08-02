@@ -745,7 +745,10 @@ function Orders() {
                 <div className={styles.detailHeroSide}>
                   {isNewSellerPending ? (
                     <div className={styles.decisionCard}>
-                      <div className={styles.personCard}>
+                      <Link
+                        to={`/profile/${selectedOrder.client?.username || selectedOrder.client?.id}`}
+                        className={styles.personCard}
+                      >
                         <UserAvatar
                           person={selectedOrder.client}
                           className={`${styles.personAvatar} ${styles[`avatar${selectedTone}`]}`}
@@ -755,7 +758,7 @@ function Orders() {
                           <strong>{getName(selectedOrder.client)}</strong>
                           <p>{selectedOrder.client?.username ? `@${selectedOrder.client.username}` : 'Perfil ainda sem username'}</p>
                         </div>
-                      </div>
+                      </Link>
 
                       <div className={styles.decisionMetrics}>
                         <div>
@@ -815,7 +818,10 @@ function Orders() {
                     </div>
                   ) : (
                     <>
-                      <div className={styles.personCard}>
+                      <Link
+                        to={`/profile/${counterparty?.username || counterparty?.id}`}
+                        className={styles.personCard}
+                      >
                         <UserAvatar
                           person={counterparty}
                           className={`${styles.personAvatar} ${styles[`avatar${selectedTone}`]}`}
@@ -827,7 +833,7 @@ function Orders() {
                           <strong>{getName(counterparty)}</strong>
                           <p>{counterparty?.username ? `@${counterparty.username}` : 'Perfil ainda sem username'}</p>
                         </div>
-                      </div>
+                      </Link>
 
                       <div className={styles.nextActionCard}>
                         <span>Próximo passo</span>
@@ -851,11 +857,15 @@ function Orders() {
                   <div className={styles.infoGrid}>
                     <div className={styles.infoCard}>
                       <span className={styles.infoLabel}>Cliente</span>
-                      <strong>{getName(selectedOrder.client)}</strong>
+                      <Link to={`/profile/${selectedOrder.client?.username || selectedOrder.client?.id}`} className={styles.infoCardLink}>
+                        {getName(selectedOrder.client)}
+                      </Link>
                     </div>
                     <div className={styles.infoCard}>
                       <span className={styles.infoLabel}>Freelancer</span>
-                      <strong>{getName(selectedOrder.freelancer)}</strong>
+                      <Link to={`/profile/${selectedOrder.freelancer?.username || selectedOrder.freelancer?.id}`} className={styles.infoCardLink}>
+                        {getName(selectedOrder.freelancer)}
+                      </Link>
                     </div>
                     <div className={styles.infoCard}>
                       <span className={styles.infoLabel}>Revisões</span>

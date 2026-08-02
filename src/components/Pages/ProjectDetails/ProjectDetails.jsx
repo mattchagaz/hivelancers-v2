@@ -333,7 +333,7 @@ function ProjectDetails() {
         <aside className={styles.sidebar}>
           <section className={styles.clientCard}>
             <span className={styles.asideLabel}>Publicado por</span>
-            <div className={styles.client}>
+            <Link to={`/profile/${project.client.username || project.client.id}`} className={styles.client}>
               <div className={styles.clientAvatar}>
                 {project.client.avatarUrl ? <img src={project.client.avatarUrl} alt="" /> : clientInitials}
               </div>
@@ -341,7 +341,7 @@ function ProjectDetails() {
                 <strong>{personName(project.client)}</strong>
                 {project.client.username && <span>@{project.client.username}</span>}
               </div>
-            </div>
+            </Link>
             <ul>
               {project.client.identityVerified && <li><FaShieldHalved /> Identidade verificada</li>}
               {project.client.location && <li><FaLocationDot /> {project.client.location}</li>}
@@ -370,11 +370,12 @@ function ProjectDetails() {
                   value={proposal.coverLetter}
                   onChange={(event) => setProposal((current) => ({ ...current, coverLetter: event.target.value }))}
                   minLength={40}
-                  maxLength={4000}
+                  maxLength={500}
                   rows={7}
                   placeholder="Apresente sua experiência, abordagem e o que está incluso."
                   required
                 />
+                <span className={styles.charCount}>{proposal.coverLetter.length}/500</span>
               </label>
 
               <label>

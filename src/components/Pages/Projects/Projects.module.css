@@ -320,6 +320,7 @@
   margin-top: 20px;
   font-size: 1.18rem;
   letter-spacing: -0.025em;
+  overflow-wrap: break-word;
 }
 
 .card > p {
@@ -330,6 +331,7 @@
   font-size: 0.84rem;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
+  overflow-wrap: break-word;
 }
 
 .skills {

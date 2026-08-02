@@ -1,4 +1,4 @@
-.page { max-width: 1180px; margin: 0 auto; }
+.page { width: 100%; }
 .back { display: inline-flex; align-items: center; gap: 8px; color: var(--text-secondary); font-size: .8rem; font-weight: 800; }
 .layout { margin-top: 18px; display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 22px; align-items: start; }
 .main { display: flex; flex-direction: column; gap: 16px; }
@@ -12,7 +12,7 @@
 .completed { color: var(--purple-color); background: var(--purple-bg); }
 .canceled, .rejected { color: var(--danger-color); background: var(--danger-bg); }
 .draft, .withdrawn { color: var(--text-secondary); background: var(--bg-tertiary); }
-.hero h1 { max-width: 760px; margin-top: 22px; color: var(--text-primary); font-size: clamp(1.7rem, 4vw, 2.6rem); letter-spacing: -.045em; }
+.hero h1 { max-width: 760px; margin-top: 22px; color: var(--text-primary); font-size: clamp(1.7rem, 4vw, 2.6rem); letter-spacing: -.045em; overflow-wrap: break-word; }
 .published { margin-top: 9px; color: var(--text-muted); font-size: .75rem; }
 .heroStats { margin-top: 27px; padding-top: 20px; border-top: 1px solid var(--border-light); display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
 .heroStats div { display: flex; flex-direction: column; gap: 4px; }
@@ -20,7 +20,7 @@
 .heroStats strong { font-size: .9rem; }
 .card { padding: 26px; }
 .card > h2, .sectionHead h2 { font-size: 1.05rem; }
-.description { margin-top: 16px; color: var(--text-secondary); font-size: .9rem; line-height: 1.75; white-space: pre-wrap; }
+.description { margin-top: 16px; color: var(--text-secondary); font-size: .9rem; line-height: 1.75; white-space: pre-wrap; overflow-wrap: break-word; }
 .skills { margin-top: 15px; display: flex; flex-wrap: wrap; gap: 7px; }
 .skills span { padding: 7px 10px; border-radius: 8px; color: var(--info-color); background: var(--info-bg); font-size: .73rem; font-weight: 700; }
 .references { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
@@ -28,7 +28,8 @@
 .sidebar { position: sticky; top: 94px; display: flex; flex-direction: column; gap: 14px; }
 .clientCard, .proposalForm, .ownerActions { padding: 22px; }
 .asideLabel, .sectionHead span { color: var(--primary-color); font-size: .68rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
-.client { margin-top: 15px; display: flex; align-items: center; gap: 11px; }
+.client { margin-top: 15px; display: flex; align-items: center; gap: 11px; text-decoration: none; color: inherit; border-radius: 12px; transition: opacity .15s ease; }
+.client:hover { opacity: .78; }
 .clientAvatar, .avatar { overflow: hidden; border-radius: 50%; display: grid; place-items: center; color: #fff; background: linear-gradient(140deg, var(--primary-color), #7459e8); font-weight: 800; }
 .clientAvatar { width: 46px; height: 46px; }
 .clientAvatar img, .avatar img { width: 100%; height: 100%; object-fit: cover; }
@@ -45,6 +46,7 @@
 .proposalForm input { min-height: 42px; padding: 0 11px; }
 .proposalForm textarea { padding: 11px; resize: vertical; line-height: 1.5; }
 .proposalForm input:focus, .proposalForm textarea:focus { border-color: var(--primary-color); box-shadow: 0 0 0 3px rgba(var(--primary-color-rgb), .1); }
+.charCount { align-self: flex-end; margin-top: -2px; color: var(--text-muted); font-size: .65rem; font-weight: 700; }
 .money { position: relative; }
 .money span { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--text-muted); }
 .money input { padding-left: 38px; }
@@ -64,7 +66,7 @@
 .freelancer a { color: var(--text-primary); font-size: .82rem; font-weight: 800; }
 .freelancer span { color: var(--text-muted); font-size: .68rem; }
 .verified { margin-left: auto; display: inline-flex; align-items: center; gap: 5px; color: var(--success-color) !important; font-weight: 800; }
-.proposalCard > p { margin-top: 15px; color: var(--text-secondary); font-size: .8rem; line-height: 1.6; white-space: pre-wrap; }
+.proposalCard > p { margin-top: 15px; color: var(--text-secondary); font-size: .8rem; line-height: 1.6; white-space: pre-wrap; overflow-wrap: break-word; }
 .proposalMeta { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border-light); display: flex; align-items: center; gap: 24px; }
 .proposalMeta div { display: flex; flex-direction: column; gap: 2px; }
 .proposalMeta small { color: var(--text-muted); font-size: .65rem; }

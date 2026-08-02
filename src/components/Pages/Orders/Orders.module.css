@@ -531,6 +531,16 @@
   gap: 12px;
 }
 
+.personCard {
+  text-decoration: none;
+  color: inherit;
+  transition: opacity .15s ease;
+}
+
+.personCard:hover {
+  opacity: .78;
+}
+
 .orderIdentity > div,
 .personCard > div {
   min-width: 0;
@@ -910,6 +920,18 @@
 
 .infoCard strong {
   overflow-wrap: break-word;
+}
+
+.infoCardLink {
+  overflow-wrap: break-word;
+  color: var(--text-primary, #1a1a2e);
+  font-weight: 850;
+  text-decoration: none;
+  width: fit-content;
+}
+
+.infoCardLink:hover {
+  text-decoration: underline;
 }
 
 .infoLabel,

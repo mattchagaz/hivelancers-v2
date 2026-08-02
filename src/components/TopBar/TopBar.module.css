@@ -217,6 +217,9 @@
 .notifList {
   overflow: auto;
   padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .notifFooter {

@@ -114,6 +114,7 @@
   color: var(--text-secondary);
   margin-bottom: 24px;
   max-width: 800px;
+  overflow-wrap: break-word;
 }
 
 .metaRow {
@@ -397,6 +398,7 @@
   font-size: 1rem;
   color: var(--text-secondary);
   line-height: 1.7;
+  overflow-wrap: break-word;
 }
 
 /* Pacotes */
@@ -840,7 +842,7 @@
 /* Sidebar e Checkout Card */
 .sidebar {
   position: sticky;
-  top: 24px;
+  top: 88px;
 }
 
 .checkoutCard {
