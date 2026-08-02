@@ -1,10 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { toast, Toaster } from 'sonner';
-import { FaCircle, FaClock, FaComments, FaInbox, FaPaperPlane } from 'react-icons/fa';
 import { useAuth } from '../../../contexts/AuthContext';
-import EmptyState from '../../UI/EmptyState/EmptyState';
-import SpotlightCard from '../../UI/SpotlightCard/SpotlightCard';
 import {
   listConversations,
   getMessages,
@@ -23,106 +20,26 @@ import {
 } from '../../../services/socket';
 import { recordRecentActivity } from '../../../utils/clientRecentActivity';
 import styles from './Messages.module.css';
-
-const TYPING_STOP_DELAY = 1200;
-const TYPING_STALE_DELAY = 3500;
-
-const toId = (value) => (value === undefined || value === null ? '' : String(value));
-
-const getSenderId = (message) => message?.senderId || message?.sender?.id || message?.userId;
-
-const getMessageConversationId = (message) =>
-  message?.conversationId || message?.conversation_id || message?.conversation?.id;
-
-const normalizeMessagePayload = (payload) =>
-  payload?.message || payload?.data?.message || payload;
-
-const normalizeConversationPayload = (payload) =>
-  payload?.conversation ||
-  payload?.data?.conversation ||
-  (payload?.participants || payload?.otherUser || payload?.lastMessage ? payload : null);
-
-const getMessageList = (data) =>
-  data?.messages || data?.data?.messages || (Array.isArray(data) ? data : []);
-
-const getPayloadConversationId = (payload, message) =>
-  payload?.conversationId ||
-  payload?.conversation_id ||
-  payload?.conversation?.id ||
-  payload?.data?.conversationId ||
-  getMessageConversationId(message);
-
-const getTypingConversationId = (payload) =>
-  payload?.conversationId ||
-  payload?.conversation_id ||
-  payload?.conversation?.id ||
-  payload?.data?.conversationId;
-
-const getTypingUserId = (payload) =>
-  payload?.userId ||
-  payload?.senderId ||
-  payload?.sender?.id ||
-  payload?.user?.id ||
-  payload?.data?.userId;
-
-const getTypingState = (payload, fallback) => {
-  if (typeof payload?.isTyping === 'boolean') return payload.isTyping;
-  if (typeof payload?.typing === 'boolean') return payload.typing;
-  if (typeof payload?.data?.isTyping === 'boolean') return payload.data.isTyping;
-  return fallback;
-};
-
-const markConversationRead = (conversationId) => {
-  if (!conversationId) return;
-  emitSocket('conversation:read', { conversationId });
-  emitSocket('mark_as_read', { conversationId });
-};
-
-const formatTime = (iso) => {
-  if (!iso) return '';
-  const d = new Date(iso);
-  const now = new Date();
-  const diff = now - d;
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return 'Agora';
-  if (mins < 60) return `${mins}min`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h`;
-  if (hours < 48) return 'Ontem';
-  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
-};
-
-const formatFullTime = (iso) => {
-  if (!iso) return '';
-  return new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-};
-
-const formatDateSeparator = (iso) => {
-  if (!iso) return '';
-  const d = new Date(iso);
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const msgDate = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  const diff = today - msgDate;
-  if (diff === 0) return 'Hoje';
-  if (diff <= 86400000) return 'Ontem';
-  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
-};
-
-const getOtherParticipant = (conversation, currentUserId) =>
-  conversation?.participants?.find((p) => toId(p.id) !== toId(currentUserId)) || conversation?.otherUser;
-
-const getParticipantName = (participant) =>
-  `${participant?.firstName || ''} ${participant?.lastName || ''}`.trim() || 'Usuário';
-
-const getParticipantInitials = (participant) =>
-  getParticipantName(participant)
-    .split(' ')
-    .map((part) => part[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join('')
-    .toUpperCase();
+import {
+  TYPING_STOP_DELAY,
+  TYPING_STALE_DELAY,
+  toId,
+  getSenderId,
+  normalizeMessagePayload,
+  normalizeConversationPayload,
+  getMessageList,
+  getPayloadConversationId,
+  getTypingConversationId,
+  getTypingUserId,
+  getTypingState,
+  markConversationRead,
+  formatDateSeparator,
+  getOtherParticipant,
+  getParticipantName,
+} from './Messages.helpers';
+import { MessagesContext } from './MessagesContext';
+import ConversationList from './sections/ConversationList';
+import ChatPanel from './sections/ChatPanel';
 
 function Messages() {
   const { user } = useAuth();
@@ -619,349 +536,60 @@ function Messages() {
     return otherName || 'Usuário';
   };
 
+  const messagesContextValue = {
+    // sidebar / lista
+    mobileShowChat,
+    conversations,
+    unreadTotal,
+    onlineTotal,
+    search,
+    setSearch,
+    conversationFilter,
+    setConversationFilter,
+    loadingConvs,
+    filteredConversations,
+    hasConversationFilter,
+    clearConversationFilters,
+    user,
+    activeId,
+    selectConversation,
+    // chat
+    handleBack,
+    otherUser,
+    otherProfileHandle,
+    otherName,
+    isOtherTyping,
+    activeConversation,
+    setDeleteConfirm,
+    loadingMsgs,
+    messages,
+    inputRef,
+    groupedMessages,
+    setReplyingTo,
+    setDeleteMsgConfirm,
+    findSenderName,
+    setLightboxUrl,
+    messagesEndRef,
+    replyingTo,
+    imagePreview,
+    setImagePreview,
+    handleSend,
+    fileInputRef,
+    handleFileSelect,
+    uploading,
+    text,
+    handleTextChange,
+    sending,
+  };
+
   return (
+    <MessagesContext.Provider value={messagesContextValue}>
     <div className={styles.page}>
       {/* Sidebar */}
-      <aside className={`${styles.sidebar} ${mobileShowChat ? styles.sidebarHidden : ''}`}>
-        <div className={styles.sidebarHead}>
-          <div>
-            <span className={styles.sidebarEyebrow}>Inbox</span>
-            <h1 className={styles.sidebarTitle}>Mensagens</h1>
-          </div>
-          <span className={styles.convCount}>{conversations.length}</span>
-        </div>
-
-        <div className={styles.sidebarStats}>
-          <span>
-            <FaInbox />
-            {unreadTotal ? `${unreadTotal} não lidas` : 'Tudo lido'}
-          </span>
-          <span>
-            <FaCircle />
-            {onlineTotal} online
-          </span>
-        </div>
-
-        <div className={styles.searchWrap}>
-          <svg className={styles.searchIco} width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
-            <circle cx="11" cy="11" r="8" />
-            <line x1="21" y1="21" x2="16.65" y2="16.65" />
-          </svg>
-          <input className={styles.searchInput} type="text" placeholder="Buscar conversa..." value={search} onChange={(e) => setSearch(e.target.value)} />
-        </div>
-
-        <div className={styles.inboxTabs}>
-          <button
-            type="button"
-            className={`${styles.inboxTab} ${conversationFilter === 'all' ? styles.inboxTabActive : ''}`}
-            onClick={() => setConversationFilter('all')}
-          >
-            Todas
-          </button>
-          <button
-            type="button"
-            className={`${styles.inboxTab} ${conversationFilter === 'unread' ? styles.inboxTabActive : ''}`}
-            onClick={() => setConversationFilter('unread')}
-          >
-            Não lidas
-            {unreadTotal > 0 ? <span>{unreadTotal}</span> : null}
-          </button>
-        </div>
-
-        <div className={styles.convList}>
-          {loadingConvs ? (
-            <div className={styles.loadingState}>Carregando conversas...</div>
-          ) : filteredConversations.length === 0 ? (
-            <EmptyState
-              compact
-              className={styles.emptyConvs}
-              icon={<FaComments />}
-              title={
-                hasConversationFilter
-                  ? 'Nada por aqui'
-                  : 'Nenhuma conversa ainda'
-              }
-              description={
-                hasConversationFilter
-                  ? 'Remova filtros ou tente buscar por outro nome.'
-                  : 'As conversas iniciadas em perfis, serviços e pedidos aparecem neste painel.'
-              }
-              actionLabel={hasConversationFilter ? 'Limpar filtros' : 'Explorar serviços'}
-              actionOnClick={hasConversationFilter ? clearConversationFilters : undefined}
-              actionTo={!hasConversationFilter ? '/explore' : undefined}
-            />
-          ) : (
-            filteredConversations.map((conv) => {
-              const other = getOtherParticipant(conv, user?.id);
-              const name = getParticipantName(other);
-              const initials = getParticipantInitials(other);
-              const lastMsg = conv.lastMessage;
-              const isOwn = toId(lastMsg?.senderId) === toId(user?.id);
-              const unread = conv.unreadCount > 0;
-              const isActive = toId(conv.id) === toId(activeId);
-              const previewText = lastMsg?.deletedAt
-                ? 'Mensagem apagada'
-                : lastMsg?.imageUrl && !lastMsg?.content
-                  ? 'Imagem'
-                  : lastMsg?.content || 'Sem mensagens';
-
-              return (
-                <SpotlightCard
-                  key={conv.id}
-                  className={`${styles.convSurface} ${isActive ? styles.convSurfaceActive : ''} ${unread ? styles.convSurfaceUnread : ''}`}
-                  spotlightColor="rgba(62, 115, 230, 0.12)"
-                >
-                  <button
-                    className={styles.convItem}
-                    onClick={() => selectConversation(conv.id)}
-                  >
-                    <div className={styles.convAvatar}>
-                      {other?.avatarUrl ? <img src={other.avatarUrl} alt="" className={styles.convAvatarImg} /> : initials || 'U'}
-                      {(conv.online || other?.online) && <span className={styles.onlineDot} />}
-                    </div>
-                    <div className={styles.convBody}>
-                      <div className={styles.convTop}>
-                        <span className={styles.convName}>{name}</span>
-                        {lastMsg && <span className={styles.convTime}>{formatTime(lastMsg.createdAt)}</span>}
-                      </div>
-                      <div className={styles.convBottom}>
-                        <span className={styles.convPreview}>{isOwn && 'Você: '}{previewText}</span>
-                        {unread && <span className={styles.unreadBadge}>{conv.unreadCount}</span>}
-                      </div>
-                    </div>
-                  </button>
-                </SpotlightCard>
-              );
-            })
-          )}
-        </div>
-      </aside>
+      <ConversationList />
 
       {/* Chat Area */}
-      <div className={`${styles.chat} ${mobileShowChat ? styles.chatVisible : ''}`}>
-        {!activeId ? (
-          <div className={styles.noChat}>
-            <EmptyState
-              className={styles.noChatCard}
-              icon={<FaComments />}
-              eyebrow="Central de conversas"
-              title="Selecione uma conversa"
-              description="Abra uma conversa da inbox para continuar o alinhamento com cliente ou freelancer."
-              actionLabel={conversations.length ? 'Ver não lidas' : 'Explorar serviços'}
-              actionOnClick={conversations.length ? () => setConversationFilter('unread') : undefined}
-              actionTo={!conversations.length ? '/explore' : undefined}
-            />
-          </div>
-        ) : (
-          <>
-            {/* Chat Header */}
-            <div className={styles.chatHeader}>
-              <button className={styles.backBtn} onClick={handleBack}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                  <polyline points="15 18 9 12 15 6" />
-                </svg>
-              </button>
-
-              <div className={styles.chatAvatar}>
-                {otherUser?.avatarUrl ? <img src={otherUser.avatarUrl} alt="" className={styles.chatAvatarImg} /> : (otherUser?.firstName?.[0] || 'U').toUpperCase()}
-              </div>
-
-              <div className={styles.chatUserInfo}>
-                {otherProfileHandle ? (
-                  <Link to={`/profile/${otherProfileHandle}`} className={styles.chatUserName}>{otherName || 'Usuário'}</Link>
-                ) : (
-                  <span className={styles.chatUserName}>{otherName || 'Usuário'}</span>
-                )}
-                <div className={styles.chatHeaderMeta}>
-                  <span className={`${styles.chatUserStatus} ${isOtherTyping ? styles.chatUserTyping : ''}`}>
-                    <FaCircle />
-                    {isOtherTyping ? 'Digitando...' : activeConversation?.online || otherUser?.online ? 'Online' : 'Offline'}
-                  </span>
-                  {activeConversation?.updatedAt ? (
-                    <span className={styles.chatUpdatedAt}>
-                      <FaClock />
-                      {formatTime(activeConversation.updatedAt)}
-                    </span>
-                  ) : null}
-                </div>
-              </div>
-
-              <div className={styles.chatActions}>
-                {otherProfileHandle && (
-                  <Link to={`/profile/${otherProfileHandle}`} className={`${styles.chatActionBtn} ${styles.profileActionBtn}`} title="Ver perfil">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
-                      <circle cx="12" cy="7" r="4" />
-                    </svg>
-                    <span>Perfil</span>
-                  </Link>
-                )}
-                <button className={`${styles.chatActionBtn} ${styles.deleteConvBtn}`} title="Excluir conversa" onClick={() => setDeleteConfirm(activeId)}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="3 6 5 6 21 6" />
-                    <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-
-            {/* Messages */}
-            <div className={styles.messagesArea}>
-              {loadingMsgs ? (
-                <div className={styles.loadingState}>Carregando mensagens...</div>
-              ) : messages.length === 0 ? (
-                <EmptyState
-                  compact
-                  className={styles.emptyMessages}
-                  icon={<FaPaperPlane />}
-                  title="Conversa pronta"
-                  description={`Envie a primeira mensagem para ${otherName || 'este contato'}.`}
-                  actionLabel="Escrever mensagem"
-                  actionOnClick={() => inputRef.current?.focus()}
-                />
-              ) : (
-                groupedMessages.map((group) => (
-                  <div key={group.date}>
-                    <div className={styles.dateSeparator}><span>{group.dateLabel}</span></div>
-                    {group.items.map((msg) => {
-                      const isMine = toId(getSenderId(msg)) === toId(user?.id);
-                      const isDeleted = !!msg.deletedAt;
-                      return (
-                        <div key={msg.id} className={`${styles.message} ${isMine ? styles.messageMine : styles.messageTheirs}`}>
-                          <div className={`${styles.bubbleWrap} ${isMine ? styles.bubbleWrapMine : ''}`}>
-                            {/* Action buttons */}
-                            {!isDeleted && (
-                              <div className={`${styles.msgActions} ${isMine ? styles.msgActionsMine : ''}`}>
-                                <button className={styles.msgActionBtn} title="Responder" onClick={() => { setReplyingTo(msg); setTimeout(() => inputRef.current?.focus(), 0); }}>
-                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <polyline points="9 17 4 12 9 7" />
-                                    <path d="M20 18v-2a4 4 0 00-4-4H4" />
-                                  </svg>
-                                </button>
-                                {isMine && (
-                                  <button className={styles.msgActionBtn} title="Apagar" onClick={() => setDeleteMsgConfirm(msg)}>
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                      <polyline points="3 6 5 6 21 6" />
-                                      <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
-                                    </svg>
-                                  </button>
-                                )}
-                              </div>
-                            )}
-                            <div className={`${styles.bubble} ${isMine ? styles.bubbleMine : styles.bubbleTheirs} ${isDeleted ? styles.bubbleDeleted : ''}`}>
-                              {/* Reply quote */}
-                              {msg.replyTo && (
-                                <div className={`${styles.replyQuote} ${isMine ? styles.replyQuoteMine : ''}`}>
-                                  <span className={styles.replyQuoteName}>{findSenderName(msg.replyTo.senderId)}</span>
-                                  <span className={styles.replyQuoteText}>
-                                    {msg.replyTo.deletedAt
-                                      ? 'Mensagem apagada'
-                                      : msg.replyTo.imageUrl && !msg.replyTo.content
-                                        ? 'Imagem'
-                                        : msg.replyTo.content}
-                                  </span>
-                                </div>
-                              )}
-                              {/* Image */}
-                              {msg.imageUrl && !isDeleted && (
-                                <img
-                                  src={msg.imageUrl}
-                                  alt="Anexo"
-                                  className={styles.bubbleImage}
-                                  onClick={() => setLightboxUrl(msg.imageUrl)}
-                                />
-                              )}
-                              {/* Text */}
-                              {msg.content && (
-                                <p className={`${styles.bubbleText} ${isDeleted ? styles.bubbleTextDeleted : ''}`}>
-                                  {isDeleted ? 'Mensagem apagada' : msg.content}
-                                </p>
-                              )}
-                              {!msg.content && !isDeleted && !msg.imageUrl && (
-                                <p className={styles.bubbleText}>&nbsp;</p>
-                              )}
-                              <span className={styles.bubbleTime}>{formatFullTime(msg.createdAt)}</span>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ))
-              )}
-              {isOtherTyping && !loadingMsgs && (
-                <div className={`${styles.message} ${styles.messageTheirs}`}>
-                  <div className={`${styles.bubble} ${styles.bubbleTheirs} ${styles.typingBubble}`}>
-                    <span /><span /><span />
-                  </div>
-                </div>
-              )}
-              <div ref={messagesEndRef} />
-            </div>
-
-            {/* Reply / Image preview strip */}
-            {(replyingTo || imagePreview) && (
-              <div className={styles.previewStrip}>
-                {replyingTo && (
-                  <div className={styles.replyPreview}>
-                    <div className={styles.replyPreviewContent}>
-                      <span className={styles.replyPreviewLabel}>Respondendo a {findSenderName(replyingTo.senderId)}</span>
-                      <span className={styles.replyPreviewText}>
-                        {replyingTo.imageUrl && !replyingTo.content ? 'Imagem' : replyingTo.content}
-                      </span>
-                    </div>
-                    <button className={styles.previewClose} onClick={() => setReplyingTo(null)}>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                        <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                      </svg>
-                    </button>
-                  </div>
-                )}
-                {imagePreview && (
-                  <div className={styles.imagePreview}>
-                    <img src={imagePreview} alt="Preview" className={styles.imagePreviewImg} />
-                    <button className={styles.previewClose} onClick={() => setImagePreview(null)}>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                        <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                      </svg>
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Input */}
-            <form className={styles.inputBar} onSubmit={handleSend}>
-              <input ref={fileInputRef} type="file" accept="image/*" className={styles.hiddenFileInput} onChange={handleFileSelect} />
-              <button type="button" className={styles.attachBtn} onClick={() => fileInputRef.current?.click()} disabled={uploading} title="Anexar imagem">
-                {uploading ? (
-                  <div className={styles.uploadSpinner} />
-                ) : (
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
-                  </svg>
-                )}
-              </button>
-              <input
-                ref={inputRef}
-                className={styles.messageInput}
-                type="text"
-                placeholder="Digite uma mensagem..."
-                value={text}
-                onChange={handleTextChange}
-                disabled={sending}
-                autoFocus
-              />
-              <button className={styles.sendBtn} type="submit" disabled={(!text.trim() && !imagePreview) || sending}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="22" y1="2" x2="11" y2="13" />
-                  <polygon points="22 2 15 22 11 13 2 9 22 2" />
-                </svg>
-              </button>
-            </form>
-          </>
-        )}
-      </div>
+      <ChatPanel />
 
       {/* Delete conversation modal */}
       {deleteConfirm && (
@@ -1000,6 +628,7 @@ function Messages() {
 
       <Toaster position="top-center" richColors />
     </div>
+    </MessagesContext.Provider>
   );
 }
 
