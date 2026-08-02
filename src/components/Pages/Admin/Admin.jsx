@@ -66,7 +66,6 @@ import {
 } from '../../../services/users';
 import {
   listAdminPayments,
-  retryAdminPaymentTransfer,
 } from '../../../services/payments';
 import {
   listAdminSupportTickets,
@@ -78,50 +77,59 @@ import {
 } from '../../../services/tickets';
 import styles from './Admin.module.css';
 
-const formatCurrency = (value) =>
-  new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-  }).format(value);
-
-const formatCents = (value) => formatCurrency((Number(value) || 0) / 100);
-
-const formatNumber = (value) => new Intl.NumberFormat('pt-BR').format(Number(value) || 0);
-
-const pluralize = (value, singular, plural = `${singular}s`) =>
-  `${formatNumber(value)} ${Number(value) === 1 ? singular : plural}`;
-
-const listItems = (data, keys = []) => {
-  if (Array.isArray(data)) return data;
-  const pools = [...keys, 'items', 'data', 'results'];
-  for (const key of pools) {
-    if (Array.isArray(data?.[key])) return data[key];
-  }
-  if (data?.data && typeof data.data === 'object') return listItems(data.data, keys);
-  return [];
-};
-
-const listTotal = (data, items = []) =>
-  Number(
-    data?.total ??
-    data?.totalItems ??
-    data?.totalCount ??
-    data?.count ??
-    data?.meta?.total ??
-    data?.pagination?.total ??
-    data?.data?.total ??
-    data?.data?.totalItems ??
-    data?.data?.totalCount ??
-    items.length
-  ) || 0;
-
-const summaryValue = (summary, key) => {
-  const normalizedKey = String(key).toUpperCase();
-  const entry = Object.entries(summary || {}).find(([itemKey]) => String(itemKey).toUpperCase() === normalizedKey);
-  return Number(entry?.[1] || 0);
-};
-
-const normalizeCode = (value) => String(value || '').toUpperCase();
+import {
+  formatNumber,
+  pluralize,
+  listItems,
+  listTotal,
+  summaryValue,
+  normalizeCode,
+  slugify,
+  emptyCategoryDraft,
+  toCategoryDraft,
+  parseTags,
+  USER_TYPE_LABEL,
+  ACTIVITY_LABEL,
+  IDENTITY_STATUS_LABEL,
+  emptyUserDraft,
+  SERVICE_STATUS_LABEL,
+  COUPON_STATUS_LABEL,
+  DISCOUNT_TYPE_LABEL,
+  emptyServiceDraft,
+  emptyCouponDraft,
+  emptyLevelDraft,
+  toUserName,
+  formatDate,
+  parseMoneyInput,
+  toUserDraft,
+  getIdentityStatus,
+  maskCpf,
+  toServiceDraft,
+  toCouponDraft,
+  toLevelDraft,
+  getIdentityTone,
+  PAYMENT_STATUS_LABEL,
+  RELEASE_STATUS_LABEL,
+  DISPUTE_STATUS_LABEL,
+  DISPUTE_REASON_LABEL,
+  TICKET_STATUS_TONE,
+  TICKET_PRIORITY_TONE,
+  emptyTicketDraft,
+  toTicketDraft,
+  emptyAdminOverview,
+  isTicketUnanswered,
+} from './Admin.helpers';
+import { AdminContext } from './AdminContext';
+import OverviewTab from './tabs/OverviewTab';
+import ServicesTab from './tabs/ServicesTab';
+import PromotionsTab from './tabs/PromotionsTab';
+import LevelsTab from './tabs/LevelsTab';
+import TaxonomyTab from './tabs/TaxonomyTab';
+import UsersTab from './tabs/UsersTab';
+import FinanceTab from './tabs/FinanceTab';
+import DisputesTab from './tabs/DisputesTab';
+import SupportTab from './tabs/SupportTab';
+import AuditTab from './tabs/AuditTab';
 
 const tabs = [
   { id: 'overview', label: 'Visão geral', icon: FaArrowTrendUp },
@@ -135,349 +143,6 @@ const tabs = [
   { id: 'support', label: 'Suporte', icon: FaHeadset },
   { id: 'audit', label: 'Auditoria', icon: FaShieldHalved },
 ];
-
-const slugify = (value) =>
-  value
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9\s-]/g, '')
-    .trim()
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-');
-
-const emptyCategoryDraft = {
-  name: '',
-  slug: '',
-  icon: 'box',
-  position: 0,
-  subcategories: [],
-};
-
-const toCategoryDraft = (category) => ({
-  name: category?.name || '',
-  slug: category?.slug || '',
-  icon: category?.iconKey || category?.icon || 'box',
-  position: category?.position || 0,
-  subcategories: Array.isArray(category?.subcategories)
-    ? category.subcategories.map((item) => ({
-      name: item.name || '',
-      slug: item.slug || '',
-      tags: Array.isArray(item.tags) ? item.tags : [],
-    }))
-    : [],
-});
-
-const parseTags = (value) =>
-  value
-    .split(',')
-    .map((tag) => tag.trim())
-    .filter(Boolean);
-
-const USER_TYPE_LABEL = {
-  FREELANCER: 'Freelancer',
-  CLIENT: 'Cliente',
-};
-
-const ACTIVITY_LABEL = {
-  online: 'Online agora',
-  active: 'Ativo',
-  inactive: 'Inativo',
-};
-
-const IDENTITY_STATUS_LABEL = {
-  NOT_STARTED: 'Não iniciada',
-  DRAFT: 'Rascunho',
-  PENDING: 'Em análise',
-  VERIFIED: 'Verificada',
-  REJECTED: 'Recusada',
-};
-
-const emptyUserDraft = {
-  email: '',
-  firstName: '',
-  lastName: '',
-  phone: '',
-  username: '',
-  headline: '',
-  location: '',
-  userType: '',
-  isAdmin: false,
-  emailVerified: false,
-  onboarded: false,
-};
-
-const SERVICE_STATUS_LABEL = {
-  DRAFT: 'Rascunho',
-  PUBLISHED: 'Publicado',
-  ARCHIVED: 'Arquivado',
-};
-
-const COUPON_STATUS_LABEL = {
-  active: 'Ativo',
-  inactive: 'Inativo',
-  scheduled: 'Agendado',
-  expired: 'Expirado',
-  limit_reached: 'Limite atingido',
-};
-
-const DISCOUNT_TYPE_LABEL = {
-  PERCENTAGE: 'Percentual',
-  FIXED_AMOUNT: 'Valor fixo',
-};
-
-const emptyServiceDraft = {
-  title: '',
-  description: '',
-  status: 'DRAFT',
-  categoryId: '',
-  subcategorySlug: '',
-  tags: '',
-  coverUrl: '',
-};
-
-const emptyCouponDraft = {
-  code: '',
-  name: '',
-  description: '',
-  discountType: 'PERCENTAGE',
-  discountValue: '10',
-  maxDiscountCents: '',
-  minSubtotalCents: '',
-  usageLimit: '',
-  startsAt: '',
-  endsAt: '',
-  isActive: true,
-};
-
-const emptyLevelDraft = {
-  audience: 'ALL',
-  levelNumber: 1,
-  name: '',
-  slug: '',
-  description: '',
-  xpRequired: 0,
-  badgeColor: '#3e73e6',
-  benefits: '',
-  position: 0,
-  isActive: true,
-};
-
-const toUserName = (user) =>
-  `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || user?.email || 'Usuário';
-
-const toRequesterName = (ticket) =>
-  ticket?.requester?.name ||
-  toUserName(ticket?.requester) ||
-  ticket?.requester?.email ||
-  'Usuário Hivelancers';
-
-const getTicketReference = (ticket) =>
-  ticket?.relatedOrderId ||
-  ticket?.order?.code ||
-  ticket?.service?.title ||
-  'Sem vínculo';
-
-const formatDate = (value) => {
-  if (!value) return 'Nunca';
-  return new Intl.DateTimeFormat('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(new Date(value));
-};
-
-const formatDateTimeLocal = (value) => {
-  if (!value) return '';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '';
-  const pad = (item) => String(item).padStart(2, '0');
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
-};
-
-const formatMoneyInput = (cents) => {
-  const value = Number(cents);
-  if (!value) return '';
-  return (value / 100).toFixed(2);
-};
-
-const parseMoneyInput = (value) => {
-  if (value === null || value === undefined || String(value).trim() === '') return null;
-  const raw = String(value).trim();
-  const normalized = raw.includes(',')
-    ? raw.replace(/\./g, '').replace(',', '.')
-    : raw;
-  const number = Number(normalized);
-  if (!Number.isFinite(number)) return null;
-  return Math.max(0, Math.round(number * 100));
-};
-
-const toUserDraft = (user) => ({
-  email: user?.email || '',
-  firstName: user?.firstName || '',
-  lastName: user?.lastName || '',
-  phone: user?.phone || '',
-  username: user?.username || '',
-  headline: user?.headline || '',
-  location: user?.location || '',
-  userType: user?.userType || '',
-  isAdmin: Boolean(user?.isAdmin),
-  emailVerified: Boolean(user?.emailVerifiedAt),
-  onboarded: Boolean(user?.onboardedAt),
-});
-
-const getIdentityStatus = (user) => user?.accountVerification?.status || (user?.identityVerifiedAt ? 'VERIFIED' : 'NOT_STARTED');
-
-const maskCpf = (cpf) => {
-  if (!cpf) return 'CPF não informado';
-  const digits = String(cpf).replace(/\D/g, '');
-  if (digits.length !== 11) return cpf;
-  return `${digits.slice(0, 3)}.***.***-${digits.slice(-2)}`;
-};
-
-const toServiceDraft = (service) => ({
-  title: service?.title || '',
-  description: service?.description || '',
-  status: service?.status || 'DRAFT',
-  categoryId: service?.category?.id || '',
-  subcategorySlug: service?.subcategorySlug || '',
-  tags: Array.isArray(service?.tags) ? service.tags.join(', ') : '',
-  coverUrl: service?.coverUrl || '',
-});
-
-const toCouponDraft = (coupon) => ({
-  code: coupon?.code || '',
-  name: coupon?.name || '',
-  description: coupon?.description || '',
-  discountType: coupon?.discountType || 'PERCENTAGE',
-  discountValue: coupon?.discountType === 'FIXED_AMOUNT'
-    ? formatMoneyInput(coupon?.discountValue)
-    : String(coupon?.discountValue || 10),
-  maxDiscountCents: formatMoneyInput(coupon?.maxDiscountCents),
-  minSubtotalCents: formatMoneyInput(coupon?.minSubtotalCents),
-  usageLimit: coupon?.usageLimit ? String(coupon.usageLimit) : '',
-  startsAt: formatDateTimeLocal(coupon?.startsAt),
-  endsAt: formatDateTimeLocal(coupon?.endsAt),
-  isActive: coupon?.isActive ?? true,
-});
-
-const toLevelDraft = (level) => ({
-  audience: level?.audience || 'ALL',
-  levelNumber: level?.levelNumber || 1,
-  name: level?.name || '',
-  slug: level?.slug || '',
-  description: level?.description || '',
-  xpRequired: level?.xpRequired || 0,
-  badgeColor: level?.badgeColor || '#3e73e6',
-  benefits: Array.isArray(level?.benefits) ? level.benefits.join('\n') : '',
-  position: level?.position || 0,
-  isActive: level?.isActive ?? true,
-});
-
-const getStatusTone = (status) => {
-  const normalized = status.toLowerCase();
-  if (normalized.includes('ativo') || normalized.includes('liberado') || normalized.includes('concluído') || normalized.includes('capturado')) return 'success';
-  if (normalized.includes('online') || normalized.includes('verificado') || normalized.includes('verificada') || normalized.includes('admin')) return 'success';
-  if (normalized.includes('atenção') || normalized.includes('revisão') || normalized.includes('verificação') || normalized.includes('retido') || normalized.includes('análise') || normalized.includes('rascunho')) return 'warning';
-  if (normalized.includes('alto') || normalized.includes('bloqueio') || normalized.includes('atrasado') || normalized.includes('crítico') || normalized.includes('inativo') || normalized.includes('recusada')) return 'danger';
-  return 'neutral';
-};
-
-const getIdentityTone = (status) => {
-  if (status === 'VERIFIED') return 'success';
-  if (status === 'REJECTED') return 'danger';
-  if (status === 'PENDING' || status === 'DRAFT') return 'warning';
-  return 'neutral';
-};
-
-const PAYMENT_STATUS_LABEL = {
-  CHECKOUT_CREATED: 'Checkout criado',
-  PENDING: 'Pendente',
-  SUCCEEDED: 'Pago',
-  FAILED: 'Falhou',
-  CANCELED: 'Cancelado',
-  REFUNDED: 'Reembolsado',
-};
-
-const RELEASE_STATUS_LABEL = {
-  HELD: 'Retido',
-  NOT_REQUIRED: 'Sem repasse',
-  TRANSFERRED: 'Transferido',
-  FAILED: 'Falhou',
-};
-
-const DISPUTE_STATUS_LABEL = {
-  OPEN: 'Em análise',
-  RESOLVED_CLIENT: 'Reembolso ao cliente',
-  RESOLVED_FREELANCER: 'Liberação ao freelancer',
-};
-
-const DISPUTE_REASON_LABEL = {
-  CANCELLATION_REQUESTED: 'Cancelamento solicitado',
-  SCOPE_MISMATCH: 'Escopo diferente do combinado',
-  MISSED_DEADLINE: 'Prazo não cumprido',
-  DELIVERY_QUALITY: 'Qualidade da entrega',
-  COMMUNICATION: 'Problemas de comunicação',
-  FRAUD_OR_ABUSE: 'Fraude ou abuso',
-  OTHER: 'Outro motivo',
-};
-
-const TICKET_STATUS_TONE = {
-  OPEN: 'warning',
-  IN_PROGRESS: 'success',
-  ANSWERED: 'success',
-  RESOLVED: 'success',
-  CLOSED: 'neutral',
-};
-
-const TICKET_PRIORITY_TONE = {
-  LOW: 'neutral',
-  NORMAL: 'neutral',
-  HIGH: 'warning',
-  URGENT: 'danger',
-};
-
-const emptyTicketDraft = {
-  ticketId: '',
-  status: 'OPEN',
-  priority: 'NORMAL',
-  publicReply: '',
-  adminNote: '',
-};
-
-const toTicketDraft = (ticket) => ({
-  ticketId: ticket?.id || '',
-  status: normalizeSupportTicketStatus(ticket?.status),
-  priority: ticket?.priority || 'NORMAL',
-  publicReply: ticket?.publicReply || '',
-  adminNote: ticket?.adminNote || '',
-});
-
-const emptyAdminOverview = {
-  usersTotal: 0,
-  clients: 0,
-  freelancers: 0,
-  activeUsers: 0,
-  identityPending: 0,
-  servicesTotal: 0,
-  servicesPublished: 0,
-  servicesDraft: 0,
-  servicesArchived: 0,
-  ticketsTotal: 0,
-  ticketsOpen: 0,
-  ticketsInProgress: 0,
-  ticketsAnswered: 0,
-  ticketsResolved: 0,
-  ticketsUnanswered: 0,
-  highPriorityUnanswered: 0,
-};
-
-const isTicketUnanswered = (ticket) => {
-  const status = normalizeSupportTicketStatus(ticket?.status);
-  return !ticket?.publicReply && !['ANSWERED', 'RESOLVED', 'CLOSED'].includes(status);
-};
 
 function Admin() {
   const { user: currentUser } = useAuth();
@@ -1520,7 +1185,161 @@ function Admin() {
     }
   };
 
+  const adminContextValue = {
+    // overview
+    loadAdminOverview,
+    overviewLoading,
+    overviewSignals,
+    adminActionItems,
+    setActiveTab,
+    // services
+    loadAdminServices,
+    servicesLoading,
+    saveAdminService,
+    selectedService,
+    serviceSaving,
+    adminServicesTotal,
+    adminServicesSummary,
+    serviceStatusFilter,
+    setServiceStatusFilter,
+    serviceCategoryFilter,
+    setServiceCategoryFilter,
+    categories,
+    adminServices,
+    selectedServiceId,
+    setSelectedServiceId,
+    archiveAdminService,
+    permanentlyDeleteAdminService,
+    serviceDraft,
+    updateServiceDraft,
+    selectedServiceSubcategories,
+    // promotions
+    loadCoupons,
+    couponsLoading,
+    startNewCoupon,
+    couponsTotal,
+    couponsSummary,
+    couponStatusFilter,
+    setCouponStatusFilter,
+    coupons,
+    selectedCouponId,
+    setSelectedCouponId,
+    couponDraft,
+    updateCouponDraft,
+    selectedCoupon,
+    removeCoupon,
+    couponSaving,
+    saveCoupon,
+    // levels
+    loadFreelancerLevels,
+    levelsLoading,
+    startNewLevel,
+    freelancerLevels,
+    selectedLevelId,
+    setSelectedLevelId,
+    levelDraft,
+    updateLevelDraft,
+    selectedLevel,
+    removeLevel,
+    levelSaving,
+    saveLevel,
+    // taxonomy
+    loadCategories,
+    categoriesLoading,
+    startNewCategory,
+    taxonomyStats,
+    selectedCategoryId,
+    setSelectedCategoryId,
+    categoryDraft,
+    updateDraft,
+    selectedCategory,
+    removeCategory,
+    categorySaving,
+    saveCategory,
+    addSubcategory,
+    removeSubcategory,
+    updateSubcategory,
+    // users
+    userAccountState,
+    setUserAccountState,
+    setUserStatusFilter,
+    setUserTypeFilter,
+    setSelectedUserId,
+    saveUser,
+    selectedUser,
+    userSaving,
+    usersTotal,
+    deletedUsersStats,
+    usersStats,
+    userStatusFilter,
+    userTypeFilter,
+    usersLoading,
+    adminUsers,
+    selectedUserId,
+    toggleAdmin,
+    openIdentityModal,
+    userDraft,
+    updateUserDraft,
+    currentUser,
+    // finance
+    loadAdminPayments,
+    paymentsLoading,
+    financeSummary,
+    financeReleaseCounts,
+    financePaymentCounts,
+    paymentStatusFilter,
+    setPaymentStatusFilter,
+    releaseStatusFilter,
+    setReleaseStatusFilter,
+    adminPaymentsTotal,
+    adminPayments,
+    retryingPaymentId,
+    setRetryingPaymentId,
+    // disputes
+    loadDisputes,
+    disputesLoading,
+    saveDisputeResolution,
+    selectedDispute,
+    disputeSaving,
+    disputeStatusFilter,
+    setDisputeStatusFilter,
+    adminDisputesTotal,
+    adminDisputes,
+    selectedDisputeId,
+    setSelectedDisputeId,
+    setDisputeResolutionNote,
+    disputeOutcome,
+    setDisputeOutcome,
+    disputeResolutionNote,
+    // support
+    loadAdminTickets,
+    ticketsLoading,
+    saveTicket,
+    selectedTicket,
+    ticketSaving,
+    adminTicketsTotal,
+    ticketStats,
+    ticketStatusFilter,
+    setTicketStatusFilter,
+    ticketPriorityFilter,
+    setTicketPriorityFilter,
+    adminTickets,
+    selectedTicketId,
+    setSelectedTicketId,
+    setTicketDraft,
+    activeTicketDraft,
+    updateTicketDraft,
+    // audit
+    loadAuditLogs,
+    auditLoading,
+    auditActionFilter,
+    setAuditActionFilter,
+    auditLogsTotal,
+    auditLogs,
+  };
+
   return (
+    <AdminContext.Provider value={adminContextValue}>
     <div className={styles.page}>
       <section className={styles.hero}>
         <div className={styles.heroCopy}>
@@ -1585,1622 +1404,25 @@ function Admin() {
           })}
         </div>
 
-        {activeTab === 'overview' && (
-          <div className={styles.overviewGrid}>
-            <section className={styles.panel}>
-              <div className={styles.panelHead}>
-                <div>
-                  <span className={styles.sectionKicker}>Indicadores</span>
-                  <h3>Base da plataforma</h3>
-                </div>
-                <button type="button" className={styles.ghostButton} onClick={loadAdminOverview} disabled={overviewLoading}>
-                  {overviewLoading ? 'Atualizando...' : 'Atualizar'}
-                </button>
-              </div>
+        {activeTab === 'overview' && <OverviewTab />}
 
-              <div className={styles.signalGrid}>
-                {overviewSignals.map((signal) => (
-                  <div key={signal.label} className={styles.signalCard}>
-                    <span>{signal.label}</span>
-                    <strong>{signal.value}</strong>
-                    <em className={`${styles.badge} ${styles[signal.tone]}`}>{signal.status}</em>
-                  </div>
-                ))}
-              </div>
-            </section>
+        {activeTab === 'services' && <ServicesTab />}
 
-            <section className={styles.panel}>
-              <div className={styles.panelHead}>
-                <div>
-                  <span className={styles.sectionKicker}>Prioridades</span>
-                  <h3>Fila de ação</h3>
-                </div>
-                <button type="button" className={styles.primaryButton} onClick={() => setActiveTab('support')}>
-                  Ver suporte
-                </button>
-              </div>
+        {activeTab === 'promotions' && <PromotionsTab />}
 
-              <div className={styles.actionList}>
-                {adminActionItems.map((item) => (
-                  <article key={item.title} className={styles.actionItem}>
-                    <div className={styles.actionIcon}>{item.icon}</div>
-                    <div>
-                      <strong>{item.title}</strong>
-                      <span>{item.owner} · {item.type}</span>
-                    </div>
-                    <em className={`${styles.badge} ${styles[item.tone]}`}>{item.priority}</em>
-                  </article>
-                ))}
-              </div>
-            </section>
-          </div>
-        )}
+        {activeTab === 'levels' && <LevelsTab />}
 
-        {activeTab === 'services' && (
-          <section className={styles.panel}>
-            <div className={styles.panelHead}>
-              <div>
-                <span className={styles.sectionKicker}>Marketplace</span>
-                <h3>Serviços publicados e rascunhos</h3>
-              </div>
-              <div className={styles.buttonGroup}>
-                <button type="button" className={styles.ghostButton} onClick={loadAdminServices} disabled={servicesLoading}>
-                  {servicesLoading ? 'Atualizando...' : 'Atualizar'}
-                </button>
-                <button type="button" className={styles.primaryButton} onClick={saveAdminService} disabled={!selectedService || serviceSaving}>
-                  <FaFloppyDisk /> {serviceSaving ? 'Salvando...' : 'Salvar serviço'}
-                </button>
-              </div>
-            </div>
+        {activeTab === 'taxonomy' && <TaxonomyTab />}
 
-            <div className={styles.userStats}>
-              <div className={styles.taxonomyStat}>
-                <FaLayerGroup />
-                <span>Total filtrado</span>
-                <strong>{adminServicesTotal}</strong>
-              </div>
-              <div className={styles.taxonomyStat}>
-                <FaCircleCheck />
-                <span>Publicados</span>
-                <strong>{summaryValue(adminServicesSummary, 'PUBLISHED')}</strong>
-              </div>
-              <div className={styles.taxonomyStat}>
-                <FaClock />
-                <span>Rascunhos</span>
-                <strong>{summaryValue(adminServicesSummary, 'DRAFT')}</strong>
-              </div>
-              <div className={styles.taxonomyStat}>
-                <FaBan />
-                <span>Arquivados</span>
-                <strong>{summaryValue(adminServicesSummary, 'ARCHIVED')}</strong>
-              </div>
-            </div>
+        {activeTab === 'users' && <UsersTab />}
 
-            <div className={styles.userFilters}>
-              <select value={serviceStatusFilter} onChange={(event) => setServiceStatusFilter(event.target.value)}>
-                <option value="all">Todos os status</option>
-                <option value="PUBLISHED">Publicados</option>
-                <option value="DRAFT">Rascunhos</option>
-                <option value="ARCHIVED">Arquivados</option>
-              </select>
-              <select value={serviceCategoryFilter} onChange={(event) => setServiceCategoryFilter(event.target.value)}>
-                <option value="">Todas as categorias</option>
-                {categories.map((category) => (
-                  <option key={category.id} value={category.id}>{category.name}</option>
-                ))}
-              </select>
-            </div>
+        {activeTab === 'finance' && <FinanceTab />}
 
-            <div className={styles.userManagementGrid}>
-              <div className={styles.tableWrap}>
-                <table className={styles.table}>
-                  <thead>
-                    <tr>
-                      <th>Serviço</th>
-                      <th>Freelancer</th>
-                      <th>Status</th>
-                      <th>Sinais</th>
-                      <th>Ações</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {servicesLoading ? (
-                      <tr>
-                        <td colSpan="5">Carregando serviços...</td>
-                      </tr>
-                    ) : adminServices.length === 0 ? (
-                      <tr>
-                        <td colSpan="5">Nenhum serviço encontrado.</td>
-                      </tr>
-                    ) : (
-                      adminServices.map((service) => (
-                        <tr key={service.id} className={selectedServiceId === service.id ? styles.tableRowActive : ''}>
-                          <td>
-                            <strong>{service.title}</strong>
-                            <span>{service.category?.name || 'Sem categoria'} · {service.subcategoryName || 'Sem subcategoria'}</span>
-                            <span>ID: {service.id}</span>
-                          </td>
-                          <td>
-                            <strong>{toUserName(service.owner)}</strong>
-                            <span>@{service.owner?.username || 'sem username'}</span>
-                          </td>
-                          <td>
-                            <em className={`${styles.badge} ${styles[getStatusTone(SERVICE_STATUS_LABEL[service.status] || service.status)]}`}>
-                              {SERVICE_STATUS_LABEL[service.status] || service.status}
-                            </em>
-                            <span>Atualizado: {formatDate(service.updatedAt)}</span>
-                          </td>
-                          <td>
-                            <strong>{formatCents(service.minPriceCents)} inicial</strong>
-                            <span>{service.counts?.orders || 0} pedidos · {service.counts?.favorites || 0} favoritos</span>
-                          </td>
-                          <td>
-                            <div className={styles.rowActions}>
-                              <button type="button" onClick={() => setSelectedServiceId(service.id)}>Editar</button>
-                              <button type="button" onClick={() => archiveAdminService(service)} disabled={serviceSaving || service.status === 'ARCHIVED'}>
-                                Arquivar
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => permanentlyDeleteAdminService(service)}
-                                disabled={serviceSaving || (service.counts?.orders || 0) > 0 || (service.counts?.payments || 0) > 0}
-                              >
-                                Excluir
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
+        {activeTab === 'disputes' && <DisputesTab />}
 
-              <aside className={styles.userEditor}>
-                {selectedService ? (
-                  <>
-                    <div className={styles.userEditorHeader}>
-                      <div className={styles.userAvatar}>
-                        <CategoryIcon category={selectedService.category} />
-                      </div>
-                      <div>
-                        <span className={styles.sectionKicker}>Editor de serviço</span>
-                        <h4>{selectedService.title}</h4>
-                        <p>{toUserName(selectedService.owner)} · {selectedService.category?.name}</p>
-                      </div>
-                    </div>
+        {activeTab === 'support' && <SupportTab />}
 
-                    <div className={styles.formGrid}>
-                      <label className={`${styles.formField} ${styles.formFieldFull}`}>
-                        <span>Título</span>
-                        <input value={serviceDraft.title} onChange={(event) => updateServiceDraft('title', event.target.value)} />
-                      </label>
-                      <label className={styles.formField}>
-                        <span>Status</span>
-                        <select value={serviceDraft.status} onChange={(event) => updateServiceDraft('status', event.target.value)}>
-                          <option value="DRAFT">Rascunho</option>
-                          <option value="PUBLISHED">Publicado</option>
-                          <option value="ARCHIVED">Arquivado</option>
-                        </select>
-                      </label>
-                      <label className={styles.formField}>
-                        <span>Categoria</span>
-                        <select
-                          value={serviceDraft.categoryId}
-                          onChange={(event) => {
-                            updateServiceDraft('categoryId', event.target.value);
-                            updateServiceDraft('subcategorySlug', '');
-                          }}
-                        >
-                          <option value="">Selecione</option>
-                          {categories.map((category) => (
-                            <option key={category.id} value={category.id}>{category.name}</option>
-                          ))}
-                        </select>
-                      </label>
-                      <label className={styles.formField}>
-                        <span>Subcategoria</span>
-                        <select value={serviceDraft.subcategorySlug} onChange={(event) => updateServiceDraft('subcategorySlug', event.target.value)}>
-                          <option value="">Sem subcategoria</option>
-                          {selectedServiceSubcategories.map((subcategory) => (
-                            <option key={subcategory.slug} value={subcategory.slug}>{subcategory.name}</option>
-                          ))}
-                        </select>
-                      </label>
-                      <label className={styles.formField}>
-                        <span>URL da capa</span>
-                        <input value={serviceDraft.coverUrl} onChange={(event) => updateServiceDraft('coverUrl', event.target.value)} />
-                      </label>
-                      <label className={`${styles.formField} ${styles.formFieldFull}`}>
-                        <span>Tags</span>
-                        <input value={serviceDraft.tags} onChange={(event) => updateServiceDraft('tags', event.target.value)} placeholder="landing pages, react, sites" />
-                      </label>
-                      <label className={`${styles.formField} ${styles.formFieldFull}`}>
-                        <span>Descrição</span>
-                        <textarea rows={6} value={serviceDraft.description} onChange={(event) => updateServiceDraft('description', event.target.value)} />
-                      </label>
-                    </div>
-
-                    <button type="button" className={styles.primaryButton} onClick={saveAdminService} disabled={serviceSaving}>
-                      <FaFloppyDisk /> {serviceSaving ? 'Salvando...' : 'Salvar alterações'}
-                    </button>
-                  </>
-                ) : (
-                  <div className={styles.taxonomyEmpty}>
-                    Selecione um serviço para editar status, categoria, tags e informações principais.
-                  </div>
-                )}
-              </aside>
-            </div>
-          </section>
-        )}
-
-        {activeTab === 'promotions' && (
-          <section className={styles.panel}>
-            <div className={styles.panelHead}>
-              <div>
-                <span className={styles.sectionKicker}>Crescimento</span>
-                <h3>Cupons e promoções</h3>
-              </div>
-              <div className={styles.buttonGroup}>
-                <button type="button" className={styles.ghostButton} onClick={loadCoupons} disabled={couponsLoading}>
-                  {couponsLoading ? 'Atualizando...' : 'Atualizar'}
-                </button>
-                <button type="button" className={styles.primaryButton} onClick={startNewCoupon}>
-                  <FaPlus /> Novo cupom
-                </button>
-              </div>
-            </div>
-
-            <div className={styles.userStats}>
-              <div className={styles.taxonomyStat}>
-                <FaGift />
-                <span>Total filtrado</span>
-                <strong>{couponsTotal}</strong>
-              </div>
-              <div className={styles.taxonomyStat}>
-                <FaCircleCheck />
-                <span>Ativos</span>
-                <strong>{couponsSummary.active || 0}</strong>
-              </div>
-              <div className={styles.taxonomyStat}>
-                <FaClock />
-                <span>Agendados</span>
-                <strong>{couponsSummary.scheduled || 0}</strong>
-              </div>
-              <div className={styles.taxonomyStat}>
-                <FaBan />
-                <span>Expirados/inativos</span>
-                <strong>{(couponsSummary.expired || 0) + (couponsSummary.inactive || 0)}</strong>
-              </div>
-            </div>
-
-            <div className={styles.userFilters}>
-              <select value={couponStatusFilter} onChange={(event) => setCouponStatusFilter(event.target.value)}>
-                <option value="all">Todos os cupons</option>
-                <option value="active">Ativos</option>
-                <option value="scheduled">Agendados</option>
-                <option value="expired">Expirados</option>
-                <option value="inactive">Inativos</option>
-                <option value="limit_reached">Limite atingido</option>
-              </select>
-            </div>
-
-            <div className={styles.userManagementGrid}>
-              <div className={styles.couponGrid}>
-                {couponsLoading ? (
-                  <div className={styles.taxonomyEmpty}>Carregando cupons...</div>
-                ) : coupons.length === 0 ? (
-                  <div className={styles.taxonomyEmpty}>Nenhum cupom encontrado.</div>
-                ) : (
-                  coupons.map((coupon) => (
-                    <button
-                      key={coupon.id}
-                      type="button"
-                      className={`${styles.promoCard} ${selectedCouponId === coupon.id ? styles.promoCardActive : ''}`}
-                      onClick={() => setSelectedCouponId(coupon.id)}
-                    >
-                      <span className={styles.promoCode}>{coupon.code}</span>
-                      <strong>{coupon.name}</strong>
-                      <small>
-                        {coupon.discountType === 'PERCENTAGE'
-                          ? `${coupon.discountValue}% de desconto`
-                          : `${formatCents(coupon.discountValue)} de desconto`}
-                      </small>
-                      <em className={`${styles.badge} ${styles[getStatusTone(COUPON_STATUS_LABEL[coupon.operationalStatus] || coupon.operationalStatus)]}`}>
-                        {COUPON_STATUS_LABEL[coupon.operationalStatus] || coupon.operationalStatus}
-                      </em>
-                    </button>
-                  ))
-                )}
-              </div>
-
-              <aside className={styles.userEditor}>
-                <div className={styles.userEditorHeader}>
-                  <div className={styles.userAvatar}><FaGift /></div>
-                  <div>
-                    <span className={styles.sectionKicker}>{selectedCouponId === 'new' ? 'Novo cupom' : 'Editor'}</span>
-                    <h4>{couponDraft.code || 'Cupom promocional'}</h4>
-                    <p>Controle campanha, janela, limite e desconto.</p>
-                  </div>
-                </div>
-
-                <div className={styles.formGrid}>
-                  <label className={styles.formField}>
-                    <span>Código</span>
-                    <input value={couponDraft.code} onChange={(event) => updateCouponDraft('code', event.target.value.toUpperCase())} placeholder="BEMVINDO10" />
-                  </label>
-                  <label className={styles.formField}>
-                    <span>Tipo</span>
-                    <select value={couponDraft.discountType} onChange={(event) => updateCouponDraft('discountType', event.target.value)}>
-                      <option value="PERCENTAGE">Percentual</option>
-                      <option value="FIXED_AMOUNT">Valor fixo</option>
-                    </select>
-                  </label>
-                  <label className={`${styles.formField} ${styles.formFieldFull}`}>
-                    <span>Nome da campanha</span>
-                    <input value={couponDraft.name} onChange={(event) => updateCouponDraft('name', event.target.value)} placeholder="Boas-vindas" />
-                  </label>
-                  <label className={styles.formField}>
-                    <span>{couponDraft.discountType === 'PERCENTAGE' ? 'Desconto (%)' : 'Desconto (R$)'}</span>
-                    <input value={couponDraft.discountValue} onChange={(event) => updateCouponDraft('discountValue', event.target.value)} />
-                  </label>
-                  <label className={styles.formField}>
-                    <span>Desconto máximo (R$)</span>
-                    <input value={couponDraft.maxDiscountCents} onChange={(event) => updateCouponDraft('maxDiscountCents', event.target.value)} />
-                  </label>
-                  <label className={styles.formField}>
-                    <span>Pedido mínimo (R$)</span>
-                    <input value={couponDraft.minSubtotalCents} onChange={(event) => updateCouponDraft('minSubtotalCents', event.target.value)} />
-                  </label>
-                  <label className={styles.formField}>
-                    <span>Limite de usos</span>
-                    <input type="number" min="1" value={couponDraft.usageLimit} onChange={(event) => updateCouponDraft('usageLimit', event.target.value)} />
-                  </label>
-                  <label className={styles.formField}>
-                    <span>Início</span>
-                    <input type="datetime-local" value={couponDraft.startsAt} onChange={(event) => updateCouponDraft('startsAt', event.target.value)} />
-                  </label>
-                  <label className={styles.formField}>
-                    <span>Fim</span>
-                    <input type="datetime-local" value={couponDraft.endsAt} onChange={(event) => updateCouponDraft('endsAt', event.target.value)} />
-                  </label>
-                  <label className={`${styles.formField} ${styles.formFieldFull}`}>
-                    <span>Descrição interna</span>
-                    <textarea rows={3} value={couponDraft.description} onChange={(event) => updateCouponDraft('description', event.target.value)} />
-                  </label>
-                </div>
-
-                <div className={styles.userSwitches}>
-                  <label>
-                    <input type="checkbox" checked={couponDraft.isActive} onChange={(event) => updateCouponDraft('isActive', event.target.checked)} />
-                    <span>Cupom ativo</span>
-                  </label>
-                </div>
-
-                <div className={styles.editorActions}>
-                  {selectedCoupon && (
-                    <button type="button" className={styles.dangerButton} onClick={removeCoupon} disabled={couponSaving}>
-                      <FaTrash /> Excluir
-                    </button>
-                  )}
-                  <button type="button" className={styles.primaryButton} onClick={saveCoupon} disabled={couponSaving}>
-                    <FaFloppyDisk /> {couponSaving ? 'Salvando...' : 'Salvar cupom'}
-                  </button>
-                </div>
-              </aside>
-            </div>
-          </section>
-        )}
-
-        {activeTab === 'levels' && (
-          <section className={styles.panel}>
-            <div className={styles.panelHead}>
-              <div>
-                <span className={styles.sectionKicker}>Confiança</span>
-                <h3>Sistema geral de níveis e XP</h3>
-              </div>
-              <div className={styles.buttonGroup}>
-                <button type="button" className={styles.ghostButton} onClick={loadFreelancerLevels} disabled={levelsLoading}>
-                  {levelsLoading ? 'Atualizando...' : 'Atualizar'}
-                </button>
-                <button type="button" className={styles.primaryButton} onClick={startNewLevel}>
-                  <FaPlus /> Novo nível
-                </button>
-              </div>
-            </div>
-
-            <div className={styles.levelLayout}>
-              <div className={styles.levelList}>
-                {levelsLoading ? (
-                  <div className={styles.taxonomyEmpty}>Carregando níveis...</div>
-                ) : freelancerLevels.length === 0 ? (
-                  <div className={styles.taxonomyEmpty}>Nenhum nível configurado.</div>
-                ) : (
-                  freelancerLevels.map((level) => (
-                    <button
-                      key={level.id}
-                      type="button"
-                      className={`${styles.levelCard} ${selectedLevelId === level.id ? styles.levelCardActive : ''}`}
-                      onClick={() => setSelectedLevelId(level.id)}
-                    >
-                      <span className={styles.levelSwatch} style={{ background: level.badgeColor }} />
-                      <span>
-                        <strong>Nível {level.levelNumber} · {level.name}</strong>
-                        <small>
-                          {level.audience === 'ALL' ? 'Todos' : level.audience === 'FREELANCER' ? 'Freelancers' : 'Clientes'} · {level.xpRequired} XP para liberar
-                        </small>
-                      </span>
-                      <em className={`${styles.badge} ${styles[level.isActive ? 'success' : 'neutral']}`}>
-                        {level.isActive ? 'Ativo' : 'Inativo'}
-                      </em>
-                    </button>
-                  ))
-                )}
-              </div>
-
-              <aside className={styles.userEditor}>
-                <div className={styles.userEditorHeader}>
-                  <div className={styles.userAvatar}><FaMedal /></div>
-                  <div>
-                    <span className={styles.sectionKicker}>{selectedLevelId === 'new' ? 'Novo nível' : 'Editor'}</span>
-                    <h4>{levelDraft.name || 'Nível da plataforma'}</h4>
-                    <p>Configure XP, audiência e recompensas exibidas ao usuário.</p>
-                  </div>
-                </div>
-
-                <div className={styles.formGrid}>
-                  <label className={styles.formField}>
-                    <span>Audiência</span>
-                    <select value={levelDraft.audience} onChange={(event) => updateLevelDraft('audience', event.target.value)}>
-                      <option value="ALL">Todos</option>
-                      <option value="FREELANCER">Freelancers</option>
-                      <option value="CLIENT">Clientes</option>
-                    </select>
-                  </label>
-                  <label className={styles.formField}>
-                    <span>Número do nível</span>
-                    <input type="number" min="1" value={levelDraft.levelNumber} onChange={(event) => updateLevelDraft('levelNumber', event.target.value)} />
-                  </label>
-                  <label className={styles.formField}>
-                    <span>Nome</span>
-                    <input value={levelDraft.name} onChange={(event) => updateLevelDraft('name', event.target.value)} placeholder="Nível 5" />
-                  </label>
-                  <label className={styles.formField}>
-                    <span>Slug</span>
-                    <input value={levelDraft.slug} onChange={(event) => updateLevelDraft('slug', slugify(event.target.value))} placeholder="nivel-5" />
-                  </label>
-                  <label className={styles.formField}>
-                    <span>XP necessário</span>
-                    <input type="number" min="0" value={levelDraft.xpRequired} onChange={(event) => updateLevelDraft('xpRequired', event.target.value)} />
-                  </label>
-                  <label className={styles.formField}>
-                    <span>Ordem</span>
-                    <input type="number" min="0" value={levelDraft.position} onChange={(event) => updateLevelDraft('position', event.target.value)} />
-                  </label>
-                  <label className={styles.formField}>
-                    <span>Cor do selo</span>
-                    <input type="color" value={levelDraft.badgeColor} onChange={(event) => updateLevelDraft('badgeColor', event.target.value)} />
-                  </label>
-                  <label className={`${styles.formField} ${styles.formFieldFull}`}>
-                    <span>Descrição</span>
-                    <textarea rows={3} value={levelDraft.description} onChange={(event) => updateLevelDraft('description', event.target.value)} />
-                  </label>
-                  <label className={`${styles.formField} ${styles.formFieldFull}`}>
-                    <span>Recompensas/benefícios, um por linha</span>
-                    <textarea rows={4} value={levelDraft.benefits} onChange={(event) => updateLevelDraft('benefits', event.target.value)} />
-                  </label>
-                </div>
-
-                <div className={styles.userSwitches}>
-                  <label>
-                    <input type="checkbox" checked={levelDraft.isActive} onChange={(event) => updateLevelDraft('isActive', event.target.checked)} />
-                    <span>Nível ativo</span>
-                  </label>
-                </div>
-
-                <div className={styles.editorActions}>
-                  {selectedLevel && (
-                    <button type="button" className={styles.dangerButton} onClick={removeLevel} disabled={levelSaving}>
-                      <FaTrash /> Excluir
-                    </button>
-                  )}
-                  <button type="button" className={styles.primaryButton} onClick={saveLevel} disabled={levelSaving}>
-                    <FaFloppyDisk /> {levelSaving ? 'Salvando...' : 'Salvar nível'}
-                  </button>
-                </div>
-              </aside>
-            </div>
-          </section>
-        )}
-
-        {activeTab === 'taxonomy' && (
-          <section className={styles.panel}>
-            <div className={styles.panelHead}>
-              <div>
-                <span className={styles.sectionKicker}>Marketplace</span>
-                <h3>Categorias, subcategorias e tags</h3>
-              </div>
-              <div className={styles.buttonGroup}>
-                <button type="button" className={styles.ghostButton} onClick={loadCategories} disabled={categoriesLoading}>
-                  Atualizar
-                </button>
-                <button type="button" className={styles.primaryButton} onClick={startNewCategory}>
-                  <FaPlus /> Nova categoria
-                </button>
-              </div>
-            </div>
-
-            <div className={styles.taxonomyStats}>
-              <div className={styles.taxonomyStat}>
-                <FaLayerGroup />
-                <span>Categorias</span>
-                <strong>{categories.length}</strong>
-              </div>
-              <div className={styles.taxonomyStat}>
-                <FaTags />
-                <span>Subcategorias</span>
-                <strong>{taxonomyStats.subcategoryCount}</strong>
-              </div>
-              <div className={styles.taxonomyStat}>
-                <FaBolt />
-                <span>Tags mapeadas</span>
-                <strong>{taxonomyStats.tagCount}</strong>
-              </div>
-              <div className={styles.taxonomyStat}>
-                <FaUsers />
-                <span>Serviços vinculados</span>
-                <strong>{taxonomyStats.serviceCount}</strong>
-              </div>
-            </div>
-
-            <div className={styles.taxonomyLayout}>
-              <aside className={styles.categoryRail}>
-                {categoriesLoading ? (
-                  <div className={styles.taxonomyEmpty}>Carregando taxonomia...</div>
-                ) : categories.length === 0 ? (
-                  <div className={styles.taxonomyEmpty}>Nenhuma categoria cadastrada.</div>
-                ) : (
-                  categories.map((category) => (
-                    <button
-                      key={category.id}
-                      type="button"
-                      className={`${styles.categoryRailItem} ${selectedCategoryId === category.id ? styles.categoryRailActive : ''}`}
-                      onClick={() => setSelectedCategoryId(category.id)}
-                    >
-                      <span className={styles.categoryRailIcon}>
-                        <CategoryIcon category={category} />
-                      </span>
-                      <span>
-                        <strong>{category.name}</strong>
-                        <small>
-                          {(category.subcategories || []).length} subcategorias · {category.servicesCount || 0} serviços
-                        </small>
-                      </span>
-                    </button>
-                  ))
-                )}
-              </aside>
-
-              <div className={styles.taxonomyEditor}>
-                <div className={styles.editorHeader}>
-                  <div>
-                    <span className={styles.sectionKicker}>
-                      {selectedCategoryId === 'new' ? 'Nova categoria' : 'Editor'}
-                    </span>
-                    <h4>{categoryDraft.name || 'Defina a categoria'}</h4>
-                    <p>Use slugs estáveis: eles aparecem em filtros, links e buscas do marketplace.</p>
-                  </div>
-                  <div className={styles.editorActions}>
-                    {selectedCategory && (
-                      <button
-                        type="button"
-                        className={styles.dangerButton}
-                        onClick={removeCategory}
-                        disabled={categorySaving || (selectedCategory.servicesCount || 0) > 0}
-                        title={(selectedCategory.servicesCount || 0) > 0 ? 'Categorias com serviços não podem ser excluídas' : 'Excluir categoria'}
-                      >
-                        <FaTrash /> Excluir
-                      </button>
-                    )}
-                    <button type="button" className={styles.primaryButton} onClick={saveCategory} disabled={categorySaving}>
-                      <FaFloppyDisk /> {categorySaving ? 'Salvando...' : 'Salvar'}
-                    </button>
-                  </div>
-                </div>
-
-                <div className={styles.formGrid}>
-                  <label className={styles.formField}>
-                    <span>Nome</span>
-                    <input
-                      type="text"
-                      value={categoryDraft.name}
-                      onChange={(event) => updateDraft('name', event.target.value)}
-                      placeholder="Ex: Desenvolvimento"
-                    />
-                  </label>
-                  <label className={styles.formField}>
-                    <span>Slug</span>
-                    <input
-                      type="text"
-                      value={categoryDraft.slug}
-                      onChange={(event) => updateDraft('slug', slugify(event.target.value))}
-                      placeholder="desenvolvimento"
-                    />
-                  </label>
-                  <label className={styles.formField}>
-                    <span>Ícone</span>
-                    <input
-                      type="text"
-                      value={categoryDraft.icon}
-                      onChange={(event) => updateDraft('icon', event.target.value)}
-                      placeholder="code, palette, robot..."
-                    />
-                  </label>
-                  <label className={styles.formField}>
-                    <span>Ordem</span>
-                    <input
-                      type="number"
-                      value={categoryDraft.position}
-                      onChange={(event) => updateDraft('position', event.target.value)}
-                      min="0"
-                    />
-                  </label>
-                </div>
-
-                <div className={styles.subcategoryHeader}>
-                  <div>
-                    <h4>Subcategorias</h4>
-                    <p>Tags são separadas por vírgula e aparecem como sugestões ao criar serviços.</p>
-                  </div>
-                  <button type="button" className={styles.ghostButton} onClick={addSubcategory}>
-                    <FaPlus /> Adicionar subcategoria
-                  </button>
-                </div>
-
-                <div className={styles.subcategoryEditorList}>
-                  {categoryDraft.subcategories.length === 0 ? (
-                    <div className={styles.taxonomyEmpty}>
-                      Adicione subcategorias para orientar melhor a criação de serviços.
-                    </div>
-                  ) : (
-                    categoryDraft.subcategories.map((item, index) => (
-                      <article key={`${item.slug}-${index}`} className={styles.subcategoryEditor}>
-                        <div className={styles.subcategoryEditorTop}>
-                          <strong>Subcategoria {index + 1}</strong>
-                          <button type="button" onClick={() => removeSubcategory(index)}>
-                            <FaTrash /> Remover
-                          </button>
-                        </div>
-                        <div className={styles.formGrid}>
-                          <label className={styles.formField}>
-                            <span>Nome</span>
-                            <input
-                              type="text"
-                              value={item.name}
-                              onChange={(event) => updateSubcategory(index, 'name', event.target.value)}
-                              placeholder="Ex: Web"
-                            />
-                          </label>
-                          <label className={styles.formField}>
-                            <span>Slug</span>
-                            <input
-                              type="text"
-                              value={item.slug}
-                              onChange={(event) => updateSubcategory(index, 'slug', slugify(event.target.value))}
-                              placeholder="web"
-                            />
-                          </label>
-                        </div>
-                        <label className={`${styles.formField} ${styles.formFieldFull}`}>
-                          <span>Tags</span>
-                          <textarea
-                            rows={2}
-                            value={(item.tags || []).join(', ')}
-                            onChange={(event) => updateSubcategory(index, 'tags', parseTags(event.target.value))}
-                            placeholder="sites, landing pages, react, next.js"
-                          />
-                        </label>
-                      </article>
-                    ))
-                  )}
-                </div>
-              </div>
-            </div>
-          </section>
-        )}
-
-        {activeTab === 'users' && (
-          <section className={styles.panel}>
-            <div className={styles.panelHead}>
-              <div>
-                <span className={styles.sectionKicker}>Usuários</span>
-                <h3>
-                  {userAccountState === 'deleted'
-                    ? 'Contas excluídas e anonimizadas'
-                    : 'Contas reais da plataforma'}
-                </h3>
-                <p className={styles.panelDescription}>
-                  {userAccountState === 'deleted'
-                    ? 'Registros mínimos preservados exclusivamente para integridade operacional e auditoria.'
-                    : 'Gerencie perfis, permissões e verificações das contas em operação.'}
-                </p>
-              </div>
-              <div className={styles.buttonGroup}>
-                <div className={styles.accountViewSwitch} aria-label="Visualização de contas">
-                  <button
-                    type="button"
-                    className={`${styles.accountViewButton} ${userAccountState === 'active' ? styles.accountViewButtonActive : ''}`}
-                    onClick={() => {
-                      setUserAccountState('active');
-                      setUserStatusFilter('all');
-                      setUserTypeFilter('');
-                    }}
-                  >
-                    <FaUsers /> Contas ativas
-                  </button>
-                  <button
-                    type="button"
-                    className={`${styles.accountViewButton} ${userAccountState === 'deleted' ? styles.accountViewButtonActive : ''}`}
-                    onClick={() => {
-                      setUserAccountState('deleted');
-                      setUserStatusFilter('all');
-                      setUserTypeFilter('');
-                      setSelectedUserId('');
-                    }}
-                  >
-                    <FaTrash /> Excluídas
-                  </button>
-                </div>
-                {userAccountState === 'active' && (
-                  <button type="button" className={styles.primaryButton} onClick={saveUser} disabled={!selectedUser || userSaving}>
-                    <FaFloppyDisk /> {userSaving ? 'Salvando...' : 'Salvar usuário'}
-                  </button>
-                )}
-              </div>
-            </div>
-
-            <div className={styles.userStats}>
-              {userAccountState === 'deleted' ? (
-                <>
-                  <div className={styles.taxonomyStat}>
-                    <FaTrash />
-                    <span>Total excluído</span>
-                    <strong>{usersTotal}</strong>
-                  </div>
-                  <div className={styles.taxonomyStat}>
-                    <FaClock />
-                    <span>Com histórico vinculado</span>
-                    <strong>{deletedUsersStats.withHistory}</strong>
-                  </div>
-                  <div className={styles.taxonomyStat}>
-                    <FaInbox />
-                    <span>Pedidos preservados</span>
-                    <strong>{deletedUsersStats.orders}</strong>
-                  </div>
-                  <div className={styles.taxonomyStat}>
-                    <FaShieldHalved />
-                    <span>Dados pessoais</span>
-                    <strong>Anonimizados</strong>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className={styles.taxonomyStat}>
-                    <FaUsers />
-                    <span>Total filtrado</span>
-                    <strong>{usersTotal}</strong>
-                  </div>
-                  <div className={styles.taxonomyStat}>
-                    <FaCircleCheck />
-                    <span>Ativos</span>
-                    <strong>{usersStats.active}</strong>
-                  </div>
-                  <div className={styles.taxonomyStat}>
-                    <FaUserCheck />
-                    <span>Identidade verificada</span>
-                    <strong>{usersStats.identityVerified}</strong>
-                  </div>
-                  <div className={styles.taxonomyStat}>
-                    <FaBolt />
-                    <span>Freelancers / Clientes</span>
-                    <strong>{usersStats.freelancers}/{usersStats.clients}</strong>
-                  </div>
-                </>
-              )}
-            </div>
-
-            {userAccountState === 'active' ? (
-              <div className={styles.userFilters}>
-                <select value={userStatusFilter} onChange={(event) => setUserStatusFilter(event.target.value)}>
-                  <option value="all">Todos os status</option>
-                  <option value="active">Ativos</option>
-                  <option value="inactive">Inativos</option>
-                  <option value="verified">Email verificado</option>
-                  <option value="unverified">Email pendente</option>
-                  <option value="identity_verified">Identidade verificada</option>
-                  <option value="identity_pending">Identidade em análise</option>
-                  <option value="identity_rejected">Identidade recusada</option>
-                  <option value="admin">Admins</option>
-                </select>
-                <select value={userTypeFilter} onChange={(event) => setUserTypeFilter(event.target.value)}>
-                  <option value="">Todos os tipos</option>
-                  <option value="FREELANCER">Freelancers</option>
-                  <option value="CLIENT">Clientes</option>
-                </select>
-              </div>
-            ) : (
-              <div className={styles.deletedUsersNotice}>
-                <FaShieldHalved />
-                <span>
-                  Dados de identificação não são exibidos. O acesso a estes registros deve ser usado somente para auditoria.
-                </span>
-              </div>
-            )}
-
-            <div className={`${styles.userManagementGrid} ${userAccountState === 'deleted' ? styles.deletedUsersGrid : ''}`}>
-              <div className={styles.tableWrap}>
-                <table className={styles.table}>
-                  <thead>
-                    {userAccountState === 'deleted' ? (
-                      <tr>
-                        <th>Registro</th>
-                        <th>Excluída em</th>
-                        <th>Histórico preservado</th>
-                        <th>Estado</th>
-                      </tr>
-                    ) : (
-                      <tr>
-                        <th>Usuário</th>
-                        <th>Tipo</th>
-                        <th>Atividade</th>
-                        <th>Identidade</th>
-                        <th>Uso</th>
-                        <th>Admin</th>
-                        <th>Ações</th>
-                      </tr>
-                    )}
-                  </thead>
-                  <tbody>
-                    {usersLoading ? (
-                      <tr>
-                        <td colSpan={userAccountState === 'deleted' ? 4 : 7}>Carregando usuários...</td>
-                      </tr>
-                    ) : adminUsers.length === 0 ? (
-                      <tr>
-                        <td colSpan={userAccountState === 'deleted' ? 4 : 7}>
-                          {userAccountState === 'deleted'
-                            ? 'Nenhuma conta excluída encontrada.'
-                            : 'Nenhum usuário encontrado.'}
-                        </td>
-                      </tr>
-                    ) : userAccountState === 'deleted' ? (
-                      adminUsers.map((user) => (
-                        <tr key={user.id}>
-                          <td>
-                            <strong>Conta excluída</strong>
-                            <span>ID: {user.id}</span>
-                          </td>
-                          <td>
-                            <strong>{formatDate(user.deletedAt)}</strong>
-                            <span>Exclusão solicitada pelo titular</span>
-                          </td>
-                          <td>
-                            <strong>{user.counts?.orders || 0} pedidos</strong>
-                            <span>
-                              {user.counts?.services || 0} serviços · {user.counts?.messages || 0} mensagens
-                            </span>
-                          </td>
-                          <td>
-                            <em className={`${styles.badge} ${styles.neutral}`}>Anonimizada</em>
-                            <span>Fora da visão operacional</span>
-                          </td>
-                        </tr>
-                      ))
-                    ) : (
-                      adminUsers.map((user) => (
-                        <tr
-                          key={user.id}
-                          className={selectedUserId === user.id ? styles.tableRowActive : ''}
-                        >
-                          <td>
-                            <strong>{toUserName(user)}</strong>
-                            <span>{user.email} · @{user.username || 'sem username'}</span>
-                            <span>ID: {user.id}</span>
-                          </td>
-                          <td>
-                            <em className={`${styles.badge} ${styles[user.userType ? 'neutral' : 'warning']}`}>
-                              {USER_TYPE_LABEL[user.userType] || 'Sem tipo'}
-                            </em>
-                          </td>
-                          <td>
-                            <em className={`${styles.badge} ${styles[getStatusTone(ACTIVITY_LABEL[user.activityStatus] || 'Inativo')]}`}>
-                              {ACTIVITY_LABEL[user.activityStatus] || 'Inativo'}
-                            </em>
-                            <span>Último acesso: {formatDate(user.lastSeenAt)}</span>
-                          </td>
-                          <td>
-                            <em className={`${styles.badge} ${styles[getIdentityTone(getIdentityStatus(user))]}`}>
-                              {IDENTITY_STATUS_LABEL[getIdentityStatus(user)] || 'Não iniciada'}
-                            </em>
-                            <span>{user.identityVerifiedAt ? `Aprovada em ${formatDate(user.identityVerifiedAt)}` : 'Sem aprovação'}</span>
-                          </td>
-                          <td>
-                            <strong>{user.counts?.services || 0} serviços</strong>
-                            <span>{user.counts?.orders || 0} pedidos · {user.counts?.messages || 0} msgs</span>
-                          </td>
-                          <td>
-                            <label className={styles.adminToggle}>
-                              <input
-                                type="checkbox"
-                                checked={Boolean(user.isAdmin)}
-                                onChange={() => toggleAdmin(user)}
-                                disabled={userSaving}
-                              />
-                              <span>{user.isAdmin ? 'Admin' : 'Usuário'}</span>
-                            </label>
-                          </td>
-                          <td>
-                            <div className={styles.rowActions}>
-                              <button type="button" onClick={() => setSelectedUserId(user.id)}>Editar</button>
-                              <button type="button" onClick={() => openIdentityModal(user)} disabled={!user.accountVerification}>
-                                Verificação
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-
-              {userAccountState === 'active' && (
-                <aside className={styles.userEditor}>
-                {selectedUser ? (
-                  <>
-                    <div className={styles.userEditorHeader}>
-                      <div className={styles.userAvatar}>
-                        {toUserName(selectedUser).slice(0, 2).toUpperCase()}
-                      </div>
-                      <div>
-                        <span className={styles.sectionKicker}>Editor</span>
-                        <h4>{toUserName(selectedUser)}</h4>
-                        <p>{selectedUser.email}</p>
-                        <p>ID: {selectedUser.id}</p>
-                      </div>
-                    </div>
-
-                    <div className={styles.formGrid}>
-                      <label className={styles.formField}>
-                        <span>Nome</span>
-                        <input value={userDraft.firstName} onChange={(event) => updateUserDraft('firstName', event.target.value)} />
-                      </label>
-                      <label className={styles.formField}>
-                        <span>Sobrenome</span>
-                        <input value={userDraft.lastName} onChange={(event) => updateUserDraft('lastName', event.target.value)} />
-                      </label>
-                      <label className={`${styles.formField} ${styles.formFieldFull}`}>
-                        <span>Email</span>
-                        <input value={userDraft.email} onChange={(event) => updateUserDraft('email', event.target.value)} />
-                      </label>
-                      <label className={styles.formField}>
-                        <span>Telefone</span>
-                        <input value={userDraft.phone} onChange={(event) => updateUserDraft('phone', event.target.value)} />
-                      </label>
-                      <label className={styles.formField}>
-                        <span>Username</span>
-                        <input value={userDraft.username} onChange={(event) => updateUserDraft('username', event.target.value.toLowerCase())} />
-                      </label>
-                      <label className={`${styles.formField} ${styles.formFieldFull}`}>
-                        <span>Headline</span>
-                        <input value={userDraft.headline} onChange={(event) => updateUserDraft('headline', event.target.value)} />
-                      </label>
-                      <label className={styles.formField}>
-                        <span>Localização</span>
-                        <input value={userDraft.location} onChange={(event) => updateUserDraft('location', event.target.value)} />
-                      </label>
-                      <label className={styles.formField}>
-                        <span>Tipo de conta</span>
-                        <select value={userDraft.userType} onChange={(event) => updateUserDraft('userType', event.target.value)}>
-                          <option value="">Sem tipo</option>
-                          <option value="FREELANCER">Freelancer</option>
-                          <option value="CLIENT">Cliente</option>
-                        </select>
-                      </label>
-                    </div>
-
-                    <div className={styles.userSwitches}>
-                      <label>
-                        <input
-                          type="checkbox"
-                          checked={userDraft.isAdmin}
-                          onChange={(event) => updateUserDraft('isAdmin', event.target.checked)}
-                          disabled={selectedUser?.id === currentUser?.id}
-                        />
-                        <span>Administrador</span>
-                      </label>
-                      <label>
-                        <input
-                          type="checkbox"
-                          checked={userDraft.emailVerified}
-                          onChange={(event) => updateUserDraft('emailVerified', event.target.checked)}
-                        />
-                        <span>Email verificado</span>
-                      </label>
-                      <label>
-                        <input
-                          type="checkbox"
-                          checked={userDraft.onboarded}
-                          onChange={(event) => updateUserDraft('onboarded', event.target.checked)}
-                        />
-                        <span>Onboarding concluído</span>
-                      </label>
-                    </div>
-
-                    {selectedUser?.id === currentUser?.id && (
-                      <p className={styles.userPermissionNote}>
-                        Você não pode remover o próprio acesso administrativo. Promova outra conta e use essa conta para alterar a sua permissão.
-                      </p>
-                    )}
-
-                    <button type="button" className={styles.primaryButton} onClick={saveUser} disabled={userSaving}>
-                      <FaFloppyDisk /> {userSaving ? 'Salvando...' : 'Salvar alterações'}
-                    </button>
-                  </>
-                ) : (
-                  <div className={styles.taxonomyEmpty}>
-                    Selecione um usuário para editar permissões, perfil e estado da conta.
-                  </div>
-                )}
-                </aside>
-              )}
-            </div>
-          </section>
-        )}
-
-        {activeTab === 'finance' && (
-          <section className={styles.panel}>
-            <div className={styles.panelHead}>
-              <div>
-                <span className={styles.sectionKicker}>Financeiro</span>
-                <h3>Pagamentos, repasses e falhas operacionais</h3>
-              </div>
-              <div className={styles.buttonGroup}>
-                <button type="button" className={styles.ghostButton} onClick={loadAdminPayments} disabled={paymentsLoading}>
-                  {paymentsLoading ? 'Atualizando...' : 'Atualizar'}
-                </button>
-              </div>
-            </div>
-
-            <div className={styles.financeGrid}>
-              <div className={styles.financeCard}>
-                <FaMoneyBillTransfer />
-                <span>Retido para repasse</span>
-                <strong>{formatCents(financeSummary.heldCents)}</strong>
-                <p>{financeReleaseCounts.HELD || 0} pagamentos em hold</p>
-              </div>
-              <div className={styles.financeCard}>
-                <FaCreditCard />
-                <span>GMV confirmado</span>
-                <strong>{formatCents(financeSummary.succeededCents)}</strong>
-                <p>{financePaymentCounts.SUCCEEDED || 0} pagamentos pagos</p>
-              </div>
-              <div className={styles.financeCard}>
-                <FaFileInvoiceDollar />
-                <span>Comissão capturada</span>
-                <strong>{formatCents(financeSummary.platformFeeCents)}</strong>
-                <p>Take rate aplicado nos pedidos</p>
-              </div>
-              <div className={styles.financeCard}>
-                <FaCreditCard />
-                <span>Taxa Stripe estimada</span>
-                <strong>{formatCents(financeSummary.estimatedStripeFeeCents)}</strong>
-                <p>Estimativa por Pix/cartão</p>
-              </div>
-              <div className={styles.financeCard}>
-                <FaArrowTrendUp />
-                <span>Líquido da plataforma</span>
-                <strong>{formatCents(financeSummary.platformNetCents)}</strong>
-                <p>Comissão menos taxa Stripe estimada</p>
-              </div>
-              <div className={styles.financeCard}>
-                <FaTriangleExclamation />
-                <span>Falhas de repasse</span>
-                <strong>{formatCents(financeSummary.failedTransferCents)}</strong>
-                <p>{financeReleaseCounts.FAILED || 0} itens para revisar</p>
-              </div>
-            </div>
-
-            <div className={styles.financeFilters}>
-              <select value={paymentStatusFilter} onChange={(event) => setPaymentStatusFilter(event.target.value)}>
-                <option value="">Todos os pagamentos</option>
-                {Object.entries(PAYMENT_STATUS_LABEL).map(([value, label]) => (
-                  <option key={value} value={value}>{label}</option>
-                ))}
-              </select>
-              <select value={releaseStatusFilter} onChange={(event) => setReleaseStatusFilter(event.target.value)}>
-                <option value="">Todos os repasses</option>
-                {Object.entries(RELEASE_STATUS_LABEL).map(([value, label]) => (
-                  <option key={value} value={value}>{label}</option>
-                ))}
-              </select>
-              <span>{adminPaymentsTotal} registros encontrados</span>
-            </div>
-
-            <div className={styles.ledger}>
-              {paymentsLoading ? (
-                <div className={styles.taxonomyEmpty}>Carregando pagamentos...</div>
-              ) : adminPayments.length ? (
-                adminPayments.map((payment) => (
-                <article key={payment.id} className={styles.ledgerRow}>
-                  <div>
-                    <span>#{payment.id.slice(-8).toUpperCase()}</span>
-                    <strong>{payment.service?.title || 'Pagamento Hivelancers'}</strong>
-                    <p>
-                      {toUserName(payment.client)} contratou {toUserName(payment.freelancer)}
-                    </p>
-                  </div>
-                  <strong>{formatCents(payment.amountCents)}</strong>
-                  <div className={styles.ledgerEconomics}>
-                    <span>Plataforma</span>
-                    <strong>{formatCents(payment.economics?.platformNetCents)}</strong>
-                    <p>Stripe: {formatCents(payment.economics?.estimatedStripeFeeCents)}</p>
-                  </div>
-                  <em className={`${styles.badge} ${getStatusTone(PAYMENT_STATUS_LABEL[payment.status] || payment.status)}`}>
-                    {PAYMENT_STATUS_LABEL[payment.status] || payment.status}
-                  </em>
-                  <em className={`${styles.badge} ${getStatusTone(RELEASE_STATUS_LABEL[payment.releaseStatus] || payment.releaseStatus)}`}>
-                    {RELEASE_STATUS_LABEL[payment.releaseStatus] || payment.releaseStatus}
-                  </em>
-                  <button
-                    type="button"
-                    className={styles.ghostButton}
-                    disabled={
-                      retryingPaymentId === payment.id ||
-                      payment.status !== 'SUCCEEDED' ||
-                      payment.releaseStatus === 'TRANSFERRED' ||
-                      payment.releaseStatus === 'NOT_REQUIRED'
-                    }
-                    onClick={async () => {
-                      setRetryingPaymentId(payment.id);
-                      try {
-                        await retryAdminPaymentTransfer(payment.id);
-                        toast.success('Repasse reprocessado.');
-                        await loadAdminPayments();
-                      } catch (err) {
-                        toast.error(err.message);
-                      } finally {
-                        setRetryingPaymentId('');
-                      }
-                    }}
-                  >
-                    {retryingPaymentId === payment.id ? 'Reprocessando...' : 'Reprocessar'}
-                  </button>
-                </article>
-                ))
-              ) : (
-                <div className={styles.taxonomyEmpty}>Nenhum pagamento encontrado neste filtro.</div>
-              )}
-            </div>
-          </section>
-        )}
-
-        {activeTab === 'disputes' && (
-          <section className={styles.panel}>
-            <div className={styles.panelHead}>
-              <div>
-                <span className={styles.sectionKicker}>Mediação financeira</span>
-                <h3>Disputas abertas por clientes e freelancers</h3>
-              </div>
-              <div className={styles.buttonGroup}>
-                <button type="button" className={styles.ghostButton} onClick={loadDisputes} disabled={disputesLoading}>
-                  {disputesLoading ? 'Atualizando...' : 'Atualizar'}
-                </button>
-                <button
-                  type="button"
-                  className={styles.primaryButton}
-                  onClick={saveDisputeResolution}
-                  disabled={!selectedDispute || selectedDispute.status !== 'OPEN' || disputeSaving}
-                >
-                  <FaCircleCheck /> {disputeSaving ? 'Resolvendo...' : 'Registrar decisão'}
-                </button>
-              </div>
-            </div>
-
-            <div className={styles.userFilters}>
-              <select value={disputeStatusFilter} onChange={(event) => setDisputeStatusFilter(event.target.value)}>
-                <option value="">Todos os status</option>
-                {Object.entries(DISPUTE_STATUS_LABEL).map(([value, label]) => (
-                  <option key={value} value={value}>{label}</option>
-                ))}
-              </select>
-              <span>{adminDisputesTotal} registros encontrados</span>
-            </div>
-
-            <div className={styles.supportDesk}>
-              <div className={styles.supportQueue}>
-                {disputesLoading ? (
-                  <div className={styles.taxonomyEmpty}>Carregando disputas...</div>
-                ) : adminDisputes.length === 0 ? (
-                  <div className={styles.taxonomyEmpty}>Nenhuma disputa encontrada neste filtro.</div>
-                ) : (
-                  adminDisputes.map((dispute) => (
-                    <button
-                      type="button"
-                      key={dispute.id}
-                      className={`${styles.supportTicketCard} ${selectedDisputeId === dispute.id ? styles.supportTicketCardActive : ''}`}
-                      onClick={() => {
-                        setSelectedDisputeId(dispute.id);
-                        setDisputeResolutionNote(dispute.resolutionNote || '');
-                      }}
-                    >
-                      <span className={styles.supportTicketCode}>
-                        Pedido #{dispute.order.id.slice(-8).toUpperCase()}
-                      </span>
-                      <strong>{dispute.order.service?.title || dispute.order.planTitle}</strong>
-                      <p>{dispute.description}</p>
-                      <div className={styles.supportTicketBadges}>
-                        <em className={`${styles.badge} ${dispute.status === 'OPEN' ? styles.warning : styles.success}`}>
-                          {DISPUTE_STATUS_LABEL[dispute.status] || dispute.status}
-                        </em>
-                        <em className={`${styles.badge} ${styles.neutral}`}>
-                          {DISPUTE_REASON_LABEL[dispute.reason] || dispute.reason}
-                        </em>
-                      </div>
-                      <div className={styles.supportTicketMeta}>
-                        <span>{toUserName(dispute.openedBy)}</span>
-                        <span>{formatCents(dispute.order.priceCents)}</span>
-                        <span>{formatDate(dispute.createdAt)}</span>
-                      </div>
-                    </button>
-                  ))
-                )}
-              </div>
-
-              <aside className={styles.supportInspector}>
-                {selectedDispute ? (
-                  <>
-                    <div className={styles.supportInspectorHeader}>
-                      <div className={styles.userAvatar}><FaTriangleExclamation /></div>
-                      <div>
-                        <span className={styles.sectionKicker}>Análise de disputa</span>
-                        <h4>{selectedDispute.order.service?.title || selectedDispute.order.planTitle}</h4>
-                        <p>Pedido #{selectedDispute.order.id.slice(-8).toUpperCase()}</p>
-                        <strong>{DISPUTE_REASON_LABEL[selectedDispute.reason] || selectedDispute.reason}</strong>
-                      </div>
-                    </div>
-
-                    <div className={styles.ticketDetailBlock}>
-                      <span>Relato enviado</span>
-                      <p>{selectedDispute.description}</p>
-                    </div>
-
-                    <div className={styles.supportMetaGrid}>
-                      <div>
-                        <span>Cliente</span>
-                        <strong>{toUserName(selectedDispute.order.client)}</strong>
-                      </div>
-                      <div>
-                        <span>Freelancer</span>
-                        <strong>{toUserName(selectedDispute.order.freelancer)}</strong>
-                      </div>
-                      <div>
-                        <span>Valor</span>
-                        <strong>{formatCents(selectedDispute.order.priceCents)}</strong>
-                      </div>
-                      <div>
-                        <span>Pagamento</span>
-                        <strong>
-                          {selectedDispute.order.payment
-                            ? `${PAYMENT_STATUS_LABEL[selectedDispute.order.payment.status] || selectedDispute.order.payment.status} · ${RELEASE_STATUS_LABEL[selectedDispute.order.payment.releaseStatus] || selectedDispute.order.payment.releaseStatus}`
-                            : 'Sem pagamento'}
-                        </strong>
-                      </div>
-                    </div>
-
-                    {selectedDispute.status === 'OPEN' ? (
-                      <div className={styles.formGrid}>
-                        <label className={`${styles.formField} ${styles.formFieldFull}`}>
-                          <span>Decisão financeira</span>
-                          <select value={disputeOutcome} onChange={(event) => setDisputeOutcome(event.target.value)}>
-                            <option value="REFUND_CLIENT">Reembolsar o cliente e cancelar</option>
-                            <option value="RELEASE_FREELANCER">Liberar ao freelancer e concluir</option>
-                          </select>
-                        </label>
-                        <label className={`${styles.formField} ${styles.formFieldFull}`}>
-                          <span>Fundamentação da decisão</span>
-                          <textarea
-                            rows={6}
-                            value={disputeResolutionNote}
-                            onChange={(event) => setDisputeResolutionNote(event.target.value)}
-                            placeholder="Registre fatos analisados, evidências e justificativa da decisão."
-                          />
-                        </label>
-                      </div>
-                    ) : (
-                      <div className={styles.ticketDetailBlock}>
-                        <span>Decisão registrada</span>
-                        <p>{selectedDispute.resolutionNote || 'Sem nota registrada.'}</p>
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <div className={styles.taxonomyEmpty}>
-                    <FaInbox /> Selecione uma disputa para analisar o pedido e o pagamento.
-                  </div>
-                )}
-              </aside>
-            </div>
-          </section>
-        )}
-
-        {activeTab === 'support' && (
-          <section className={styles.panel}>
-            <div className={styles.panelHead}>
-              <div>
-                <span className={styles.sectionKicker}>Suporte</span>
-                <h3>Tickets enviados por clientes e freelancers</h3>
-              </div>
-              <div className={styles.buttonGroup}>
-                <button type="button" className={styles.ghostButton} onClick={loadAdminTickets} disabled={ticketsLoading}>
-                  {ticketsLoading ? 'Atualizando...' : 'Atualizar'}
-                </button>
-                <button type="button" className={styles.primaryButton} onClick={saveTicket} disabled={!selectedTicket || ticketSaving}>
-                  <FaFloppyDisk /> {ticketSaving ? 'Salvando...' : 'Salvar ticket'}
-                </button>
-              </div>
-            </div>
-
-            <div className={styles.userStats}>
-              <div className={styles.taxonomyStat}>
-                <FaTicket />
-                <span>Total filtrado</span>
-                <strong>{adminTicketsTotal}</strong>
-              </div>
-              <div className={styles.taxonomyStat}>
-                <FaHeadset />
-                <span>Em atendimento</span>
-                <strong>{ticketStats.open}</strong>
-              </div>
-              <div className={styles.taxonomyStat}>
-                <FaTriangleExclamation />
-                <span>Sem resposta</span>
-                <strong>{ticketStats.unanswered}</strong>
-              </div>
-              <div className={styles.taxonomyStat}>
-                <FaCircleCheck />
-                <span>Respondidos</span>
-                <strong>{ticketStats.answered}</strong>
-              </div>
-            </div>
-
-            <div className={styles.userFilters}>
-              <select value={ticketStatusFilter} onChange={(event) => setTicketStatusFilter(event.target.value)}>
-                <option value="all">Todos os status</option>
-                {Object.entries(SUPPORT_TICKET_STATUS_LABEL).map(([value, label]) => (
-                  <option key={value} value={value}>{label}</option>
-                ))}
-              </select>
-              <select value={ticketPriorityFilter} onChange={(event) => setTicketPriorityFilter(event.target.value)}>
-                <option value="all">Todas as prioridades</option>
-                {Object.entries(SUPPORT_TICKET_PRIORITY_LABEL).map(([value, label]) => (
-                  <option key={value} value={value}>{label}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className={styles.supportDesk}>
-              <div className={styles.supportQueue}>
-                {ticketsLoading ? (
-                  <div className={styles.taxonomyEmpty}>Carregando tickets...</div>
-                ) : adminTickets.length === 0 ? (
-                  <div className={styles.taxonomyEmpty}>Nenhum ticket encontrado neste filtro.</div>
-                ) : (
-                  adminTickets.map((ticket) => {
-                    const normalizedStatus = normalizeSupportTicketStatus(ticket.status);
-                    return (
-                      <button
-                        type="button"
-                        key={ticket.id}
-                        className={`${styles.supportTicketCard} ${selectedTicketId === ticket.id ? styles.supportTicketCardActive : ''}`}
-                        onClick={() => {
-                          setSelectedTicketId(ticket.id);
-                          setTicketDraft(toTicketDraft(ticket));
-                        }}
-                      >
-                        <span className={styles.supportTicketCode}>{ticket.code || ticket.id}</span>
-                        <strong>{ticket.subject}</strong>
-                        <p>{ticket.description}</p>
-                        <div className={styles.supportTicketBadges}>
-                          <em className={`${styles.badge} ${styles[TICKET_STATUS_TONE[normalizedStatus] || 'neutral']}`}>
-                            {SUPPORT_TICKET_STATUS_LABEL[normalizedStatus] || normalizedStatus}
-                          </em>
-                          <em className={`${styles.badge} ${styles[TICKET_PRIORITY_TONE[ticket.priority] || 'neutral']}`}>
-                            {SUPPORT_TICKET_PRIORITY_LABEL[ticket.priority] || ticket.priority}
-                          </em>
-                          {ticket.attachment?.url && (
-                            <em className={`${styles.badge} ${styles.neutral}`}>
-                              <FaPaperclip /> Anexo
-                            </em>
-                          )}
-                          {ticket.publicReply && (
-                            <em className={`${styles.badge} ${styles.success}`}>
-                              <FaCircleCheck /> Respondido
-                            </em>
-                          )}
-                        </div>
-                        <div className={styles.supportTicketMeta}>
-                          <span>{toRequesterName(ticket)}</span>
-                          <span>{SUPPORT_TICKET_CATEGORY_LABEL[ticket.category] || ticket.category || 'Suporte'}</span>
-                          <span>{formatDate(ticket.updatedAt || ticket.createdAt)}</span>
-                        </div>
-                      </button>
-                    );
-                  })
-                )}
-              </div>
-
-              <aside className={styles.supportInspector}>
-                {selectedTicket ? (
-                  <>
-                    <div className={styles.supportInspectorHeader}>
-                      <div className={styles.userAvatar}><FaLifeRing /></div>
-                      <div>
-                        <span className={styles.sectionKicker}>Atendimento</span>
-                        <h4>{selectedTicket.subject}</h4>
-                        <p>{toRequesterName(selectedTicket)} · {selectedTicket.requester?.email || 'sem email'}</p>
-                        <strong>{selectedTicket.code || selectedTicket.id}</strong>
-                      </div>
-                    </div>
-
-                    <div className={styles.ticketDetailBlock}>
-                      <span>Descrição enviada</span>
-                      <p>{selectedTicket.description}</p>
-                    </div>
-
-                    {selectedTicket.attachment?.url && (
-                      <div className={styles.ticketAttachmentBlock}>
-                        <div>
-                          <span>Evidência anexada</span>
-                          <strong>{selectedTicket.attachment.name || 'Imagem enviada pelo usuário'}</strong>
-                        </div>
-                        <img src={selectedTicket.attachment.url} alt="Evidência anexada ao ticket" />
-                        <a href={selectedTicket.attachment.url} target="_blank" rel="noreferrer">
-                          <FaArrowUpRightFromSquare /> Abrir imagem
-                        </a>
-                      </div>
-                    )}
-
-                    <div className={styles.supportMetaGrid}>
-                      <div>
-                        <span>Categoria</span>
-                        <strong>{SUPPORT_TICKET_CATEGORY_LABEL[selectedTicket.category] || selectedTicket.category || 'Suporte'}</strong>
-                      </div>
-                      <div>
-                        <span>Referência</span>
-                        <strong>{getTicketReference(selectedTicket)}</strong>
-                      </div>
-                      <div>
-                        <span>Criado em</span>
-                        <strong>{formatDate(selectedTicket.createdAt)}</strong>
-                      </div>
-                      <div>
-                        <span>Contato</span>
-                        <strong>{selectedTicket.contactPreference || 'EMAIL'}</strong>
-                      </div>
-                    </div>
-
-                    <div className={styles.formGrid}>
-                      <label className={styles.formField}>
-                        <span>Status</span>
-                        <select value={activeTicketDraft.status} onChange={(event) => updateTicketDraft('status', event.target.value)}>
-                          {Object.entries(SUPPORT_TICKET_STATUS_LABEL).map(([value, label]) => (
-                            <option key={value} value={value}>{label}</option>
-                          ))}
-                        </select>
-                      </label>
-                      <label className={styles.formField}>
-                        <span>Prioridade</span>
-                        <select value={activeTicketDraft.priority} onChange={(event) => updateTicketDraft('priority', event.target.value)}>
-                          {Object.entries(SUPPORT_TICKET_PRIORITY_LABEL).map(([value, label]) => (
-                            <option key={value} value={value}>{label}</option>
-                          ))}
-                        </select>
-                      </label>
-                      <label className={`${styles.formField} ${styles.formFieldFull}`}>
-                        <span>Resposta ao usuário</span>
-                        <textarea
-                          rows={5}
-                          value={activeTicketDraft.publicReply}
-                          onChange={(event) => updateTicketDraft('publicReply', event.target.value)}
-                          placeholder="Escreva a resposta que será exibida para o usuário no acompanhamento do ticket."
-                        />
-                      </label>
-                      <label className={`${styles.formField} ${styles.formFieldFull}`}>
-                        <span>Nota interna</span>
-                        <textarea
-                          rows={5}
-                          value={activeTicketDraft.adminNote}
-                          onChange={(event) => updateTicketDraft('adminNote', event.target.value)}
-                          placeholder="Observação operacional apenas para o time admin."
-                        />
-                      </label>
-                    </div>
-
-                    <button type="button" className={styles.primaryButton} onClick={saveTicket} disabled={ticketSaving}>
-                      <FaFloppyDisk /> {ticketSaving ? 'Salvando...' : 'Salvar atendimento'}
-                    </button>
-                  </>
-                ) : (
-                  <div className={styles.taxonomyEmpty}>
-                    <FaInbox /> Selecione um ticket para revisar detalhes, prioridade e status.
-                  </div>
-                )}
-              </aside>
-            </div>
-          </section>
-        )}
-
-        {activeTab === 'audit' && (
-          <section className={styles.panel}>
-            <div className={styles.panelHead}>
-              <div>
-                <span className={styles.sectionKicker}>Rastreabilidade</span>
-                <h3>Auditoria de ações administrativas e acessos sensíveis</h3>
-              </div>
-              <button type="button" className={styles.ghostButton} onClick={loadAuditLogs} disabled={auditLoading}>
-                {auditLoading ? 'Atualizando...' : 'Atualizar'}
-              </button>
-            </div>
-
-            <label className={`${styles.formField} ${styles.auditFilter}`}>
-              <span>Filtrar por ação</span>
-              <input
-                value={auditActionFilter}
-                onChange={(event) => setAuditActionFilter(event.target.value)}
-                placeholder="Ex.: VERIFICATION, DISPUTE ou PATCH"
-              />
-            </label>
-
-            <div className={styles.auditHeader}>
-              <span>{auditLogsTotal} registros encontrados</span>
-              <p>Os metadados registram contexto operacional sem armazenar senhas ou conteúdo de documentos.</p>
-            </div>
-
-            <div className={styles.auditList}>
-              {auditLoading ? (
-                <div className={styles.taxonomyEmpty}>Carregando auditoria...</div>
-              ) : auditLogs.length === 0 ? (
-                <div className={styles.taxonomyEmpty}>Nenhum evento encontrado neste filtro.</div>
-              ) : (
-                auditLogs.map((log) => (
-                  <article key={log.id} className={styles.auditRow}>
-                    <div>
-                      <span className={styles.supportTicketCode}>{log.entityType}</span>
-                      <strong>{log.action}</strong>
-                      <p>
-                        {log.actor ? `${toUserName(log.actor)} · ${log.actor.email}` : 'Ação de sistema'}
-                      </p>
-                    </div>
-                    <div>
-                      <span>Entidade</span>
-                      <strong>{log.entityId || 'Sem identificador'}</strong>
-                    </div>
-                    <div>
-                      <span>Origem</span>
-                      <strong>{log.ipAddress || 'IP não informado'}</strong>
-                    </div>
-                    <div>
-                      <span>Data</span>
-                      <strong>{formatDate(log.createdAt)}</strong>
-                    </div>
-                  </article>
-                ))
-              )}
-            </div>
-          </section>
-        )}
+        {activeTab === 'audit' && <AuditTab />}
 
       </section>
 
@@ -3382,6 +1604,7 @@ function Admin() {
 
       <Toaster position="top-center" richColors />
     </div>
+    </AdminContext.Provider>
   );
 }
 
