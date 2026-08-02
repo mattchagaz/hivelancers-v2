@@ -50,8 +50,13 @@ function Login() {
         toast.success('Login com Google realizado com sucesso!');
         navigate(destinationAfterLogin(data.user, returnTo), { replace: true });
       } catch (err) {
-        toast.error(err.message || 'Não foi possível entrar com Google.');
-        navigate('/login', { replace: true });
+        if (err.code === 'LEGAL_ACCEPTANCE_REQUIRED') {
+          toast.message('Você ainda não tem conta. Aceite os termos para criar sua conta com o Google.');
+          navigate('/signup', { replace: true });
+        } else {
+          toast.error(err.message || 'Não foi possível entrar com Google.');
+          navigate('/login', { replace: true });
+        }
       } finally {
         if (isMounted) setIsGoogleLoading(false);
       }

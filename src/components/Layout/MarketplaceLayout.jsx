@@ -24,8 +24,10 @@ function MarketplaceLayout() {
       <header className={styles.header}>
         <div className={styles.headerInner}>
           <Link to="/explore" className={styles.brand} aria-label="Hivelancers">
-            <img src={Logo} alt="" width={34} height={34} />
-            <span>Hivelancers</span>
+            <span className={styles.brandMark}>
+              <img src={Logo} alt="" width={20} height={20} />
+            </span>
+            <span className={styles.brandLabel}>Hivelancers</span>
           </Link>
 
           <nav className={styles.nav} aria-label="Navegação do marketplace">

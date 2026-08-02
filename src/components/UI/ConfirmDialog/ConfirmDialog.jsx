@@ -8,6 +8,7 @@ function ConfirmDialog({
   confirmLabel = 'Confirmar',
   cancelLabel = 'Cancelar',
   isLoading = false,
+  hideCancel = false,
   onCancel,
   onConfirm,
 }) {
@@ -38,14 +39,16 @@ function ConfirmDialog({
         <p id="confirm-dialog-description">{description}</p>
 
         <div className={styles.actions}>
-          <button
-            type="button"
-            className={styles.cancelButton}
-            onClick={onCancel}
-            disabled={isLoading}
-          >
-            {cancelLabel}
-          </button>
+          {!hideCancel && (
+            <button
+              type="button"
+              className={styles.cancelButton}
+              onClick={onCancel}
+              disabled={isLoading}
+            >
+              {cancelLabel}
+            </button>
+          )}
           <button
             type="button"
             className={styles.confirmButton}

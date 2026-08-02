@@ -271,7 +271,10 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
 
 .sidebar {
   position: sticky;
-  top: 24px;
+  top: 88px;
+  max-height: calc(100vh - 108px);
+  overflow: auto;
+  scrollbar-width: thin;
   display: flex;
   flex-direction: column;
   gap: 16px;

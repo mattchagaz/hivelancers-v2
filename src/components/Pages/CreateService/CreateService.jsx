@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast, Toaster } from 'sonner';
 import styles from './CreateService.module.css';
-import { listCategories, createService, getMyService, updateService, archiveService } from '../../../services/services';
+import { listCategories, createService, getMyService, updateService, archiveService, deleteService } from '../../../services/services';
 import { uploadImageToCloudinary } from '../../../services/cloudinary';
 import { CategoryIcon } from '../../../utils/categoryIcons';
 import ConfirmDialog from '../../UI/ConfirmDialog/ConfirmDialog';
@@ -36,6 +36,9 @@ function CreateService() {
   const [isArchiving, setIsArchiving] = useState(false);
   const [archiveConfirmOpen, setArchiveConfirmOpen] = useState(false);
   const [existingStatus, setExistingStatus] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleteBlockedMessage, setDeleteBlockedMessage] = useState('');
 
   // Step 0 — Info básica
   const [title, setTitle] = useState('');
@@ -352,6 +355,29 @@ function CreateService() {
     setArchiveConfirmOpen(true);
   };
 
+  const handleDelete = () => {
+    if (!isEditMode || isDeleting) return;
+    setDeleteConfirmOpen(true);
+  };
+
+  const doDelete = async () => {
+    setIsDeleting(true);
+    try {
+      await deleteService(editId);
+      toast.success('Serviço excluído.');
+      setDeleteConfirmOpen(false);
+      setTimeout(() => navigate('/dashboard'), 600);
+    } catch (err) {
+      setDeleteConfirmOpen(false);
+      if (err.code === 'SERVICE_HAS_ACTIVE_ORDERS' || err.code === 'SERVICE_HAS_ORDER_HISTORY') {
+        setDeleteBlockedMessage(err.message);
+      } else {
+        toast.error(err.message);
+      }
+      setIsDeleting(false);
+    }
+  };
+
   const handleRepublish = async () => {
     if (!isEditMode || isArchiving) return;
     setIsArchiving(true);
@@ -397,27 +423,39 @@ function CreateService() {
               : 'Preencha as informações para publicar seu serviço na plataforma.'}
           </p>
         </div>
-        {isEditMode && existingStatus !== 'ARCHIVED' && (
-          <button
-            type="button"
-            className={styles.backBtn}
-            onClick={handleArchive}
-            disabled={isArchiving}
-            style={{ color: '#b91c1c', borderColor: '#fecaca' }}
-          >
-            {isArchiving ? 'Arquivando...' : 'Arquivar serviço'}
-          </button>
-        )}
-        {isEditMode && existingStatus === 'ARCHIVED' && (
-          <button
-            type="button"
-            className={styles.backBtn}
-            onClick={handleRepublish}
-            disabled={isArchiving}
-            style={{ color: '#047857', borderColor: '#a7f3d0' }}
-          >
-            {isArchiving ? 'Republicando...' : 'Republicar serviço'}
-          </button>
+        {isEditMode && (
+          <div className={styles.headerActions}>
+            {existingStatus !== 'ARCHIVED' ? (
+              <button
+                type="button"
+                className={styles.backBtn}
+                onClick={handleArchive}
+                disabled={isArchiving}
+                style={{ color: '#b91c1c', borderColor: '#fecaca' }}
+              >
+                {isArchiving ? 'Arquivando...' : 'Arquivar serviço'}
+              </button>
+            ) : (
+              <button
+                type="button"
+                className={styles.backBtn}
+                onClick={handleRepublish}
+                disabled={isArchiving}
+                style={{ color: '#047857', borderColor: '#a7f3d0' }}
+              >
+                {isArchiving ? 'Republicando...' : 'Republicar serviço'}
+              </button>
+            )}
+            <button
+              type="button"
+              className={styles.backBtn}
+              onClick={handleDelete}
+              disabled={isDeleting}
+              style={{ color: '#b91c1c', borderColor: '#fecaca' }}
+            >
+              {isDeleting ? 'Excluindo...' : 'Excluir serviço'}
+            </button>
+          </div>
         )}
       </div>
 
@@ -940,6 +978,24 @@ function CreateService() {
         isLoading={isArchiving}
         onCancel={() => setArchiveConfirmOpen(false)}
         onConfirm={doArchive}
+      />
+      <ConfirmDialog
+        isOpen={deleteConfirmOpen}
+        title="Excluir serviço?"
+        description="Essa ação não pode ser desfeita. O serviço será removido permanentemente."
+        confirmLabel="Excluir serviço"
+        isLoading={isDeleting}
+        onCancel={() => setDeleteConfirmOpen(false)}
+        onConfirm={doDelete}
+      />
+      <ConfirmDialog
+        isOpen={Boolean(deleteBlockedMessage)}
+        title="Não é possível excluir agora"
+        description={deleteBlockedMessage}
+        confirmLabel="Entendi"
+        hideCancel
+        onCancel={() => setDeleteBlockedMessage('')}
+        onConfirm={() => setDeleteBlockedMessage('')}
       />
     </div>
   );

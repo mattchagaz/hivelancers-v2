@@ -148,3 +148,14 @@ export const archiveService = async (id) => {
     throw new Error(extractMessage(error, 'Não foi possível arquivar o serviço.'));
   }
 };
+
+export const deleteService = async (id) => {
+  try {
+    const { data } = await api.delete(`/services/mine/${id}`);
+    return data;
+  } catch (error) {
+    const err = new Error(extractMessage(error, 'Não foi possível excluir o serviço.'));
+    err.code = error?.response?.data?.code;
+    throw err;
+  }
+};

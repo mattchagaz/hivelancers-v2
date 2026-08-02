@@ -117,7 +117,9 @@ export const completeGoogleLogin = async (search, redirectPath = '/login') => {
   const params = new URLSearchParams(search);
   const error = params.get('error') || params.get('error_description');
   if (error) {
-    throw new Error(error);
+    const err = new Error(error);
+    err.code = params.get('code') || undefined;
+    throw err;
   }
 
   const accessToken = params.get('accessToken') || params.get('access_token') || params.get('token');

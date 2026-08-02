@@ -624,7 +624,7 @@
 
 .emptyBlock {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   gap: 14px;
   padding: 18px;
@@ -632,6 +632,8 @@
 }
 
 .emptyAction {
+  grid-column: 1 / -1;
+  justify-self: start;
   min-height: 38px;
   flex-shrink: 0;
   padding: 0 13px;
