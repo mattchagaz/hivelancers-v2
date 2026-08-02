@@ -557,20 +557,28 @@
 
 .trustItem {
   display: grid;
-  grid-template-columns: 34px minmax(0, 1fr);
+  grid-template-columns: 32px minmax(0, 1fr);
   gap: 12px;
-  align-items: start;
+  align-items: center;
 }
 
 .trustIcon {
-  width: 34px;
-  height: 34px;
-  border-radius: 12px;
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  border-radius: 50%;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: rgba(34, 197, 94, 0.12);
-  color: #16a34a;
+  background: var(--success-color);
+  color: #ffffff;
+  flex-shrink: 0;
+}
+
+.trustIcon svg {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
 }
 
 .trustItem strong {
@@ -580,7 +588,7 @@
   line-height: 1.35;
 }
 
-.trustItem span {
+.trustItem > div > span {
   display: block;
   color: var(--text-secondary);
   font-size: 0.84rem;

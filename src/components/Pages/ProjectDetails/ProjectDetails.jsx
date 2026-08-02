@@ -13,6 +13,7 @@ import {
 } from 'react-icons/fa6';
 import { toast } from 'sonner';
 import { useAuth } from '../../../contexts/AuthContext';
+import { getPublicProfilePath } from '../../../utils/profileEnhancements';
 import {
   createProjectProposal,
   getMyProject,
@@ -333,7 +334,7 @@ function ProjectDetails() {
         <aside className={styles.sidebar}>
           <section className={styles.clientCard}>
             <span className={styles.asideLabel}>Publicado por</span>
-            <Link to={`/profile/${project.client.username || project.client.id}`} className={styles.client}>
+            <Link to={getPublicProfilePath(project.client)} className={styles.client}>
               <div className={styles.clientAvatar}>
                 {project.client.avatarUrl ? <img src={project.client.avatarUrl} alt="" /> : clientInitials}
               </div>

@@ -22,6 +22,7 @@ import {
   requestOrderRevision,
 } from '../../../services/orders';
 import { connectSocket, getSocket } from '../../../services/socket';
+import { getPublicProfilePath } from '../../../utils/profileEnhancements';
 import SpotlightCard from '../../UI/SpotlightCard/SpotlightCard';
 import styles from './Orders.module.css';
 
@@ -746,7 +747,7 @@ function Orders() {
                   {isNewSellerPending ? (
                     <div className={styles.decisionCard}>
                       <Link
-                        to={`/profile/${selectedOrder.client?.username || selectedOrder.client?.id}`}
+                        to={getPublicProfilePath(selectedOrder.client)}
                         className={styles.personCard}
                       >
                         <UserAvatar
@@ -819,7 +820,7 @@ function Orders() {
                   ) : (
                     <>
                       <Link
-                        to={`/profile/${counterparty?.username || counterparty?.id}`}
+                        to={getPublicProfilePath(counterparty)}
                         className={styles.personCard}
                       >
                         <UserAvatar
@@ -857,14 +858,14 @@ function Orders() {
                   <div className={styles.infoGrid}>
                     <div className={styles.infoCard}>
                       <span className={styles.infoLabel}>Cliente</span>
-                      <Link to={`/profile/${selectedOrder.client?.username || selectedOrder.client?.id}`} className={styles.infoCardLink}>
-                        {getName(selectedOrder.client)}
+                      <Link to={getPublicProfilePath(selectedOrder.client)} className={styles.infoCardLink}>
+                        <strong>{getName(selectedOrder.client)}</strong>
                       </Link>
                     </div>
                     <div className={styles.infoCard}>
                       <span className={styles.infoLabel}>Freelancer</span>
-                      <Link to={`/profile/${selectedOrder.freelancer?.username || selectedOrder.freelancer?.id}`} className={styles.infoCardLink}>
-                        {getName(selectedOrder.freelancer)}
+                      <Link to={getPublicProfilePath(selectedOrder.freelancer)} className={styles.infoCardLink}>
+                        <strong>{getName(selectedOrder.freelancer)}</strong>
                       </Link>
                     </div>
                     <div className={styles.infoCard}>
