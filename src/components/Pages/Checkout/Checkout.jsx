@@ -176,16 +176,6 @@ function Checkout() {
     };
   }, [checkoutReturnStatus, checkoutSessionId]);
 
-  useEffect(() => {
-    if (!createdOrder?.id) return undefined;
-
-    const timer = window.setTimeout(() => {
-      navigate(`/orders?id=${createdOrder.id}`, { replace: true });
-    }, 1400);
-
-    return () => window.clearTimeout(timer);
-  }, [createdOrder?.id, navigate]);
-
   if (loading) {
     return (
       <div className={styles.loadingState}>
