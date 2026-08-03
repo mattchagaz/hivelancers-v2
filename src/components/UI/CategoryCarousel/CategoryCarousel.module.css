@@ -140,7 +140,7 @@
 :global(.splide__arrow) {
   width: 36px;
   height: 36px;
-  background: rgba(255, 255, 255, 0.94);
+  background: var(--bg-primary, #fff);
   border: 1px solid var(--border-color, #e8e8ef);
   box-shadow: 0 10px 26px rgba(var(--shadow-rgb, 15, 23, 42), 0.12);
 }

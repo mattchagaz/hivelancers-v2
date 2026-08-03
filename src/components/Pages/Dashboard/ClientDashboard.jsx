@@ -29,7 +29,7 @@ export default function ClientDashboard() {
       listOrders({ role: 'buyer', page: 1, pageSize: 10 }),
       listConversations(),
       listCategories(),
-      listPublicServices({ page: 1, pageSize: 6, sort: 'newest' }),
+      listPublicServices({ page: 1, pageSize: 9, sort: 'newest' }),
     ])
       .then(([favoritesData, ordersData, conversationsData, categoriesData, servicesData]) => {
         if (cancelled) return;
