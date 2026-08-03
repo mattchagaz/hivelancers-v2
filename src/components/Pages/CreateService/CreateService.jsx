@@ -688,7 +688,7 @@ function CreateService() {
                             <input
                               className={styles.input}
                               type="number"
-                              min="1"
+                              min="0.01"
                               max={MAX_PRICE}
                               step="0.01"
                               placeholder="0,00"

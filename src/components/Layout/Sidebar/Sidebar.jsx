@@ -58,6 +58,7 @@ function Sidebar({ userRole = 'freelancer', isAdmin = false, collapsed, mobileOp
         { label: 'Dashboard', path: '/dashboard', icon: 'dashboard' },
         { label: 'Meus Serviços', path: '/services', icon: 'services' },
         { label: 'Encontrar Projetos', path: '/projects', icon: 'briefcase' },
+        { label: 'Explorar', path: '/explore', icon: 'explore' },
         { label: 'Pedidos', path: '/orders', icon: 'orders', badge: ordersBadge },
         { label: 'Mensagens', path: '/messages', icon: 'messages', badge: messagesBadge },
         { label: 'Favoritos', path: '/favorites', icon: 'heart' },
