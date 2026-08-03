@@ -10,6 +10,11 @@ import ConfirmDialog from '../../UI/ConfirmDialog/ConfirmDialog';
 const TIER_BY_INDEX = ['BASIC', 'STANDARD', 'PREMIUM'];
 const TIER_NAME = { BASIC: 'Básico', STANDARD: 'Padrão', PREMIUM: 'Premium' };
 
+// Limites alinhados ao schema do backend (services.schemas.ts).
+const MAX_PRICE = 1_000_000;
+const MAX_DELIVERY_DAYS = 365;
+const MAX_REVISIONS = 20;
+
 const createEmptyPlans = () => [
   { name: 'Básico', price: '', delivery: '', revisions: '', features: [''] },
   { name: 'Padrão', price: '', delivery: '', revisions: '', features: [''] },
@@ -24,6 +29,25 @@ const featuresFromDescription = (desc = '') =>
 
 const normalizeSubcategories = (category) =>
   Array.isArray(category?.subcategories) ? category.subcategories : [];
+
+// Remove sinal negativo e qualquer caractere fora do padrão monetário (dígitos + até 1 ponto decimal, 2 casas).
+const sanitizeMoneyInput = (value) => {
+  const digitsAndDot = value.replace(/[^0-9.]/g, '');
+  const [intPart, ...rest] = digitsAndDot.split('.');
+  if (rest.length === 0) return intPart;
+  return `${intPart}.${rest.join('').slice(0, 2)}`;
+};
+
+// Remove sinal negativo, ponto decimal e qualquer caractere não numérico (prazo/revisões são inteiros >= 0).
+const sanitizeIntegerInput = (value) => value.replace(/[^0-9]/g, '');
+
+// Corta o valor no teto assim que ultrapassa — sem isso, digitar ainda permite qualquer número (min/max do <input> não bloqueiam teclado).
+const clampMax = (value, max) => {
+  if (value === '') return value;
+  const num = Number(value);
+  if (Number.isNaN(num) || num <= max) return value;
+  return String(max);
+};
 
 function CreateService() {
   const navigate = useNavigate();
@@ -276,7 +300,7 @@ function CreateService() {
       if (active.length === 0) { toast.error('Ative pelo menos um plano de preço.'); return false; }
       for (const p of active) {
         if (!p.price || isNaN(p.price) || Number(p.price) <= 0) { toast.error(`Defina um preço válido para o plano "${p.name}".`); return false; }
-        if (!p.delivery) { toast.error(`Defina o prazo de entrega do plano "${p.name}".`); return false; }
+        if (!p.delivery || Number(p.delivery) <= 0) { toast.error(`Defina o prazo de entrega do plano "${p.name}".`); return false; }
       }
       return true;
     }
@@ -664,9 +688,12 @@ function CreateService() {
                             <input
                               className={styles.input}
                               type="number"
+                              min="1"
+                              max={MAX_PRICE}
+                              step="0.01"
                               placeholder="0,00"
                               value={plan.price}
-                              onChange={(e) => updatePlan(pi, 'price', e.target.value)}
+                              onChange={(e) => updatePlan(pi, 'price', clampMax(sanitizeMoneyInput(e.target.value), MAX_PRICE))}
                               style={{ paddingLeft: '40px' }}
                             />
                           </div>
@@ -678,9 +705,12 @@ function CreateService() {
                             <input
                               className={styles.input}
                               type="number"
+                              min="1"
+                              max={MAX_DELIVERY_DAYS}
+                              step="1"
                               placeholder="7"
                               value={plan.delivery}
-                              onChange={(e) => updatePlan(pi, 'delivery', e.target.value)}
+                              onChange={(e) => updatePlan(pi, 'delivery', clampMax(sanitizeIntegerInput(e.target.value), MAX_DELIVERY_DAYS))}
                             />
                           </div>
                           <div className={styles.field}>
@@ -688,9 +718,12 @@ function CreateService() {
                             <input
                               className={styles.input}
                               type="number"
+                              min="0"
+                              max={MAX_REVISIONS}
+                              step="1"
                               placeholder="2"
                               value={plan.revisions}
-                              onChange={(e) => updatePlan(pi, 'revisions', e.target.value)}
+                              onChange={(e) => updatePlan(pi, 'revisions', clampMax(sanitizeIntegerInput(e.target.value), MAX_REVISIONS))}
                             />
                           </div>
                         </div>

@@ -10,12 +10,14 @@ import {
   FaPenToSquare,
   FaPlus,
   FaRotateRight,
+  FaTrash,
 } from 'react-icons/fa6';
 import { SERVICE_GRADIENTS } from '../../../data/services';
-import { listMyServices } from '../../../services/services';
+import { archiveService, deleteService, listMyServices } from '../../../services/services';
 import { CategoryIcon } from '../../../utils/categoryIcons';
 import EmptyState from '../../UI/EmptyState/EmptyState';
 import SpotlightCard from '../../UI/SpotlightCard/SpotlightCard';
+import ConfirmDialog from '../../UI/ConfirmDialog/ConfirmDialog';
 import styles from './MyServices.module.css';
 
 const STATUS_LABEL = {
@@ -81,6 +83,10 @@ function MyServices() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('all');
+  const [archiveTarget, setArchiveTarget] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [deleteBlockedMessage, setDeleteBlockedMessage] = useState('');
 
   const loadServices = useCallback(async ({ silent = false } = {}) => {
     try {
@@ -97,6 +103,41 @@ function MyServices() {
   useEffect(() => {
     loadServices();
   }, [loadServices]);
+
+  const doArchive = async () => {
+    if (!archiveTarget) return;
+    setIsProcessing(true);
+    try {
+      const updated = await archiveService(archiveTarget.id);
+      setServices((current) => current.map((item) => (item.id === archiveTarget.id ? { ...item, ...updated } : item)));
+      toast.success('Serviço arquivado.');
+      setArchiveTarget(null);
+    } catch (error) {
+      toast.error(error.message || 'Não foi possível arquivar o serviço.');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const doDelete = async () => {
+    if (!deleteTarget) return;
+    setIsProcessing(true);
+    try {
+      await deleteService(deleteTarget.id);
+      setServices((current) => current.filter((item) => item.id !== deleteTarget.id));
+      toast.success('Serviço excluído.');
+      setDeleteTarget(null);
+    } catch (error) {
+      setDeleteTarget(null);
+      if (error.code === 'SERVICE_HAS_ACTIVE_ORDERS' || error.code === 'SERVICE_HAS_ORDER_HISTORY') {
+        setDeleteBlockedMessage(error.message);
+      } else {
+        toast.error(error.message || 'Não foi possível excluir o serviço.');
+      }
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   const stats = useMemo(() => {
     const total = services.length;
@@ -278,6 +319,24 @@ function MyServices() {
                         <FaEye /> Ver
                       </Link>
                     ) : null}
+                    {service.status !== 'ARCHIVED' ? (
+                      <button
+                        type="button"
+                        className={styles.archiveAction}
+                        onClick={() => setArchiveTarget(service)}
+                        disabled={isProcessing}
+                      >
+                        <FaBoxArchive /> Arquivar
+                      </button>
+                    ) : null}
+                    <button
+                      type="button"
+                      className={styles.deleteAction}
+                      onClick={() => setDeleteTarget(service)}
+                      disabled={isProcessing}
+                    >
+                      <FaTrash /> Excluir
+                    </button>
                   </div>
                 </div>
               </article>
@@ -285,6 +344,34 @@ function MyServices() {
           })}
         </section>
       )}
+
+      <ConfirmDialog
+        isOpen={Boolean(archiveTarget)}
+        title="Arquivar serviço?"
+        description="Ele deixará de aparecer na listagem pública. Você pode republicar depois editando o serviço."
+        confirmLabel="Arquivar serviço"
+        isLoading={isProcessing}
+        onCancel={() => setArchiveTarget(null)}
+        onConfirm={doArchive}
+      />
+      <ConfirmDialog
+        isOpen={Boolean(deleteTarget)}
+        title="Excluir serviço?"
+        description="Essa ação não pode ser desfeita. O serviço será removido permanentemente."
+        confirmLabel="Excluir serviço"
+        isLoading={isProcessing}
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={doDelete}
+      />
+      <ConfirmDialog
+        isOpen={Boolean(deleteBlockedMessage)}
+        title="Não é possível excluir agora"
+        description={deleteBlockedMessage}
+        confirmLabel="Entendi"
+        hideCancel
+        onCancel={() => setDeleteBlockedMessage('')}
+        onConfirm={() => setDeleteBlockedMessage('')}
+      />
     </div>
   );
 }

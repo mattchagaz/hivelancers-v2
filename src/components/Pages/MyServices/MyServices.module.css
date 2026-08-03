@@ -66,7 +66,9 @@
 
 .heroAction,
 .editAction,
-.viewAction {
+.viewAction,
+.archiveAction,
+.deleteAction {
   display: inline-flex;
   min-height: 42px;
   align-items: center;
@@ -76,6 +78,12 @@
   font-weight: 850;
   text-decoration: none;
   transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease, opacity 0.18s ease;
+}
+
+.archiveAction:disabled,
+.deleteAction:disabled {
+  cursor: wait;
+  opacity: 0.65;
 }
 
 .heroAction {
@@ -101,6 +109,8 @@
 .heroAction:hover,
 .editAction:hover,
 .viewAction:hover,
+.archiveAction:not(:disabled):hover,
+.deleteAction:not(:disabled):hover,
 .serviceCard:hover {
   opacity: 1;
   transform: translateY(-1px);
@@ -459,10 +469,13 @@
 }
 
 .editAction,
-.viewAction {
+.viewAction,
+.archiveAction,
+.deleteAction {
   min-height: 40px;
   padding: 0 14px;
   font-size: 0.84rem;
+  cursor: pointer;
 }
 
 .editAction {
@@ -480,6 +493,28 @@
 .viewAction:hover {
   border-color: rgba(var(--primary-color-rgb, 62, 115, 230), 0.32);
   color: var(--primary-color, #3e73e6);
+}
+
+.archiveAction {
+  border: 1px solid var(--border-color, #e8e8ef);
+  background: var(--bg-primary, #fff);
+  color: var(--text-secondary, #6c6d72);
+}
+
+.archiveAction:not(:disabled):hover {
+  border-color: rgba(245, 158, 11, 0.4);
+  color: #b45309;
+}
+
+.deleteAction {
+  border: 1px solid rgba(239, 68, 68, 0.24);
+  background: rgba(239, 68, 68, 0.08);
+  color: #dc2626;
+}
+
+.deleteAction:not(:disabled):hover {
+  background: #dc2626;
+  color: #fff;
 }
 
 @keyframes shimmer {
@@ -556,7 +591,9 @@
 
   .heroAction,
   .editAction,
-  .viewAction {
+  .viewAction,
+  .archiveAction,
+  .deleteAction {
     width: 100%;
   }
 
