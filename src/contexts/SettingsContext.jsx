@@ -1,7 +1,10 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { useAuth } from './AuthContext';
+import { updateMySettings } from '../services/users';
 
 const STORAGE_KEY = 'hivelancers:settings';
+const PREFERENCE_SYNC_DELAY = 600;
 
 const DEFAULT_SETTINGS = {
   notifications: {
@@ -45,6 +48,10 @@ const ACCENT_COLORS = {
   teal: { primary: '13, 148, 136', secondary: '45, 212, 191' },
 };
 
+// Campos de privacidade persistem como colunas próprias do usuário no backend
+// (não fazem parte do blob `preferences`), por isso ficam fora do merge de preferências.
+const PRIVACY_FIELDS = ['profilePublic', 'showOnline', 'showEarnings'];
+
 function loadSettings() {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
@@ -61,13 +68,35 @@ function loadSettings() {
   }
 }
 
+const mergeUserIntoSettings = (prev, user) => ({
+  ...prev,
+  privacy: {
+    ...prev.privacy,
+    profilePublic: user.profilePublic ?? prev.privacy.profilePublic,
+    showOnline: user.showOnline ?? prev.privacy.showOnline,
+    showEarnings: user.showEarnings ?? prev.privacy.showEarnings,
+  },
+  ...(user.preferences && typeof user.preferences === 'object'
+    ? {
+      notifications: { ...DEFAULT_SETTINGS.notifications, ...(user.preferences.notifications || {}) },
+      appearance: { ...DEFAULT_SETTINGS.appearance, ...(user.preferences.appearance || {}) },
+      language: { ...DEFAULT_SETTINGS.language, ...(user.preferences.language || {}) },
+    }
+    : {}),
+});
+
 const SettingsContext = createContext(null);
 
 export function SettingsProvider({ children }) {
+  const { user, isAuthenticated, setUser } = useAuth();
   const [settings, setSettings] = useState(loadSettings);
   const initialSettings = useRef(settings);
   const toastTimer = useRef(null);
+  const preferencesSyncTimer = useRef(null);
+  const syncedUserIdRef = useRef(null);
 
+  // Sempre mantém uma cópia local — funciona como cache instantâneo (evita
+  // flash de tema) e como fallback completo para visitantes não autenticados.
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
     if (settings === initialSettings.current) return;
@@ -76,6 +105,19 @@ export function SettingsProvider({ children }) {
       toast.success('Preferências salvas.', { id: 'settings-saved', duration: 1500 });
     }, 400);
   }, [settings]);
+
+  // Ao autenticar, o backend passa a ser a fonte de verdade: privacidade vem
+  // sempre do usuário; notificações/aparência/idioma vêm de `user.preferences`
+  // quando existirem (sobrescrevendo o cache local do navegador).
+  useEffect(() => {
+    if (!isAuthenticated || !user) {
+      syncedUserIdRef.current = null;
+      return;
+    }
+    if (syncedUserIdRef.current === user.id) return;
+    syncedUserIdRef.current = user.id;
+    setSettings((prev) => mergeUserIntoSettings(prev, user));
+  }, [isAuthenticated, user]);
 
   useEffect(() => {
     const theme = settings.appearance.theme;
@@ -115,26 +157,73 @@ export function SettingsProvider({ children }) {
     }
   }, [settings.appearance.reducedMotion]);
 
+  // Notificações/aparência/idioma: persistidas com debounce no blob `preferences`.
+  const schedulePreferencesSync = useCallback((nextSettings) => {
+    if (!isAuthenticated) return;
+    if (preferencesSyncTimer.current) clearTimeout(preferencesSyncTimer.current);
+    preferencesSyncTimer.current = setTimeout(() => {
+      updateMySettings({
+        preferences: {
+          notifications: nextSettings.notifications,
+          appearance: nextSettings.appearance,
+          language: nextSettings.language,
+        },
+      }).catch(() => {
+        // Falha silenciosa: o valor já está salvo localmente e será reenviado na próxima alteração.
+      });
+    }, PREFERENCE_SYNC_DELAY);
+  }, [isAuthenticated]);
+
+  // Privacidade: colunas próprias do usuário, sem debounce (reflete no perfil público na hora)
+  // e com rollback caso a chamada falhe.
+  const syncPrivacyField = useCallback(async (field, value, previousValue) => {
+    if (!isAuthenticated) return;
+    try {
+      const updatedUser = await updateMySettings({ [field]: value });
+      setUser(updatedUser);
+    } catch (error) {
+      toast.error(error.message || 'Não foi possível salvar a preferência de privacidade.');
+      setSettings((prev) => ({ ...prev, privacy: { ...prev.privacy, [field]: previousValue } }));
+    }
+  }, [isAuthenticated, setUser]);
+
   const updateField = useCallback((section, field, value) => {
-    setSettings((prev) => ({
-      ...prev,
-      [section]: { ...prev[section], [field]: value },
-    }));
-  }, []);
+    const previousValue = settings[section][field];
+    const next = { ...settings, [section]: { ...settings[section], [field]: value } };
+    setSettings(next);
+
+    if (section === 'privacy' && PRIVACY_FIELDS.includes(field)) {
+      syncPrivacyField(field, value, previousValue);
+    } else {
+      schedulePreferencesSync(next);
+    }
+  }, [settings, syncPrivacyField, schedulePreferencesSync]);
 
   const toggleField = useCallback((section, field) => {
-    setSettings((prev) => ({
-      ...prev,
-      [section]: { ...prev[section], [field]: !prev[section][field] },
-    }));
-  }, []);
+    const previousValue = settings[section][field];
+    const value = !previousValue;
+    const next = { ...settings, [section]: { ...settings[section], [field]: value } };
+    setSettings(next);
+
+    if (section === 'privacy' && PRIVACY_FIELDS.includes(field)) {
+      syncPrivacyField(field, value, previousValue);
+    } else {
+      schedulePreferencesSync(next);
+    }
+  }, [settings, syncPrivacyField, schedulePreferencesSync]);
 
   const updateSection = useCallback((section, updates) => {
-    setSettings((prev) => ({
-      ...prev,
-      [section]: { ...prev[section], ...updates },
-    }));
-  }, []);
+    const next = { ...settings, [section]: { ...settings[section], ...updates } };
+    setSettings(next);
+
+    if (section === 'privacy') {
+      Object.entries(updates)
+        .filter(([field]) => PRIVACY_FIELDS.includes(field))
+        .forEach(([field, value]) => syncPrivacyField(field, value, settings.privacy[field]));
+    } else {
+      schedulePreferencesSync(next);
+    }
+  }, [settings, syncPrivacyField, schedulePreferencesSync]);
 
   const resetSettings = useCallback(() => setSettings(DEFAULT_SETTINGS), []);
 

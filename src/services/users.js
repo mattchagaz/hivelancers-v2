@@ -20,6 +20,16 @@ export const updateProfile = async (payload) => {
   }
 };
 
+export const updateMySettings = async (payload) => {
+  try {
+    const { data } = await api.patch('/users/me/settings', payload);
+    tokenStorage.setUser(data.user);
+    return data.user;
+  } catch (error) {
+    throw new Error(extractMessage(error, 'Não foi possível salvar as configurações.'));
+  }
+};
+
 export const exportMyData = async () => {
   try {
     const response = await api.get('/users/me/privacy-export', { responseType: 'blob' });
