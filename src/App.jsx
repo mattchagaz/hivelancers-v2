@@ -38,6 +38,7 @@ const Projects = lazy(() => import('./components/Pages/Projects/Projects'));
 const ProjectDetails = lazy(() => import('./components/Pages/ProjectDetails/ProjectDetails'));
 const CreateProject = lazy(() => import('./components/Pages/CreateProject/CreateProject'));
 const MyProjects = lazy(() => import('./components/Pages/MyProjects/MyProjects'));
+const NotFound = lazy(() => import('./components/Pages/NotFound/NotFound'));
 
 const RouteFallback = () => <div className="route-fallback">Carregando...</div>;
 
@@ -114,7 +115,7 @@ function App() {
           </Route>
         </Route>
 
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>
     </Router>
