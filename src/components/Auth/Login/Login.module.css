@@ -343,6 +343,14 @@
   cursor: not-allowed;
 }
 
+.googleConsentText {
+  text-align: center;
+  margin: 0;
+  font-size: 0.74rem;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
 /* ===== Footer ===== */
 .footerText {
   text-align: center;

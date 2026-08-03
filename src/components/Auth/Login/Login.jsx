@@ -100,7 +100,7 @@ function Login() {
 
   const handleGoogleLogin = () => {
     setIsGoogleLoading(true);
-    window.location.assign(getGoogleLoginUrl());
+    window.location.assign(getGoogleLoginUrl('/login', true));
   };
 
   return (
@@ -221,6 +221,13 @@ function Login() {
               </svg>
               {isGoogleLoading ? 'Conectando...' : 'Continuar com Google'}
             </button>
+
+            <p className={styles.googleConsentText}>
+              Ao continuar com o Google, você concorda com os{' '}
+              <Link className={styles.footerLink} to="/terms">Termos de Uso</Link>{' '}
+              e o{' '}
+              <Link className={styles.footerLink} to="/privacy">Aviso de Privacidade</Link>.
+            </p>
           </form>
 
           <p className={styles.footerText}>
