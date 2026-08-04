@@ -264,14 +264,6 @@ function Legal() {
               );
             })}
           </nav>
-
-          <div className={styles.reviewNotice}>
-            <FaTriangleExclamation />
-            <div>
-              <strong>Minuta pré-lançamento</strong>
-              <span>Requer revisão jurídica e dados cadastrais do controlador.</span>
-            </div>
-          </div>
         </aside>
 
         <article className={styles.document}>
@@ -283,14 +275,6 @@ function Legal() {
               <p>{document.description}</p>
             </div>
           </section>
-
-          <div className={styles.legalWarning}>
-            <FaTriangleExclamation />
-            <p>
-              Esta é uma minuta técnica baseada nos fluxos atuais da plataforma. Antes de aceitar pagamentos reais,
-              ela precisa ser revisada por profissional jurídico e receber razão social, CNPJ, endereço e canal de privacidade.
-            </p>
-          </div>
 
           <div className={styles.sections}>
             {document.sections.map((section) => (
