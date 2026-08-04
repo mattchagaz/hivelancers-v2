@@ -214,6 +214,8 @@
   border-radius: 14px;
   color: var(--text-muted, #a0a0ab);
   background: var(--bg-subtle, #f8f9fc);
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .search input {
@@ -280,6 +282,8 @@
   background: var(--surface-gradient, #fff);
   box-shadow: 0 10px 32px rgba(var(--shadow-rgb, 15, 23, 42), calc(var(--shadow-strength, 0.08) * 0.7));
   transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+    min-width: 0; /* 👈 essencial: permite o item de grid encolher abaixo do min-content */
+  overflow: hidden;
 }
 
 .card:hover {

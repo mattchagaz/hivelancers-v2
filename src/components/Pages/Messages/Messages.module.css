@@ -577,6 +577,7 @@
 
 .msgActions {
   display: flex;
+  flex-direction: column;
   gap: 3px;
   opacity: 0;
   transition: opacity 0.15s ease;

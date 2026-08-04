@@ -432,4 +432,7 @@
   .search { max-width: none; margin-left: 0; flex: 1; }
   .userInfo, .sep, .kbd { display: none; }
   .userBtn { padding: 4px; border: none; }
+    .notifMenu {
+    right: -9dvh;
+  }
 }

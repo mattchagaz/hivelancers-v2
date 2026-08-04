@@ -1024,6 +1024,10 @@
     gap: 0;
   }
 
+  .planHeader {
+  padding: 18px 18px;
+  }
+
   .stepText { display: none; }
   .stepLine { min-width: 24px; margin: 0 8px; }
 
