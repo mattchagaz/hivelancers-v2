@@ -76,6 +76,20 @@ export const saveMyProfileCustomization = async (payload) => {
   }
 };
 
+export const removeMyPortfolioProjectImage = async (projectId, imageId) => {
+  try {
+    const { data } = await api.delete(
+      `/users/me/profile-customization/projects/${encodeURIComponent(projectId)}/images/${encodeURIComponent(imageId)}`
+    );
+    return data;
+  } catch (error) {
+    const requestError = new Error(extractMessage(error, 'Não foi possível remover a foto do portfólio.'));
+    requestError.status = error?.response?.status;
+    requestError.code = error?.response?.data?.code;
+    throw requestError;
+  }
+};
+
 export const updateUserType = async (userType) => {
   try {
     const { data } = await api.patch('/users/me/type', { userType });

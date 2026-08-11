@@ -44,6 +44,7 @@ function Settings() {
 
   const [activeTab, setActiveTab] = useState('profile');
   const [profile, setProfile] = useState(() => profileFromUser(user));
+  const [locationValid, setLocationValid] = useState(true);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [showRemoveAvatarConfirm, setShowRemoveAvatarConfirm] = useState(false);
@@ -138,6 +139,18 @@ function Settings() {
     setProfile((prev) => ({ ...prev, [field]: value }));
   };
 
+  const updateProfileLocation = (value, details) => {
+    setProfile((prev) => ({
+      ...prev,
+      location: value,
+      locationCity: details?.city || '',
+      locationState: details?.state || '',
+      locationCountryCode: details?.countryCode || '',
+      locationLatitude: details?.latitude ?? null,
+      locationLongitude: details?.longitude ?? null,
+    }));
+  };
+
   const toggleNotificationPreference = async (field) => {
     const enablingBrowserNotification = field.startsWith('push') && !notifications[field];
 
@@ -166,6 +179,7 @@ function Settings() {
       fields.forEach((field) => { next[field] = serverProfile[field]; });
       return next;
     });
+    if (fields.includes('location')) setLocationValid(true);
   };
 
   const handleAvatarFile = async (file) => {
@@ -202,6 +216,10 @@ function Settings() {
 
   const saveProfile = async (fields) => {
     if (isSavingProfile) return;
+    if (fields.includes('location') && !locationValid) {
+      toast.error('Selecione uma cidade válida nas sugestões antes de salvar.');
+      return;
+    }
     const payload = fields.reduce((acc, field) => {
       if (field === 'email') return acc;
       const value = profile[field];
@@ -363,7 +381,7 @@ function Settings() {
           </section>
 
           {activeTab === 'profile' && (
-            <ProfilePanel profile={profile} updateProfile={updateProfileField} isFreelancer={isFreelancer} isSaving={isSavingProfile} dirty={profileDirty} profileCompletion={profileCompletion} onSave={() => saveProfile(PROFILE_FIELDS)} onCancel={() => resetProfileFields(PROFILE_FIELDS)} />
+            <ProfilePanel profile={profile} updateProfile={updateProfileField} updateLocation={updateProfileLocation} onLocationValidityChange={setLocationValid} locationValid={locationValid} isFreelancer={isFreelancer} isSaving={isSavingProfile} dirty={profileDirty} profileCompletion={profileCompletion} onSave={() => saveProfile(PROFILE_FIELDS)} onCancel={() => resetProfileFields(PROFILE_FIELDS)} />
           )}
 
           {activeTab === 'account' && (

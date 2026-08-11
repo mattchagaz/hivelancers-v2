@@ -2,7 +2,7 @@ import styles from '../Settings.module.css';
 import CityAutocomplete from '../../../CityAutocomplete/CityAutocomplete';
 import { Field, FormActions, SectionHeader } from '../Settings.ui';
 
-export default function ProfilePanel({ profile, updateProfile, isFreelancer, isSaving, dirty, profileCompletion, onSave, onCancel }) {
+export default function ProfilePanel({ profile, updateProfile, updateLocation, onLocationValidityChange, locationValid = true, isFreelancer, isSaving, dirty, profileCompletion, onSave, onCancel }) {
   return (
     <section className={styles.card}>
       <SectionHeader title="Dados Públicos" subtitle="Essas informações moldam sua presença na plataforma." extra={<span className={styles.inlineBadge}>{profileCompletion}% Completo</span>} />
@@ -27,14 +27,25 @@ export default function ProfilePanel({ profile, updateProfile, isFreelancer, isS
           <input type="url" className={styles.input} value={profile.website} placeholder="https://..." onChange={(e) => updateProfile('website', e.target.value)} />
         </Field>
         <Field label="Localização">
-          <CityAutocomplete value={profile.location} onChange={(value) => updateProfile('location', value)} placeholder="Sua cidade" inputClassName={styles.input} />
+          <CityAutocomplete
+            value={profile.location}
+            locationData={{
+              city: profile.locationCity,
+              state: profile.locationState,
+              countryCode: profile.locationCountryCode,
+            }}
+            onChange={updateLocation}
+            onValidityChange={onLocationValidityChange}
+            placeholder="Sua cidade"
+            inputClassName={styles.input}
+          />
         </Field>
         <Field label="Biografia / Resumo" hint={`${(profile.bio || '').length}/280 caracteres`} full>
           <textarea className={styles.textarea} value={profile.bio} maxLength={280} rows={4} placeholder="Um resumo atrativo sobre sua trajetória..." onChange={(e) => updateProfile('bio', e.target.value)} />
         </Field>
       </div>
 
-      <FormActions onSave={onSave} onCancel={onCancel} isSaving={isSaving} disabled={!dirty} />
+      <FormActions onSave={onSave} onCancel={onCancel} isSaving={isSaving} disabled={!dirty || !locationValid} />
     </section>
   );
 }

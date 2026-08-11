@@ -1,6 +1,6 @@
-const CACHE_KEY = 'ibge_municipios_v1';
+const CACHE_KEY = 'ibge_municipios_v2';
 const CACHE_TTL = 30 * 24 * 60 * 60 * 1000;
-const ENDPOINT = 'https://servicodosdados.ibge.gov.br/api/v1/localidades/municipios';
+export const IBGE_CITIES_ENDPOINT = 'https://servicodados.ibge.gov.br/api/v1/localidades/municipios';
 
 let memoryCache = null;
 let inFlight = null;
@@ -32,14 +32,21 @@ const writeCache = (items) => {
 };
 
 const fetchFromIbge = async () => {
-  const res = await fetch(ENDPOINT);
+  const res = await fetch(IBGE_CITIES_ENDPOINT);
   if (!res.ok) throw new Error('IBGE indisponível');
   const data = await res.json();
   return data.map((m) => {
-    const name = m.nome;
-    const uf = m.microrregiao?.mesorregiao?.UF?.sigla || '';
-    const label = uf ? `${name} - ${uf}` : name;
-    return { label, search: normalize(label) };
+    const city = m.nome;
+    const state = m.microrregiao?.mesorregiao?.UF?.sigla || '';
+    const label = state ? `${city} - ${state}` : city;
+    return {
+      id: String(m.id),
+      city,
+      state,
+      countryCode: 'BR',
+      label,
+      search: normalize(`${city} ${state}`),
+    };
   });
 };
 

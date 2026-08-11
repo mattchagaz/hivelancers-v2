@@ -14,6 +14,7 @@ import { toast, Toaster } from 'sonner';
 import { useAuth } from '../../../contexts/authContextStore';
 import {
   getMyProfileCustomization,
+  removeMyPortfolioProjectImage,
   saveMyProfileCustomization,
   updateProfile as apiUpdateProfile,
 } from '../../../services/users';
@@ -40,8 +41,33 @@ const profileFromUser = (user) => ({
   headline: user?.headline || '',
   bio: user?.bio || '',
   location: user?.location || '',
+  locationCity: user?.locationCity || '',
+  locationState: user?.locationState || '',
+  locationCountryCode: user?.locationCountryCode || '',
+  locationLatitude: user?.locationLatitude ?? null,
+  locationLongitude: user?.locationLongitude ?? null,
   website: user?.website || '',
   avatarUrl: user?.avatarUrl || '',
+});
+
+const buildCustomizationPayload = ({ skills, socialLinks, featuredProjectId, projects }) => ({
+  skills,
+  socialLinks: Object.fromEntries(
+    Object.entries(socialLinks).map(([key, value]) => [key, normalizeExternalUrl(value)])
+  ),
+  featuredProjectId,
+  portfolioProjects: projects.map((project) => ({
+    id: project.id,
+    title: project.title,
+    description: project.description,
+    coverImageUrl: normalizeExternalUrl(project.coverImageUrl || project.imageUrl || ''),
+    projectUrl: normalizeExternalUrl(project.projectUrl),
+    tags: project.tags || [],
+    images: (project.images || []).map((image) => ({
+      id: image.id,
+      url: normalizeExternalUrl(image.url),
+    })),
+  })),
 });
 
 function CustomizeProfile() {
@@ -52,6 +78,7 @@ function CustomizeProfile() {
   const projectGalleryFileRefs = useRef({});
 
   const [profile, setProfile] = useState(() => profileFromUser(user));
+  const [locationValid, setLocationValid] = useState(true);
   const [skills, setSkills] = useState([]);
   const [skillInput, setSkillInput] = useState('');
   const [socialLinks, setSocialLinks] = useState({
@@ -71,6 +98,7 @@ function CustomizeProfile() {
   const [draggingProjectId, setDraggingProjectId] = useState('');
   const [projectRemoveConfirm, setProjectRemoveConfirm] = useState(null);
   const [galleryImageRemoveConfirm, setGalleryImageRemoveConfirm] = useState(null);
+  const [removingGalleryImage, setRemovingGalleryImage] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -179,6 +207,18 @@ function CustomizeProfile() {
 
   const updateProfileField = (field, value) => {
     setProfile((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const updateProfileLocation = (value, details) => {
+    setProfile((prev) => ({
+      ...prev,
+      location: value,
+      locationCity: details?.city || '',
+      locationState: details?.state || '',
+      locationCountryCode: details?.countryCode || '',
+      locationLatitude: details?.latitude ?? null,
+      locationLongitude: details?.longitude ?? null,
+    }));
   };
 
   const updateSocialLink = (field, value) => {
@@ -368,24 +408,58 @@ function CustomizeProfile() {
     }
   };
 
-  const removeProjectGalleryImage = (projectId, imageId) => {
-    setProjects((prev) =>
-      prev.map((project) =>
-        project.id === projectId
-          ? {
-              ...project,
-              images: (project.images || [])
-                .filter((image) => image.id !== imageId)
-                .map((image, position) => ({ ...image, position })),
-            }
-          : project
-      )
+  const removeProjectGalleryImage = async (projectId, imageId) => {
+    if (removingGalleryImage) return;
+    const removeFromState = (items) => items.map((project) =>
+      project.id === projectId
+        ? {
+            ...project,
+            images: (project.images || [])
+              .filter((image) => image.id !== imageId)
+              .map((image, position) => ({ ...image, position })),
+          }
+        : project
     );
-    setGalleryImageRemoveConfirm(null);
+
+    if (imageId.includes('_image_')) {
+      setProjects(removeFromState);
+      setGalleryImageRemoveConfirm(null);
+      toast.success('Foto removida da galeria.');
+      return;
+    }
+
+    const nextProjects = removeFromState(projects);
+    setRemovingGalleryImage(true);
+    try {
+      let customization;
+      try {
+        customization = await removeMyPortfolioProjectImage(projectId, imageId);
+      } catch (error) {
+        if (error.status !== 404) throw error;
+        customization = await saveMyProfileCustomization(buildCustomizationPayload({
+          skills,
+          socialLinks,
+          featuredProjectId,
+          projects: nextProjects,
+        }));
+      }
+      setProjects(customization.portfolioProjects || nextProjects);
+      setFeaturedProjectId(customization.featuredProjectId || null);
+      setGalleryImageRemoveConfirm(null);
+      toast.success('Foto removida permanentemente da galeria.');
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setRemovingGalleryImage(false);
+    }
   };
 
   const handleSave = async () => {
     if (isSaving) return;
+    if (!locationValid) {
+      toast.error('Selecione uma cidade válida nas sugestões antes de salvar.');
+      return;
+    }
     if (validation.hasErrors) {
       toast.error('Revise os campos destacados (em vermelho) antes de salvar.');
       return;
@@ -399,6 +473,11 @@ function CustomizeProfile() {
         headline: profile.headline.trim(),
         bio: profile.bio.trim(),
         location: profile.location.trim(),
+        locationCity: profile.locationCity.trim(),
+        locationState: profile.locationState.trim(),
+        locationCountryCode: profile.locationCountryCode.trim(),
+        locationLatitude: profile.locationLatitude,
+        locationLongitude: profile.locationLongitude,
         website: normalizeExternalUrl(profile.website),
         avatarUrl: profile.avatarUrl.trim(),
       };
@@ -409,25 +488,12 @@ function CustomizeProfile() {
         ...prev,
         ...profileFromUser(updated),
       }));
-      const customization = await saveMyProfileCustomization({
+      const customization = await saveMyProfileCustomization(buildCustomizationPayload({
         skills,
-        socialLinks: Object.fromEntries(
-          Object.entries(socialLinks).map(([key, value]) => [key, normalizeExternalUrl(value)])
-        ),
+        socialLinks,
         featuredProjectId,
-        portfolioProjects: projects.map((project) => ({
-          id: project.id,
-          title: project.title,
-          description: project.description,
-          coverImageUrl: normalizeExternalUrl(project.coverImageUrl || project.imageUrl || ''),
-          projectUrl: normalizeExternalUrl(project.projectUrl),
-          tags: project.tags || [],
-          images: (project.images || []).map((image) => ({
-            id: image.id,
-            url: normalizeExternalUrl(image.url),
-          })),
-        })),
-      });
+        projects,
+      }));
       const merged = mergeProfileEnhancements(
         {
           ...updated,
@@ -464,7 +530,7 @@ function CustomizeProfile() {
           </p>
 
           <div className={styles.heroActions}>
-            <button type="button" className={styles.primaryButton} onClick={handleSave} disabled={isSaving || loadingCustomization}>
+            <button type="button" className={styles.primaryButton} onClick={handleSave} disabled={isSaving || loadingCustomization || !locationValid}>
               {loadingCustomization ? 'Carregando...' : isSaving ? 'Salvando Alterações...' : 'Salvar Alterações'}
             </button>
             <button type="button" className={styles.secondaryButton} onClick={() => navigate(profilePath)}>
@@ -641,7 +707,13 @@ function CustomizeProfile() {
               <Field label="Localização">
                 <CityAutocomplete
                   value={profile.location}
-                  onChange={(value) => updateProfileField('location', value)}
+                  locationData={{
+                    city: profile.locationCity,
+                    state: profile.locationState,
+                    countryCode: profile.locationCountryCode,
+                  }}
+                  onChange={updateProfileLocation}
+                  onValidityChange={setLocationValid}
                   placeholder="Ex: São Paulo, SP"
                   inputClassName={styles.input}
                 />
@@ -880,7 +952,7 @@ function CustomizeProfile() {
             <section className={styles.sideCard}>
               <h3>Ações Rápidas</h3>
               <div className={styles.linkStack}>
-                <button type="button" className={styles.primaryButton} onClick={handleSave} disabled={isSaving}>
+                <button type="button" className={styles.primaryButton} onClick={handleSave} disabled={isSaving || !locationValid}>
                   {isSaving ? 'Salvando...' : 'Salvar Alterações'}
                 </button>
                 <Link to={profilePath} className={styles.sideLink}>Visualizar Perfil Público</Link>
@@ -905,6 +977,7 @@ function CustomizeProfile() {
         title="Remover Foto"
         description="Esta foto será removida da galeria do projeto."
         confirmLabel="Remover"
+        isLoading={removingGalleryImage}
         onCancel={() => setGalleryImageRemoveConfirm(null)}
         onConfirm={() => { if (galleryImageRemoveConfirm) removeProjectGalleryImage(galleryImageRemoveConfirm.projectId, galleryImageRemoveConfirm.imageId); }}
       />

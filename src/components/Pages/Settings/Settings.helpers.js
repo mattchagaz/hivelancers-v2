@@ -3,7 +3,20 @@ import { formatPhoneBR } from '../../../utils/formatters';
 // Constantes e helpers puros da página de configurações.
 // Extraídos de Settings.jsx para reduzir o tamanho do componente — sem mudança de comportamento.
 
-export const PROFILE_FIELDS = ['firstName', 'lastName', 'username', 'headline', 'location', 'bio', 'website'];
+export const PROFILE_FIELDS = [
+  'firstName',
+  'lastName',
+  'username',
+  'headline',
+  'location',
+  'locationCity',
+  'locationState',
+  'locationCountryCode',
+  'locationLatitude',
+  'locationLongitude',
+  'bio',
+  'website',
+];
 export const ACCOUNT_FIELDS = ['phone'];
 
 export const THEME_LABEL = {
@@ -78,6 +91,11 @@ export const profileFromUser = (user) => ({
   headline: user?.headline || '',
   bio: user?.bio || '',
   location: user?.location || '',
+  locationCity: user?.locationCity || '',
+  locationState: user?.locationState || '',
+  locationCountryCode: user?.locationCountryCode || '',
+  locationLatitude: user?.locationLatitude ?? null,
+  locationLongitude: user?.locationLongitude ?? null,
   website: user?.website || '',
   avatarUrl: user?.avatarUrl || '',
 });
