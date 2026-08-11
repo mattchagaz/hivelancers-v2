@@ -1,6 +1,7 @@
 import styles from '../Admin.module.css';
 import { toUserName, formatDate } from '../Admin.helpers';
 import { useAdmin } from '../AdminContext';
+import AdminPagination from '../AdminPagination';
 
 export default function AuditTab() {
   const {
@@ -10,6 +11,9 @@ export default function AuditTab() {
     setAuditActionFilter,
     auditLogsTotal,
     auditLogs,
+    auditPage,
+    setAuditPage,
+    auditTotalPages,
   } = useAdmin();
 
   return (
@@ -69,6 +73,13 @@ export default function AuditTab() {
           ))
         )}
       </div>
+
+      <AdminPagination
+        currentPage={auditPage}
+        totalPages={auditTotalPages}
+        totalItems={auditLogsTotal}
+        onPageChange={setAuditPage}
+      />
     </section>
   );
 }

@@ -1,4 +1,5 @@
-import { FaCircleCheck, FaTriangleExclamation, FaInbox } from 'react-icons/fa6';
+import { useState } from 'react';
+import { FaCircleCheck, FaTriangleExclamation } from 'react-icons/fa6';
 import styles from '../Admin.module.css';
 import {
   DISPUTE_STATUS_LABEL,
@@ -10,8 +11,10 @@ import {
   RELEASE_STATUS_LABEL,
 } from '../Admin.helpers';
 import { useAdmin } from '../AdminContext';
+import AdminModal from '../AdminModal';
 
 export default function DisputesTab() {
+  const [editorOpen, setEditorOpen] = useState(false);
   const {
     loadDisputes,
     disputesLoading,
@@ -41,14 +44,6 @@ export default function DisputesTab() {
           <button type="button" className={styles.ghostButton} onClick={loadDisputes} disabled={disputesLoading}>
             {disputesLoading ? 'Atualizando...' : 'Atualizar'}
           </button>
-          <button
-            type="button"
-            className={styles.primaryButton}
-            onClick={saveDisputeResolution}
-            disabled={!selectedDispute || selectedDispute.status !== 'OPEN' || disputeSaving}
-          >
-            <FaCircleCheck /> {disputeSaving ? 'Resolvendo...' : 'Registrar decisão'}
-          </button>
         </div>
       </div>
 
@@ -62,8 +57,7 @@ export default function DisputesTab() {
         <span>{adminDisputesTotal} registros encontrados</span>
       </div>
 
-      <div className={styles.supportDesk}>
-        <div className={styles.supportQueue}>
+      <div className={styles.supportQueue}>
           {disputesLoading ? (
             <div className={styles.taxonomyEmpty}>Carregando disputas...</div>
           ) : adminDisputes.length === 0 ? (
@@ -77,6 +71,7 @@ export default function DisputesTab() {
                 onClick={() => {
                   setSelectedDisputeId(dispute.id);
                   setDisputeResolutionNote(dispute.resolutionNote || '');
+                  setEditorOpen(true);
                 }}
               >
                 <span className={styles.supportTicketCode}>
@@ -100,21 +95,19 @@ export default function DisputesTab() {
               </button>
             ))
           )}
-        </div>
+      </div>
 
-        <aside className={styles.supportInspector}>
-          {selectedDispute ? (
-            <>
-              <div className={styles.supportInspectorHeader}>
-                <div className={styles.userAvatar}><FaTriangleExclamation /></div>
-                <div>
-                  <span className={styles.sectionKicker}>Análise de disputa</span>
-                  <h4>{selectedDispute.order.service?.title || selectedDispute.order.planTitle}</h4>
-                  <p>Pedido #{selectedDispute.order.id.slice(-8).toUpperCase()}</p>
-                  <strong>{DISPUTE_REASON_LABEL[selectedDispute.reason] || selectedDispute.reason}</strong>
-                </div>
-              </div>
-
+      <AdminModal
+        open={editorOpen && Boolean(selectedDispute)}
+        onClose={() => setEditorOpen(false)}
+        kicker="Análise de disputa"
+        title={selectedDispute?.order?.service?.title || selectedDispute?.order?.planTitle || 'Disputa'}
+        description={selectedDispute ? `Pedido #${selectedDispute.order.id.slice(-8).toUpperCase()} · ${DISPUTE_REASON_LABEL[selectedDispute.reason] || selectedDispute.reason}` : ''}
+        icon={<FaTriangleExclamation />}
+        busy={disputeSaving}
+      >
+        {selectedDispute && (
+          <>
               <div className={styles.ticketDetailBlock}>
                 <span>Relato enviado</span>
                 <p>{selectedDispute.description}</p>
@@ -168,14 +161,19 @@ export default function DisputesTab() {
                   <p>{selectedDispute.resolutionNote || 'Sem nota registrada.'}</p>
                 </div>
               )}
-            </>
-          ) : (
-            <div className={styles.taxonomyEmpty}>
-              <FaInbox /> Selecione uma disputa para analisar o pedido e o pagamento.
-            </div>
-          )}
-        </aside>
-      </div>
+              {selectedDispute.status === 'OPEN' && (
+                <button
+                  type="button"
+                  className={styles.primaryButton}
+                  onClick={saveDisputeResolution}
+                  disabled={disputeSaving}
+                >
+                  <FaCircleCheck /> {disputeSaving ? 'Resolvendo...' : 'Registrar decisão'}
+                </button>
+              )}
+          </>
+        )}
+      </AdminModal>
     </section>
   );
 }

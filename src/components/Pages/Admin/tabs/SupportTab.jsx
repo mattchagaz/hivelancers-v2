@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   FaFloppyDisk,
   FaTicket,
@@ -7,7 +8,7 @@ import {
   FaPaperclip,
   FaLifeRing,
   FaArrowUpRightFromSquare,
-  FaInbox,
+  FaPen,
 } from 'react-icons/fa6';
 import styles from '../Admin.module.css';
 import {
@@ -25,8 +26,10 @@ import {
   formatDate,
 } from '../Admin.helpers';
 import { useAdmin } from '../AdminContext';
+import AdminModal from '../AdminModal';
 
 export default function SupportTab() {
+  const [editorOpen, setEditorOpen] = useState(false);
   const {
     loadAdminTickets,
     ticketsLoading,
@@ -57,9 +60,6 @@ export default function SupportTab() {
         <div className={styles.buttonGroup}>
           <button type="button" className={styles.ghostButton} onClick={loadAdminTickets} disabled={ticketsLoading}>
             {ticketsLoading ? 'Atualizando...' : 'Atualizar'}
-          </button>
-          <button type="button" className={styles.primaryButton} onClick={saveTicket} disabled={!selectedTicket || ticketSaving}>
-            <FaFloppyDisk /> {ticketSaving ? 'Salvando...' : 'Salvar ticket'}
           </button>
         </div>
       </div>
@@ -102,8 +102,7 @@ export default function SupportTab() {
         </select>
       </div>
 
-      <div className={styles.supportDesk}>
-        <div className={styles.supportQueue}>
+      <div className={styles.supportQueue}>
           {ticketsLoading ? (
             <div className={styles.taxonomyEmpty}>Carregando tickets...</div>
           ) : adminTickets.length === 0 ? (
@@ -112,14 +111,9 @@ export default function SupportTab() {
             adminTickets.map((ticket) => {
               const normalizedStatus = normalizeSupportTicketStatus(ticket.status);
               return (
-                <button
-                  type="button"
+                <article
                   key={ticket.id}
                   className={`${styles.supportTicketCard} ${selectedTicketId === ticket.id ? styles.supportTicketCardActive : ''}`}
-                  onClick={() => {
-                    setSelectedTicketId(ticket.id);
-                    setTicketDraft(toTicketDraft(ticket));
-                  }}
                 >
                   <span className={styles.supportTicketCode}>{ticket.code || ticket.id}</span>
                   <strong>{ticket.subject}</strong>
@@ -142,30 +136,41 @@ export default function SupportTab() {
                       </em>
                     )}
                   </div>
-                  <div className={styles.supportTicketMeta}>
-                    <span>{toRequesterName(ticket)}</span>
-                    <span>{SUPPORT_TICKET_CATEGORY_LABEL[ticket.category] || ticket.category || 'Suporte'}</span>
-                    <span>{formatDate(ticket.updatedAt || ticket.createdAt)}</span>
+                  <div className={styles.supportCardFooter}>
+                    <div className={styles.supportTicketMeta}>
+                      <span>{toRequesterName(ticket)}</span>
+                      <span>{SUPPORT_TICKET_CATEGORY_LABEL[ticket.category] || ticket.category || 'Suporte'}</span>
+                      <span>{formatDate(ticket.updatedAt || ticket.createdAt)}</span>
+                    </div>
+                    <button
+                      type="button"
+                      className={styles.cardEditButton}
+                      onClick={() => {
+                        setSelectedTicketId(ticket.id);
+                        setTicketDraft(toTicketDraft(ticket));
+                        setEditorOpen(true);
+                      }}
+                    >
+                      <FaPen /> Editar ticket
+                    </button>
                   </div>
-                </button>
+                </article>
               );
             })
           )}
-        </div>
+      </div>
 
-        <aside className={styles.supportInspector}>
-          {selectedTicket ? (
-            <>
-              <div className={styles.supportInspectorHeader}>
-                <div className={styles.userAvatar}><FaLifeRing /></div>
-                <div>
-                  <span className={styles.sectionKicker}>Atendimento</span>
-                  <h4>{selectedTicket.subject}</h4>
-                  <p>{toRequesterName(selectedTicket)} · {selectedTicket.requester?.email || 'sem email'}</p>
-                  <strong>{selectedTicket.code || selectedTicket.id}</strong>
-                </div>
-              </div>
-
+      <AdminModal
+        open={editorOpen && Boolean(selectedTicket)}
+        onClose={() => setEditorOpen(false)}
+        kicker="Atendimento"
+        title={selectedTicket?.subject || 'Ticket de suporte'}
+        description={selectedTicket ? `${toRequesterName(selectedTicket)} · ${selectedTicket.requester?.email || 'sem email'} · ${selectedTicket.code || selectedTicket.id}` : ''}
+        icon={<FaLifeRing />}
+        busy={ticketSaving}
+      >
+        {selectedTicket && (
+          <>
               <div className={styles.ticketDetailBlock}>
                 <span>Descrição enviada</span>
                 <p>{selectedTicket.description}</p>
@@ -243,14 +248,9 @@ export default function SupportTab() {
               <button type="button" className={styles.primaryButton} onClick={saveTicket} disabled={ticketSaving}>
                 <FaFloppyDisk /> {ticketSaving ? 'Salvando...' : 'Salvar atendimento'}
               </button>
-            </>
-          ) : (
-            <div className={styles.taxonomyEmpty}>
-              <FaInbox /> Selecione um ticket para revisar detalhes, prioridade e status.
-            </div>
-          )}
-        </aside>
-      </div>
+          </>
+        )}
+      </AdminModal>
     </section>
   );
 }

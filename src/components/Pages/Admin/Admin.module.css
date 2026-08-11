@@ -1316,6 +1316,45 @@
   border-radius: 20px;
 }
 
+.cardActionRow {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: auto;
+}
+
+.cardEditButton {
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 13px;
+  border: 1px solid rgba(var(--primary-color-rgb, 62, 115, 230), 0.24);
+  border-radius: 12px;
+  background: rgba(var(--primary-color-rgb, 62, 115, 230), 0.08);
+  color: var(--primary-color, #3e73e6);
+  font-size: 0.78rem;
+  font-weight: 850;
+  cursor: pointer;
+  transition: transform 0.18s ease, border-color 0.18s ease, background-color 0.18s ease, color 0.18s ease;
+}
+
+.cardEditButton:hover {
+  border-color: var(--primary-color, #3e73e6);
+  background: var(--primary-color, #3e73e6);
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+.cardEditButton:focus-visible {
+  outline: 3px solid rgba(var(--primary-color-rgb, 62, 115, 230), 0.22);
+  outline-offset: 2px;
+}
+
 .promoCard:hover,
 .promoCardActive,
 .levelCard:hover,
@@ -1366,6 +1405,14 @@
   align-items: center;
   padding: 16px;
   border-radius: 18px;
+}
+
+.levelCardActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .levelSwatch {
@@ -1605,6 +1652,15 @@
   font-weight: 800;
 }
 
+.supportCardFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding-top: 4px;
+}
+
 .supportInspector {
   position: sticky;
   top: 92px;
@@ -1814,6 +1870,7 @@
   padding: 28px;
   background: rgba(8, 13, 24, 0.62);
   backdrop-filter: blur(10px);
+  animation: adminModalBackdropIn 0.2s ease-out both;
 }
 
 .reviewModal {
@@ -1829,6 +1886,30 @@
     radial-gradient(circle at top right, rgba(var(--primary-color-rgb, 62, 115, 230), 0.1), transparent 34%),
     var(--bg-primary, #fff);
   box-shadow: 0 32px 90px rgba(0, 0, 0, 0.24);
+  transform-origin: center top;
+  animation: adminModalEnter 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes adminModalBackdropIn {
+  from {
+    background: rgba(8, 13, 24, 0);
+    backdrop-filter: blur(0);
+  }
+  to {
+    background: rgba(8, 13, 24, 0.62);
+    backdrop-filter: blur(10px);
+  }
+}
+
+@keyframes adminModalEnter {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .reviewModalHeader {
@@ -1929,6 +2010,87 @@
   justify-content: flex-end;
   gap: 10px;
   padding-top: 4px;
+}
+
+.adminEditorModal {
+  width: min(860px, 100%);
+}
+
+.adminModalHeading {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  gap: 16px;
+  align-items: center;
+  min-width: 0;
+}
+
+.adminModalHeading h3 {
+  margin-top: 5px;
+  font-size: 1.35rem;
+}
+
+.adminModalContent {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+  padding-top: 4px;
+}
+
+.adminPagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 18px;
+  padding: 14px 16px;
+  border: 1px solid var(--border-color, #e8e8ef);
+  border-radius: 16px;
+  background: var(--bg-primary, #fff);
+}
+
+.adminPagination > span {
+  color: var(--text-secondary, #6c6d72);
+  font-size: 0.82rem;
+  font-weight: 750;
+}
+
+.adminPagination > div {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.adminPagination button {
+  display: inline-flex;
+  width: 38px;
+  height: 38px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-color, #e8e8ef);
+  border-radius: 11px;
+  background: var(--bg-secondary, #f5f6fa);
+  color: var(--text-primary, #1a1a2e);
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.adminPagination button:hover:not(:disabled),
+.adminPagination .paginationActive {
+  border-color: var(--primary-color, #3e73e6);
+  background: var(--primary-color, #3e73e6);
+  color: #fff;
+}
+
+.adminPagination button:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
+.paginationEllipsis {
+  display: inline-flex;
+  width: 24px;
+  justify-content: center;
+  color: var(--text-muted, #a0a0ab);
 }
 
 @media (max-width: 1200px) {
@@ -2059,5 +2221,33 @@
 
   .reviewModalActions button {
     width: 100%;
+  }
+
+  .adminModalHeading {
+    grid-template-columns: 42px minmax(0, 1fr);
+  }
+
+  .adminPagination {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .adminPagination > div {
+    max-width: 100%;
+    overflow-x: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reviewModalOverlay,
+  .reviewModal {
+    animation: none;
+  }
+
+  .promoCard,
+  .levelCard,
+  .supportTicketCard,
+  .cardEditButton {
+    transition: none;
   }
 }

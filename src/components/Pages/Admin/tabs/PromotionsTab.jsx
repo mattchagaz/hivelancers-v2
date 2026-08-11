@@ -1,9 +1,12 @@
-import { FaPlus, FaGift, FaCircleCheck, FaClock, FaBan, FaTrash, FaFloppyDisk } from 'react-icons/fa6';
+import { useState } from 'react';
+import { FaPlus, FaGift, FaCircleCheck, FaClock, FaBan, FaTrash, FaFloppyDisk, FaPen } from 'react-icons/fa6';
 import styles from '../Admin.module.css';
 import { formatCents, getStatusTone, COUPON_STATUS_LABEL } from '../Admin.helpers';
 import { useAdmin } from '../AdminContext';
+import AdminModal from '../AdminModal';
 
 export default function PromotionsTab() {
+  const [editorOpen, setEditorOpen] = useState(false);
   const {
     loadCoupons,
     couponsLoading,
@@ -34,7 +37,10 @@ export default function PromotionsTab() {
           <button type="button" className={styles.ghostButton} onClick={loadCoupons} disabled={couponsLoading}>
             {couponsLoading ? 'Atualizando...' : 'Atualizar'}
           </button>
-          <button type="button" className={styles.primaryButton} onClick={startNewCoupon}>
+          <button type="button" className={styles.primaryButton} onClick={() => {
+            startNewCoupon();
+            setEditorOpen(true);
+          }}>
             <FaPlus /> Novo cupom
           </button>
         </div>
@@ -74,19 +80,16 @@ export default function PromotionsTab() {
         </select>
       </div>
 
-      <div className={styles.userManagementGrid}>
-        <div className={styles.couponGrid}>
+      <div className={styles.couponGrid}>
           {couponsLoading ? (
             <div className={styles.taxonomyEmpty}>Carregando cupons...</div>
           ) : coupons.length === 0 ? (
             <div className={styles.taxonomyEmpty}>Nenhum cupom encontrado.</div>
           ) : (
             coupons.map((coupon) => (
-              <button
+              <article
                 key={coupon.id}
-                type="button"
                 className={`${styles.promoCard} ${selectedCouponId === coupon.id ? styles.promoCardActive : ''}`}
-                onClick={() => setSelectedCouponId(coupon.id)}
               >
                 <span className={styles.promoCode}>{coupon.code}</span>
                 <strong>{coupon.name}</strong>
@@ -95,24 +98,35 @@ export default function PromotionsTab() {
                     ? `${coupon.discountValue}% de desconto`
                     : `${formatCents(coupon.discountValue)} de desconto`}
                 </small>
-                <em className={`${styles.badge} ${styles[getStatusTone(COUPON_STATUS_LABEL[coupon.operationalStatus] || coupon.operationalStatus)]}`}>
-                  {COUPON_STATUS_LABEL[coupon.operationalStatus] || coupon.operationalStatus}
-                </em>
-              </button>
+                <div className={styles.cardActionRow}>
+                  <em className={`${styles.badge} ${styles[getStatusTone(COUPON_STATUS_LABEL[coupon.operationalStatus] || coupon.operationalStatus)]}`}>
+                    {COUPON_STATUS_LABEL[coupon.operationalStatus] || coupon.operationalStatus}
+                  </em>
+                  <button
+                    type="button"
+                    className={styles.cardEditButton}
+                    onClick={() => {
+                      setSelectedCouponId(coupon.id);
+                      setEditorOpen(true);
+                    }}
+                  >
+                    <FaPen /> Editar cupom
+                  </button>
+                </div>
+              </article>
             ))
           )}
-        </div>
+      </div>
 
-        <aside className={styles.userEditor}>
-          <div className={styles.userEditorHeader}>
-            <div className={styles.userAvatar}><FaGift /></div>
-            <div>
-              <span className={styles.sectionKicker}>{selectedCouponId === 'new' || !selectedCoupon ? 'Novo cupom' : 'Editor'}</span>
-              <h4>{couponDraft.code || 'Cupom promocional'}</h4>
-              <p>Controle campanha, janela, limite e desconto.</p>
-            </div>
-          </div>
-
+      <AdminModal
+        open={editorOpen}
+        onClose={() => setEditorOpen(false)}
+        kicker={selectedCouponId === 'new' || !selectedCoupon ? 'Novo cupom' : 'Editor de cupom'}
+        title={couponDraft.code || 'Cupom promocional'}
+        description="Controle campanha, janela, limite e desconto."
+        icon={<FaGift />}
+        busy={couponSaving}
+      >
           <div className={styles.formGrid}>
             <label className={styles.formField}>
               <span>Código</span>
@@ -168,7 +182,9 @@ export default function PromotionsTab() {
 
           <div className={styles.editorActions}>
             {selectedCoupon && (
-              <button type="button" className={styles.dangerButton} onClick={removeCoupon} disabled={couponSaving}>
+              <button type="button" className={styles.dangerButton} onClick={async () => {
+                await removeCoupon();
+              }} disabled={couponSaving}>
                 <FaTrash /> Excluir
               </button>
             )}
@@ -176,8 +192,7 @@ export default function PromotionsTab() {
               <FaFloppyDisk /> {couponSaving ? 'Salvando...' : 'Salvar cupom'}
             </button>
           </div>
-        </aside>
-      </div>
+      </AdminModal>
     </section>
   );
 }

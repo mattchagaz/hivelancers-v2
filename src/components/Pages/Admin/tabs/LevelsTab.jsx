@@ -1,9 +1,12 @@
-import { FaPlus, FaMedal, FaTrash, FaFloppyDisk } from 'react-icons/fa6';
+import { useState } from 'react';
+import { FaPlus, FaMedal, FaTrash, FaFloppyDisk, FaPen } from 'react-icons/fa6';
 import styles from '../Admin.module.css';
 import { slugify } from '../Admin.helpers';
 import { useAdmin } from '../AdminContext';
+import AdminModal from '../AdminModal';
 
 export default function LevelsTab() {
+  const [editorOpen, setEditorOpen] = useState(false);
   const {
     loadFreelancerLevels,
     levelsLoading,
@@ -30,25 +33,25 @@ export default function LevelsTab() {
           <button type="button" className={styles.ghostButton} onClick={loadFreelancerLevels} disabled={levelsLoading}>
             {levelsLoading ? 'Atualizando...' : 'Atualizar'}
           </button>
-          <button type="button" className={styles.primaryButton} onClick={startNewLevel}>
+          <button type="button" className={styles.primaryButton} onClick={() => {
+            startNewLevel();
+            setEditorOpen(true);
+          }}>
             <FaPlus /> Novo nível
           </button>
         </div>
       </div>
 
-      <div className={styles.levelLayout}>
-        <div className={styles.levelList}>
+      <div className={styles.levelList}>
           {levelsLoading ? (
             <div className={styles.taxonomyEmpty}>Carregando níveis...</div>
           ) : freelancerLevels.length === 0 ? (
             <div className={styles.taxonomyEmpty}>Nenhum nível configurado.</div>
           ) : (
             freelancerLevels.map((level) => (
-              <button
+              <article
                 key={level.id}
-                type="button"
                 className={`${styles.levelCard} ${selectedLevelId === level.id ? styles.levelCardActive : ''}`}
-                onClick={() => setSelectedLevelId(level.id)}
               >
                 <span className={styles.levelSwatch} style={{ background: level.badgeColor }} />
                 <span>
@@ -57,24 +60,35 @@ export default function LevelsTab() {
                     {level.audience === 'ALL' ? 'Todos' : level.audience === 'FREELANCER' ? 'Freelancers' : 'Clientes'} · {level.xpRequired} XP para liberar
                   </small>
                 </span>
-                <em className={`${styles.badge} ${styles[level.isActive ? 'success' : 'neutral']}`}>
-                  {level.isActive ? 'Ativo' : 'Inativo'}
-                </em>
-              </button>
+                <div className={styles.levelCardActions}>
+                  <em className={`${styles.badge} ${styles[level.isActive ? 'success' : 'neutral']}`}>
+                    {level.isActive ? 'Ativo' : 'Inativo'}
+                  </em>
+                  <button
+                    type="button"
+                    className={styles.cardEditButton}
+                    onClick={() => {
+                      setSelectedLevelId(level.id);
+                      setEditorOpen(true);
+                    }}
+                  >
+                    <FaPen /> Editar nível
+                  </button>
+                </div>
+              </article>
             ))
           )}
-        </div>
+      </div>
 
-        <aside className={styles.userEditor}>
-          <div className={styles.userEditorHeader}>
-            <div className={styles.userAvatar}><FaMedal /></div>
-            <div>
-              <span className={styles.sectionKicker}>{selectedLevelId === 'new' ? 'Novo nível' : 'Editor'}</span>
-              <h4>{levelDraft.name || 'Nível da plataforma'}</h4>
-              <p>Configure XP, audiência e recompensas exibidas ao usuário.</p>
-            </div>
-          </div>
-
+      <AdminModal
+        open={editorOpen}
+        onClose={() => setEditorOpen(false)}
+        kicker={selectedLevelId === 'new' ? 'Novo nível' : 'Editor de nível'}
+        title={levelDraft.name || 'Nível da plataforma'}
+        description="Configure XP, audiência e recompensas exibidas ao usuário."
+        icon={<FaMedal />}
+        busy={levelSaving}
+      >
           <div className={styles.formGrid}>
             <label className={styles.formField}>
               <span>Audiência</span>
@@ -135,8 +149,7 @@ export default function LevelsTab() {
               <FaFloppyDisk /> {levelSaving ? 'Salvando...' : 'Salvar nível'}
             </button>
           </div>
-        </aside>
-      </div>
+      </AdminModal>
     </section>
   );
 }

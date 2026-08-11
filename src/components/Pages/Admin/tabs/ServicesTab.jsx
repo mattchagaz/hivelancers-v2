@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { FaFloppyDisk, FaLayerGroup, FaCircleCheck, FaClock, FaBan } from 'react-icons/fa6';
 import styles from '../Admin.module.css';
 import { CategoryIcon } from '../../../../utils/categoryIcons';
@@ -10,8 +11,10 @@ import {
   formatCents,
 } from '../Admin.helpers';
 import { useAdmin } from '../AdminContext';
+import AdminModal from '../AdminModal';
 
 export default function ServicesTab() {
+  const [editorOpen, setEditorOpen] = useState(false);
   const {
     loadAdminServices,
     servicesLoading,
@@ -45,9 +48,6 @@ export default function ServicesTab() {
         <div className={styles.buttonGroup}>
           <button type="button" className={styles.ghostButton} onClick={loadAdminServices} disabled={servicesLoading}>
             {servicesLoading ? 'Atualizando...' : 'Atualizar'}
-          </button>
-          <button type="button" className={styles.primaryButton} onClick={saveAdminService} disabled={!selectedService || serviceSaving}>
-            <FaFloppyDisk /> {serviceSaving ? 'Salvando...' : 'Salvar serviço'}
           </button>
         </div>
       </div>
@@ -90,8 +90,7 @@ export default function ServicesTab() {
         </select>
       </div>
 
-      <div className={styles.userManagementGrid}>
-        <div className={styles.tableWrap}>
+      <div className={styles.tableWrap}>
           <table className={styles.table}>
             <thead>
               <tr>
@@ -135,7 +134,10 @@ export default function ServicesTab() {
                     </td>
                     <td>
                       <div className={styles.rowActions}>
-                        <button type="button" onClick={() => setSelectedServiceId(service.id)}>Editar</button>
+                        <button type="button" onClick={() => {
+                          setSelectedServiceId(service.id);
+                          setEditorOpen(true);
+                        }}>Editar</button>
                         <button type="button" onClick={() => archiveAdminService(service)} disabled={serviceSaving || service.status === 'ARCHIVED'}>
                           Arquivar
                         </button>
@@ -153,22 +155,19 @@ export default function ServicesTab() {
               )}
             </tbody>
           </table>
-        </div>
+      </div>
 
-        <aside className={styles.userEditor}>
-          {selectedService ? (
-            <>
-              <div className={styles.userEditorHeader}>
-                <div className={styles.userAvatar}>
-                  <CategoryIcon category={selectedService.category} />
-                </div>
-                <div>
-                  <span className={styles.sectionKicker}>Editor de serviço</span>
-                  <h4>{selectedService.title}</h4>
-                  <p>{toUserName(selectedService.owner)} · {selectedService.category?.name}</p>
-                </div>
-              </div>
-
+      <AdminModal
+        open={editorOpen && Boolean(selectedService)}
+        onClose={() => setEditorOpen(false)}
+        kicker="Editor de serviço"
+        title={selectedService?.title || 'Serviço'}
+        description={selectedService ? `${toUserName(selectedService.owner)} · ${selectedService.category?.name || 'Sem categoria'}` : ''}
+        icon={selectedService ? <CategoryIcon category={selectedService.category} /> : <FaLayerGroup />}
+        busy={serviceSaving}
+      >
+        {selectedService && (
+          <>
               <div className={styles.formGrid}>
                 <label className={`${styles.formField} ${styles.formFieldFull}`}>
                   <span>Título</span>
@@ -223,14 +222,9 @@ export default function ServicesTab() {
               <button type="button" className={styles.primaryButton} onClick={saveAdminService} disabled={serviceSaving}>
                 <FaFloppyDisk /> {serviceSaving ? 'Salvando...' : 'Salvar alterações'}
               </button>
-            </>
-          ) : (
-            <div className={styles.taxonomyEmpty}>
-              Selecione um serviço para editar status, categoria, tags e informações principais.
-            </div>
-          )}
-        </aside>
-      </div>
+          </>
+        )}
+      </AdminModal>
     </section>
   );
 }

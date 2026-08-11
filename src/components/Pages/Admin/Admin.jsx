@@ -120,6 +120,8 @@ const tabs = [
   { id: 'audit', label: 'Auditoria', icon: FaShieldHalved },
 ];
 
+const ADMIN_PAGE_SIZE = 10;
+
 function Admin() {
   const { user: currentUser } = useAuth();
   const [searchParams] = useSearchParams();
@@ -149,6 +151,8 @@ function Admin() {
   const [adminPayments, setAdminPayments] = useState([]);
   const [adminFinanceSummary, setAdminFinanceSummary] = useState(null);
   const [adminPaymentsTotal, setAdminPaymentsTotal] = useState(0);
+  const [paymentsPage, setPaymentsPage] = useState(1);
+  const [paymentsTotalPages, setPaymentsTotalPages] = useState(1);
   const [paymentsLoading, setPaymentsLoading] = useState(false);
   const [paymentStatusFilter, setPaymentStatusFilter] = useState('');
   const [releaseStatusFilter, setReleaseStatusFilter] = useState('');
@@ -193,6 +197,8 @@ function Admin() {
   const [disputeSaving, setDisputeSaving] = useState(false);
   const [auditLogs, setAuditLogs] = useState([]);
   const [auditLogsTotal, setAuditLogsTotal] = useState(0);
+  const [auditPage, setAuditPage] = useState(1);
+  const [auditTotalPages, setAuditTotalPages] = useState(1);
   const [auditLoading, setAuditLoading] = useState(false);
   const [auditActionFilter, setAuditActionFilter] = useState('');
   const [adminOverview, setAdminOverview] = useState(emptyAdminOverview);
@@ -348,16 +354,24 @@ function Admin() {
         q: search.trim() || undefined,
         status: paymentStatusFilter || undefined,
         releaseStatus: releaseStatusFilter || undefined,
-        pageSize: 100,
+        page: paymentsPage,
+        pageSize: ADMIN_PAGE_SIZE,
       });
       setAdminPayments(data.items || []);
       setAdminFinanceSummary(data.summary || null);
       setAdminPaymentsTotal(data.total || 0);
+      const totalPages = data.totalPages || Math.max(1, Math.ceil((data.total || 0) / ADMIN_PAGE_SIZE));
+      setPaymentsTotalPages(totalPages);
+      if (paymentsPage > totalPages) setPaymentsPage(totalPages);
     } catch (err) {
       toast.error(err.message);
     } finally {
       setPaymentsLoading(false);
     }
+  }, [paymentStatusFilter, paymentsPage, releaseStatusFilter, search]);
+
+  useEffect(() => {
+    setPaymentsPage(1);
   }, [paymentStatusFilter, releaseStatusFilter, search]);
 
   useEffect(() => {
@@ -514,15 +528,23 @@ function Admin() {
     try {
       const data = await listAdminAuditLogs({
         ...(auditActionFilter.trim() ? { action: auditActionFilter.trim() } : {}),
-        pageSize: 100,
+        page: auditPage,
+        pageSize: ADMIN_PAGE_SIZE,
       });
       setAuditLogs(data.items || []);
       setAuditLogsTotal(data.total || 0);
+      const totalPages = data.totalPages || Math.max(1, Math.ceil((data.total || 0) / ADMIN_PAGE_SIZE));
+      setAuditTotalPages(totalPages);
+      if (auditPage > totalPages) setAuditPage(totalPages);
     } catch (err) {
       toast.error(err.message);
     } finally {
       setAuditLoading(false);
     }
+  }, [auditActionFilter, auditPage]);
+
+  useEffect(() => {
+    setAuditPage(1);
   }, [auditActionFilter]);
 
   useEffect(() => {
@@ -1274,6 +1296,9 @@ function Admin() {
     setReleaseStatusFilter,
     adminPaymentsTotal,
     adminPayments,
+    paymentsPage,
+    setPaymentsPage,
+    paymentsTotalPages,
     retryingPaymentId,
     setRetryingPaymentId,
     // disputes
@@ -1317,6 +1342,9 @@ function Admin() {
     setAuditActionFilter,
     auditLogsTotal,
     auditLogs,
+    auditPage,
+    setAuditPage,
+    auditTotalPages,
   };
 
   return (

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   FaUsers,
   FaTrash,
@@ -21,8 +22,10 @@ import {
   IDENTITY_STATUS_LABEL,
 } from '../Admin.helpers';
 import { useAdmin } from '../AdminContext';
+import AdminModal from '../AdminModal';
 
 export default function UsersTab() {
+  const [editorOpen, setEditorOpen] = useState(false);
   const {
     userAccountState,
     setUserAccountState,
@@ -72,6 +75,7 @@ export default function UsersTab() {
                 setUserAccountState('active');
                 setUserStatusFilter('all');
                 setUserTypeFilter('');
+                setEditorOpen(false);
               }}
             >
               <FaUsers /> Contas ativas
@@ -84,16 +88,12 @@ export default function UsersTab() {
                 setUserStatusFilter('all');
                 setUserTypeFilter('');
                 setSelectedUserId('');
+                setEditorOpen(false);
               }}
             >
               <FaTrash /> Excluídas
             </button>
           </div>
-          {userAccountState === 'active' && (
-            <button type="button" className={styles.primaryButton} onClick={saveUser} disabled={!selectedUser || userSaving}>
-              <FaFloppyDisk /> {userSaving ? 'Salvando...' : 'Salvar usuário'}
-            </button>
-          )}
         </div>
       </div>
 
@@ -175,8 +175,7 @@ export default function UsersTab() {
         </div>
       )}
 
-      <div className={`${styles.userManagementGrid} ${userAccountState === 'deleted' ? styles.deletedUsersGrid : ''}`}>
-        <div className={styles.tableWrap}>
+      <div className={styles.tableWrap}>
           <table className={styles.table}>
             <thead>
               {userAccountState === 'deleted' ? (
@@ -279,7 +278,10 @@ export default function UsersTab() {
                     </td>
                     <td>
                       <div className={styles.rowActions}>
-                        <button type="button" onClick={() => setSelectedUserId(user.id)}>Editar</button>
+                        <button type="button" onClick={() => {
+                          setSelectedUserId(user.id);
+                          setEditorOpen(true);
+                        }}>Editar</button>
                         <button type="button" onClick={() => openIdentityModal(user)} disabled={!user.accountVerification}>
                           Verificação
                         </button>
@@ -290,24 +292,19 @@ export default function UsersTab() {
               )}
             </tbody>
           </table>
-        </div>
+      </div>
 
-        {userAccountState === 'active' && (
-          <aside className={styles.userEditor}>
-          {selectedUser ? (
-            <>
-              <div className={styles.userEditorHeader}>
-                <div className={styles.userAvatar}>
-                  {toUserName(selectedUser).slice(0, 2).toUpperCase()}
-                </div>
-                <div>
-                  <span className={styles.sectionKicker}>Editor</span>
-                  <h4>{toUserName(selectedUser)}</h4>
-                  <p>{selectedUser.email}</p>
-                  <p>ID: {selectedUser.id}</p>
-                </div>
-              </div>
-
+      <AdminModal
+        open={editorOpen && userAccountState === 'active' && Boolean(selectedUser)}
+        onClose={() => setEditorOpen(false)}
+        kicker="Editor de usuário"
+        title={selectedUser ? toUserName(selectedUser) : 'Usuário'}
+        description={selectedUser ? `${selectedUser.email} · ID: ${selectedUser.id}` : ''}
+        icon={selectedUser ? toUserName(selectedUser).slice(0, 2).toUpperCase() : <FaUsers />}
+        busy={userSaving}
+      >
+        {selectedUser && (
+          <>
               <div className={styles.formGrid}>
                 <label className={styles.formField}>
                   <span>Nome</span>
@@ -384,15 +381,9 @@ export default function UsersTab() {
               <button type="button" className={styles.primaryButton} onClick={saveUser} disabled={userSaving}>
                 <FaFloppyDisk /> {userSaving ? 'Salvando...' : 'Salvar alterações'}
               </button>
-            </>
-          ) : (
-            <div className={styles.taxonomyEmpty}>
-              Selecione um usuário para editar permissões, perfil e estado da conta.
-            </div>
-          )}
-          </aside>
+          </>
         )}
-      </div>
+      </AdminModal>
     </section>
   );
 }

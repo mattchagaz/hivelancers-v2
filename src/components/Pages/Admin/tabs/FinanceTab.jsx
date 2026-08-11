@@ -16,6 +16,7 @@ import {
   RELEASE_STATUS_LABEL,
 } from '../Admin.helpers';
 import { useAdmin } from '../AdminContext';
+import AdminPagination from '../AdminPagination';
 
 export default function FinanceTab() {
   const {
@@ -30,6 +31,9 @@ export default function FinanceTab() {
     setReleaseStatusFilter,
     adminPaymentsTotal,
     adminPayments,
+    paymentsPage,
+    setPaymentsPage,
+    paymentsTotalPages,
     retryingPaymentId,
     setRetryingPaymentId,
   } = useAdmin();
@@ -158,6 +162,13 @@ export default function FinanceTab() {
           <div className={styles.taxonomyEmpty}>Nenhum pagamento encontrado neste filtro.</div>
         )}
       </div>
+
+      <AdminPagination
+        currentPage={paymentsPage}
+        totalPages={paymentsTotalPages}
+        totalItems={adminPaymentsTotal}
+        onPageChange={setPaymentsPage}
+      />
     </section>
   );
 }
