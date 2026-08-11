@@ -8,6 +8,7 @@
 .category { display: inline-flex; align-items: center; gap: 7px; color: var(--primary-color); font-size: .75rem; font-weight: 800; }
 .status, .proposalStatus { padding: 6px 9px; border-radius: 999px; font-size: .65rem; font-weight: 800; }
 .open, .pending { color: var(--success-color); background: var(--success-bg); }
+.payment_pending { color: var(--warning-color, #c2410c); background: var(--warning-bg, #fff7ed); }
 .in_progress, .accepted { color: var(--info-color); background: var(--info-bg); }
 .completed { color: var(--purple-color); background: var(--purple-bg); }
 .canceled, .rejected { color: var(--danger-color); background: var(--danger-bg); }

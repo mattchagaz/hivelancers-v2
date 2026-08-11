@@ -4,7 +4,7 @@ import { toast, Toaster } from 'sonner';
 import { getPublicService, getMyService } from '../../../services/services';
 import { startConversation } from '../../../services/messages';
 import { addFavoriteService, getMyFavorites, getPublicProfile, removeFavoriteService } from '../../../services/users';
-import { useAuth } from '../../../contexts/AuthContext';
+import { useAuth } from '../../../contexts/authContextStore';
 import { CategoryIcon } from '../../../utils/categoryIcons';
 import { recordRecentActivity } from '../../../utils/clientRecentActivity';
 import { getReviewAuthor } from '../../../utils/reviews';

@@ -13,7 +13,7 @@ const { okList } = vi.hoisted(() => ({
   okList: () => Promise.resolve([]),
 }));
 
-vi.mock('../../../contexts/AuthContext', () => ({
+vi.mock('../../../contexts/authContextStore', () => ({
   useAuth: () => ({ user: { id: 'admin-1', firstName: 'Admin', isAdmin: true } }),
 }));
 

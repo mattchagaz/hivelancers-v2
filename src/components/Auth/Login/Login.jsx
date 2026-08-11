@@ -3,7 +3,7 @@ import { toast, Toaster } from 'sonner';
 import styles from './Login.module.css';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { FaEnvelope, FaLock, FaEye, FaEyeSlash } from 'react-icons/fa';
-import { useAuth } from '../../../contexts/AuthContext';
+import { useAuth } from '../../../contexts/authContextStore';
 import { completeGoogleLogin, getGoogleLoginUrl, resendOtp } from '../../../services/auth';
 import { nextRouteAfterAuth } from '../../../utils/authFlow';
 

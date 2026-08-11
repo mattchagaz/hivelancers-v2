@@ -10,7 +10,7 @@ const { fakeSocket } = vi.hoisted(() => ({
   fakeSocket: { on: vi.fn(), off: vi.fn(), emit: vi.fn(), connected: true },
 }));
 
-vi.mock('../../../contexts/AuthContext', () => ({
+vi.mock('../../../contexts/authContextStore', () => ({
   useAuth: () => ({ user: { id: 'user-1', firstName: 'Cliente' } }),
 }));
 

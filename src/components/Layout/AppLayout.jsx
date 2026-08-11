@@ -3,7 +3,7 @@ import { Link, Outlet } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import Sidebar from './Sidebar/Sidebar';
 import TopBar from '../TopBar/TopBar';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/authContextStore';
 import { isAdminUser, toRoleSlug } from '../../utils/authFlow';
 import styles from './AppLayout.module.css';
 

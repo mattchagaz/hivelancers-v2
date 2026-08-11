@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useCallback, useState, useRef, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast, Toaster } from 'sonner';
 import styles from './CreateService.module.css';
@@ -6,6 +6,12 @@ import { listCategories, createService, getMyService, updateService, archiveServ
 import { uploadImageToCloudinary } from '../../../services/cloudinary';
 import { CategoryIcon } from '../../../utils/categoryIcons';
 import ConfirmDialog from '../../UI/ConfirmDialog/ConfirmDialog';
+import {
+  createMyStripeConnectDashboardLink,
+  createMyStripeConnectOnboardingLink,
+  getMyStripeConnectStatus,
+  isStripeConnectReady,
+} from '../../../services/payments';
 
 const TIER_BY_INDEX = ['BASIC', 'STANDARD', 'PREMIUM'];
 const TIER_NAME = { BASIC: 'Básico', STANDARD: 'Padrão', PREMIUM: 'Premium' };
@@ -63,6 +69,9 @@ function CreateService() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleteBlockedMessage, setDeleteBlockedMessage] = useState('');
+  const [connectState, setConnectState] = useState(null);
+  const [isLoadingConnect, setIsLoadingConnect] = useState(true);
+  const [stripeAction, setStripeAction] = useState('');
 
   // Step 0 — Info básica
   const [title, setTitle] = useState('');
@@ -94,6 +103,42 @@ function CreateService() {
       .catch((err) => toast.error(err.message))
       .finally(() => setLoadingCats(false));
   }, []);
+
+  const loadConnectStatus = useCallback(async () => {
+    setIsLoadingConnect(true);
+    try {
+      const data = await getMyStripeConnectStatus();
+      setConnectState(data);
+      return data;
+    } catch (err) {
+      toast.error(err.message);
+      return null;
+    } finally {
+      setIsLoadingConnect(false);
+    }
+  }, []);
+
+  const handleRecheckConnectStatus = async () => {
+    const data = await loadConnectStatus();
+    if (!data) return;
+
+    if (isStripeConnectReady(data)) {
+      toast.success('Conta Stripe conectada e pronta para receber pagamentos.');
+      return;
+    }
+
+    if (!data.configured) {
+      toast.error('A integração Stripe ainda não está configurada neste ambiente.');
+    } else if (!data.account) {
+      toast.error('A conta Stripe ainda não foi conectada. Conclua o cadastro e tente novamente.');
+    } else {
+      toast.error('A conexão ainda possui pendências. Finalize os dados e habilite os repasses na Stripe.');
+    }
+  };
+
+  useEffect(() => {
+    loadConnectStatus();
+  }, [loadConnectStatus]);
 
   useEffect(() => {
     if (!isEditMode) return;
@@ -319,6 +364,13 @@ function CreateService() {
   const handlePublish = async () => {
     setIsPublishing(true);
     try {
+      const latestConnectState = await getMyStripeConnectStatus();
+      setConnectState(latestConnectState);
+      if (!isStripeConnectReady(latestConnectState)) {
+        toast.error('Conclua sua conta de recebimentos na Stripe antes de publicar.');
+        return;
+      }
+
       const planPayload = plans
         .map((p, i) => ({ p, i }))
         .filter(({ i }) => activePlans[i])
@@ -406,6 +458,13 @@ function CreateService() {
     if (!isEditMode || isArchiving) return;
     setIsArchiving(true);
     try {
+      const latestConnectState = await getMyStripeConnectStatus();
+      setConnectState(latestConnectState);
+      if (!isStripeConnectReady(latestConnectState)) {
+        toast.error('Conclua sua conta de recebimentos na Stripe antes de republicar.');
+        return;
+      }
+
       const svc = await updateService(editId, { status: 'PUBLISHED' });
       setExistingStatus(svc.status || 'PUBLISHED');
       toast.success('Serviço republicado.');
@@ -423,14 +482,81 @@ function CreateService() {
     </span>
   );
 
-  if (isLoading) {
+  const openStripe = async () => {
+    if (stripeAction) return;
+    setStripeAction('open');
+    try {
+      const data = connectState?.account?.detailsSubmitted
+        ? await createMyStripeConnectDashboardLink()
+        : await createMyStripeConnectOnboardingLink();
+      if (!data?.url) throw new Error('A Stripe não retornou um link de configuração.');
+      window.location.assign(data.url);
+    } catch (err) {
+      toast.error(err.message);
+      setStripeAction('');
+    }
+  };
+
+  if (isLoading || (!isEditMode && isLoadingConnect)) {
     return (
       <div className={styles.page}>
         <div className={styles.header}>
           <div>
-            <h1 className={styles.pageTitle}>Carregando serviço...</h1>
+            <h1 className={styles.pageTitle}>
+              {isLoading ? 'Carregando serviço...' : 'Verificando recebimentos...'}
+            </h1>
           </div>
         </div>
+      </div>
+    );
+  }
+
+  const stripeReady = isStripeConnectReady(connectState);
+
+  if (!isEditMode && !stripeReady) {
+    return (
+      <div className={styles.page}>
+        <section className={styles.stripeGate}>
+          <div className={styles.stripeGateIcon} aria-hidden="true">
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="2" y="5" width="20" height="14" rx="3" />
+              <line x1="2" y1="10" x2="22" y2="10" />
+              <path d="M16 15h2" />
+            </svg>
+          </div>
+          <span className={styles.stripeGateEyebrow}>Recebimentos obrigatórios</span>
+          <h1>Conecte sua conta Stripe antes de publicar</h1>
+          <p>
+            Todo serviço publicado precisa estar pronto para receber pedidos. Assim, nenhum cliente encontra uma oferta que não pode ser contratada e você não perde oportunidades.
+          </p>
+          <div className={styles.stripeGateChecklist}>
+            <span><strong>1</strong> Abra o cadastro seguro da Stripe</span>
+            <span><strong>2</strong> Informe os dados solicitados para repasse</span>
+            <span><strong>3</strong> Volte e publique seu serviço</span>
+          </div>
+          {!connectState?.configured && (
+            <div className={styles.stripeGateWarning}>
+              A integração Stripe ainda não está configurada neste ambiente. Fale com o suporte antes de publicar.
+            </div>
+          )}
+          <div className={styles.stripeGateActions}>
+            <button
+              type="button"
+              className={styles.publishBtn}
+              onClick={openStripe}
+              disabled={Boolean(stripeAction) || !connectState?.configured}
+            >
+              {stripeAction ? 'Abrindo Stripe...' : connectState?.account?.detailsSubmitted ? 'Revisar conta Stripe' : 'Conectar conta Stripe'}
+            </button>
+            <button type="button" className={styles.backBtn} onClick={handleRecheckConnectStatus} disabled={isLoadingConnect}>
+              {isLoadingConnect ? 'Verificando...' : 'Já conectei, verificar novamente'}
+            </button>
+          </div>
+          <button type="button" className={styles.stripeGateBack} onClick={() => navigate('/finances')}>
+            Ir para o financeiro
+          </button>
+        </section>
+        <Toaster position="top-center" richColors />
       </div>
     );
   }
@@ -482,6 +608,18 @@ function CreateService() {
           </div>
         )}
       </div>
+
+      {isEditMode && !isLoadingConnect && !stripeReady && (
+        <div className={styles.stripeNotice}>
+          <div>
+            <strong>Conecte a Stripe para manter este serviço contratável</strong>
+            <span>Você pode editar o conteúdo, mas precisa concluir os recebimentos antes de republicar.</span>
+          </div>
+          <button type="button" className={styles.backBtn} onClick={openStripe} disabled={Boolean(stripeAction) || !connectState?.configured}>
+            {stripeAction ? 'Abrindo...' : 'Configurar recebimentos'}
+          </button>
+        </div>
+      )}
 
       {/* ===== Stepper ===== */}
       <div className={styles.stepper}>

@@ -7,7 +7,7 @@ import { MemoryRouter } from 'react-router-dom';
 // mockados e navega por todas as abas garantindo que cada painel renderiza sem
 // quebrar. Rede de segurança para a refatoração que quebra o Settings em partes.
 
-vi.mock('../../../contexts/AuthContext', () => ({
+vi.mock('../../../contexts/authContextStore', () => ({
   useAuth: () => ({
     user: { id: 'user-1', userType: 'FREELANCER', email: 'free@example.com', firstName: 'Free' },
     setUser: vi.fn(),
@@ -43,6 +43,7 @@ vi.mock('../../../services/payments', () => ({
   createMyStripeConnectDashboardLink: vi.fn(),
   createMyStripeConnectOnboardingLink: vi.fn(),
   getMyStripeConnectStatus: vi.fn(() => Promise.resolve({ configured: true, connected: false, account: null })),
+  isStripeConnectReady: vi.fn((state) => Boolean(state?.configured && state?.account?.detailsSubmitted && state?.account?.payoutsEnabled)),
 }));
 
 vi.mock('../../../services/cloudinary', () => ({

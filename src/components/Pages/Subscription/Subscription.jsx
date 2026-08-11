@@ -14,7 +14,7 @@ import {
   FaShieldHalved,
   FaStar,
 } from 'react-icons/fa6';
-import { useAuth } from '../../../contexts/AuthContext';
+import { useAuth } from '../../../contexts/authContextStore';
 import {
   createSubscriptionCheckoutSession,
   createSubscriptionPortalSession,
@@ -76,7 +76,7 @@ const clientPlans = [
     priceMonthly: 0,
     priceYearly: 0,
     description: 'Para contratar freelancers, acompanhar pedidos e centralizar conversas.',
-    commission: '0%',
+    commission: '3%',
     features: ['Contratações seguras', 'Chat com freelancers', 'Favoritos', 'Histórico de pedidos', 'Recompensas básicas'],
     limits: ['Sem mensalidade', 'Pagamento por pedido', 'Suporte por comunidade'],
     current: true,
@@ -88,7 +88,7 @@ const clientPlans = [
     priceMonthly: 19,
     priceYearly: 190,
     description: 'Para clientes que contratam com frequência e precisam de mais organização.',
-    commission: '0%',
+    commission: '1,5%',
     features: ['Shortlists avançadas', 'Cupons exclusivos', 'Comparação de propostas', 'Suporte prioritário', 'Alertas de prazo'],
     limits: ['2 cupons mensais', 'Pedidos favoritos destacados', 'Histórico exportável'],
     highlighted: true,
@@ -106,11 +106,19 @@ const clientPlans = [
   },
 ];
 
-const comparisonRows = [
+const freelancerComparisonRows = [
   ['Serviços e pedidos', 'Base da plataforma', 'Mais controle e destaque', 'Operação avançada'],
   ['Destaque em busca', 'Padrão', 'Prioritário', 'Máximo'],
   ['Cupons e promoções', 'Campanhas gerais', 'Cupons mensais', 'Campanhas dedicadas'],
   ['Relatórios', 'Resumo simples', 'Analytics comercial', 'Relatórios avançados'],
+  ['Suporte', 'Comunidade', 'Prioritário', 'Dedicado'],
+];
+
+const clientComparisonRows = [
+  ['Taxa sobre contratações', '3%', '1,5%', '0%'],
+  ['Serviços e pedidos', 'Base da plataforma', 'Mais organização', 'Operação avançada'],
+  ['Cupons e promoções', 'Campanhas gerais', 'Cupons mensais', 'Campanhas dedicadas'],
+  ['Relatórios', 'Resumo simples', 'Histórico exportável', 'Relatórios avançados'],
   ['Suporte', 'Comunidade', 'Prioritário', 'Dedicado'],
 ];
 
@@ -134,6 +142,7 @@ function Subscription() {
   const isFreelancer = user?.userType === 'FREELANCER';
 
   const plans = useMemo(() => (isFreelancer ? freelancerPlans : clientPlans), [isFreelancer]);
+  const comparisonRows = isFreelancer ? freelancerComparisonRows : clientComparisonRows;
   const subscription = subscriptionState.subscription;
   const activePlan = useMemo(() => {
     if (subscription && ACTIVE_SUBSCRIPTION_STATUSES.has(subscription.status)) {
@@ -296,7 +305,7 @@ function Subscription() {
                   <small>{period}</small>
                 </div>
                 <div className={styles.commissionPill}>
-                  {isFreelancer ? 'Comissão sobre pedidos' : 'Taxa de assinatura'} <b>{plan.commission}</b>
+                  {isFreelancer ? 'Comissão sobre pedidos' : 'Taxa sobre contratações'} <b>{plan.commission}</b>
                 </div>
                 <button
                   type="button"

@@ -10,7 +10,7 @@ import {
   FaMagnifyingGlass,
 } from 'react-icons/fa6';
 import { toast } from 'sonner';
-import { useAuth } from '../../../contexts/AuthContext';
+import { useAuth } from '../../../contexts/authContextStore';
 import { listCategories } from '../../../services/services';
 import { listPublicProjects } from '../../../services/projects';
 import { CategoryIcon } from '../../../utils/categoryIcons';

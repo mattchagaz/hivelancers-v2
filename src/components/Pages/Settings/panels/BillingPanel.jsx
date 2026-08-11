@@ -6,6 +6,7 @@ import {
   createMyStripeConnectDashboardLink,
   createMyStripeConnectOnboardingLink,
   getMyStripeConnectStatus,
+  isStripeConnectReady,
 } from '../../../../services/payments';
 import { SectionHeader } from '../Settings.ui';
 
@@ -17,6 +18,7 @@ export default function BillingPanel({ isFreelancer }) {
   const [connectState, setConnectState] = useState({ configured: true, connected: false, account: null });
   const [isLoading, setIsLoading] = useState(isFreelancer);
   const [activeStripeAction, setActiveStripeAction] = useState('');
+  const stripeReady = isStripeConnectReady(connectState);
 
   useEffect(() => {
     if (isFreelancer) {
@@ -44,7 +46,7 @@ export default function BillingPanel({ isFreelancer }) {
             <div className={styles.listIcon}>{renderCardIcon()}</div>
             <div className={styles.listCopy}>
               <strong>Conta Stripe Connect</strong>
-              <span>{isLoading ? 'Verificando...' : connectState.account ? 'Conta de repasse conectada. Use a Stripe para acompanhar saques.' : 'Conecte sua conta recebedora para liberar repasses de pedidos pagos.'}</span>
+              <span>{isLoading ? 'Verificando...' : stripeReady ? 'Conta pronta para receber pedidos e repasses.' : connectState.account ? 'Finalize as pendências da Stripe antes de publicar serviços.' : 'Conecte sua conta recebedora antes de publicar serviços e receber pedidos.'}</span>
             </div>
             <button
               type="button"

@@ -13,7 +13,7 @@ import {
   FaTriangleExclamation,
   FaWallet,
 } from 'react-icons/fa6';
-import { useAuth } from '../../../contexts/AuthContext';
+import { useAuth } from '../../../contexts/authContextStore';
 import {
   createMyStripeConnectDashboardLink,
   createMyStripeConnectOnboardingLink,
@@ -358,8 +358,8 @@ function Finances() {
             <MetricCard
               icon={<FaCreditCard />}
               label="Total pago"
-              value={loadingOverview ? '...' : formatPrice(summary.succeededCents)}
-              detail="Contratações confirmadas"
+              value={loadingOverview ? '...' : formatPrice(summary.succeededChargedCents ?? summary.succeededCents)}
+              detail="Contratações e taxas confirmadas"
               tone="blue"
             />
             <MetricCard
@@ -473,7 +473,7 @@ function Finances() {
               movements.map((movement) => (
                 <Link to={movement.order?.id ? `/orders?id=${movement.order.id}` : '/orders'} key={movement.id} className={styles.tableRow}>
                   <div>
-                    <strong>{movement.service?.title || 'Pagamento Hivelancers'}</strong>
+                    <strong>{movement.service?.title || movement.project?.title || 'Pagamento Hivelancers'}</strong>
                     <span>
                       {formatDate(movement.updatedAt)} · {ORDER_STATUS_LABEL[movement.order?.status] || movement.status}
                     </span>
@@ -512,7 +512,11 @@ function Finances() {
 
         <div className={styles.flowCards}>
           {[
-            ['Pagamento confirmado', formatPrice(summary.succeededCents), 'Cliente pagou via Stripe'],
+            [
+              'Pagamento confirmado',
+              formatPrice(isFreelancer ? summary.succeededCents : (summary.succeededChargedCents ?? summary.succeededCents)),
+              'Cliente pagou via Stripe',
+            ],
             ['Valor protegido', formatPrice(summary.heldCents), 'Aguardando aprovação final'],
             ['Repasse liberado', formatPrice(summary.transferredCents), 'Transferência feita ao freelancer'],
             ['Revisão operacional', formatPrice(summary.failedTransferCents), 'Falhas que exigem ação admin'],

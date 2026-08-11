@@ -112,7 +112,8 @@
 
 .sidebar {
   position: sticky;
-  top: 24px;
+  /* 68px da TopBar + 24px de respiro para o card nunca ficar encoberto. */
+  top: 92px;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -141,6 +142,151 @@
 .cardSub {
   font-size: 0.9rem;
   color: var(--text-secondary);
+}
+
+.proposalReviewCard {
+  overflow: hidden;
+}
+
+.proposalCardHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.proposalCardHead a,
+.portfolioPreviewHead a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--primary-color);
+  font-size: 0.76rem;
+  font-weight: 750;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.proposalMessage {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 14px;
+  padding: 20px;
+  border: 1px solid var(--border-light);
+  border-radius: 16px;
+  background: var(--bg-subtle);
+}
+
+.proposalMessage > svg {
+  width: 20px;
+  color: var(--primary-color);
+  opacity: 0.75;
+}
+
+.proposalMessage p {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 0.94rem;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.proposalMetrics {
+  max-width: none;
+  margin: 18px 0 0;
+}
+
+.proposalSkills,
+.portfolioPreview {
+  margin-top: 22px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border-light);
+}
+
+.proposalSkills > span {
+  display: block;
+  margin-bottom: 10px;
+  color: var(--text-secondary);
+  font-size: 0.74rem;
+  font-weight: 750;
+  text-transform: uppercase;
+  letter-spacing: 0.45px;
+}
+
+.proposalSkills > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.proposalSkills em {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(var(--primary-color-rgb), 0.09);
+  color: var(--primary-color);
+  font-size: 0.72rem;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.portfolioPreviewHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.portfolioPreviewHead > strong {
+  color: var(--text-primary);
+  font-size: 0.86rem;
+}
+
+.portfolioPreviewGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.portfolioPreviewGrid > a {
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  color: var(--text-primary);
+  text-decoration: none;
+  transition: border-color 0.2s, transform 0.2s;
+}
+
+.portfolioPreviewGrid > a:hover {
+  border-color: var(--primary-color);
+  transform: translateY(-2px);
+}
+
+.portfolioPreviewGrid img,
+.portfolioPreviewGrid > a > span {
+  display: flex;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  margin-bottom: 8px;
+  border-radius: 8px;
+  object-fit: cover;
+  align-items: center;
+  justify-content: center;
+  background: rgba(var(--primary-color-rgb), 0.1);
+  color: var(--primary-color);
+  font-size: 1.2rem;
+  font-weight: 800;
+}
+
+.portfolioPreviewGrid > a > strong {
+  display: block;
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: 0.75rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Service Summary Box (Novo Layout) */
@@ -190,6 +336,52 @@
 .sellerMeta span {
   font-size: 0.85rem;
   color: var(--text-secondary);
+}
+
+.freelancerFacts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin-top: 8px;
+}
+
+.freelancerFacts span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.73rem;
+}
+
+.freelancerFacts svg {
+  color: var(--primary-color);
+}
+
+.freelancerFacts .verifiedFact {
+  color: #22c55e;
+  font-weight: 700;
+}
+
+.profileButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-left: auto;
+  padding: 10px 14px;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  color: var(--text-primary);
+  font-size: 0.78rem;
+  font-weight: 750;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: border-color 0.2s, color 0.2s, background-color 0.2s;
+}
+
+.profileButton:hover {
+  border-color: var(--primary-color);
+  background: rgba(var(--primary-color-rgb), 0.06);
+  color: var(--primary-color);
 }
 
 .serviceDivider {
@@ -538,6 +730,14 @@
 .priceTotal strong {
   color: var(--primary-color);
   font-size: 1.4rem;
+}
+
+.rowLabel small {
+  display: block;
+  margin-top: 3px;
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  font-weight: 500;
 }
 
 .packageFeatures {
@@ -941,6 +1141,21 @@
   .serviceDetails {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .sellerChip,
+  .proposalCardHead {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .profileButton {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .portfolioPreviewGrid {
+    grid-template-columns: 1fr;
   }
   
   .packageBox {

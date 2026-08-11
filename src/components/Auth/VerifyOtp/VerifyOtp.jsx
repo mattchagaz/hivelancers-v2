@@ -4,7 +4,7 @@ import { toast, Toaster } from 'sonner';
 import { FaArrowLeft, FaEnvelopeOpenText } from 'react-icons/fa';
 import styles from './VerifyOtp.module.css';
 import { verifyOtp, resendOtp } from '../../../services/auth';
-import { useAuth } from '../../../contexts/AuthContext';
+import { useAuth } from '../../../contexts/authContextStore';
 import { nextRouteAfterAuth } from '../../../utils/authFlow';
 
 const OTP_LENGTH = 6;

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import styles from '../Settings.module.css';
-import { useAuth } from '../../../../contexts/AuthContext';
+import { useAuth } from '../../../../contexts/authContextStore';
 import { deleteMyAccount, exportMyData } from '../../../../services/users';
 import { Field, SectionHeader } from '../Settings.ui';
 

@@ -23,7 +23,7 @@ import {
 } from 'react-icons/fa6';
 import { toast, Toaster } from 'sonner';
 import SpotlightCard from '../../UI/SpotlightCard/SpotlightCard';
-import { useAuth } from '../../../contexts/AuthContext';
+import { useAuth } from '../../../contexts/authContextStore';
 import {
   createCategory,
   deleteCategory,
@@ -404,7 +404,11 @@ function Admin() {
       setCoupons(data.items || []);
       setCouponsTotal(data.total || 0);
       setCouponsSummary(data.summary || {});
-      setSelectedCouponId((current) => current || data.items?.[0]?.id || '');
+      setSelectedCouponId((current) => {
+        if (current === 'new') return current;
+        if (current && data.items?.some((coupon) => coupon.id === current)) return current;
+        return data.items?.[0]?.id || 'new';
+      });
     } catch (err) {
       toast.error(err.message);
     } finally {
@@ -985,16 +989,17 @@ function Admin() {
 
     setCouponSaving(true);
     try {
-      const saved = selectedCouponId === 'new'
+      const isCreating = selectedCouponId === 'new' || !selectedCoupon;
+      const saved = isCreating
         ? await createAdminCoupon(couponPayload())
         : await updateAdminCoupon(selectedCouponId, couponPayload());
       setCoupons((current) =>
-        selectedCouponId === 'new'
+        isCreating
           ? [saved, ...current]
           : current.map((coupon) => (coupon.id === saved.id ? saved : coupon))
       );
       setSelectedCouponId(saved.id);
-      toast.success(selectedCouponId === 'new' ? 'Cupom criado.' : 'Cupom atualizado.');
+      toast.success(isCreating ? 'Cupom criado.' : 'Cupom atualizado.');
       await loadCoupons();
     } catch (err) {
       toast.error(err.message);

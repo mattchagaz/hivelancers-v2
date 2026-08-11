@@ -63,9 +63,9 @@ export default function FinanceTab() {
         </div>
         <div className={styles.financeCard}>
           <FaFileInvoiceDollar />
-          <span>Comissão capturada</span>
-          <strong>{formatCents(financeSummary.platformFeeCents)}</strong>
-          <p>Take rate aplicado nos pedidos</p>
+          <span>Receita de taxas</span>
+          <strong>{formatCents((financeSummary.platformFeeCents || 0) + (financeSummary.clientFeeCents || 0))}</strong>
+          <p>Freelancer {formatCents(financeSummary.platformFeeCents)} · cliente {formatCents(financeSummary.clientFeeCents)}</p>
         </div>
         <div className={styles.financeCard}>
           <FaCreditCard />
@@ -111,12 +111,12 @@ export default function FinanceTab() {
           <article key={payment.id} className={styles.ledgerRow}>
             <div>
               <span>#{payment.id.slice(-8).toUpperCase()}</span>
-              <strong>{payment.service?.title || 'Pagamento Hivelancers'}</strong>
+              <strong>{payment.service?.title || payment.project?.title || 'Pagamento Hivelancers'}</strong>
               <p>
                 {toUserName(payment.client)} contratou {toUserName(payment.freelancer)}
               </p>
             </div>
-            <strong>{formatCents(payment.amountCents)}</strong>
+            <strong>{formatCents(payment.totalCents ?? payment.amountCents)}</strong>
             <div className={styles.ledgerEconomics}>
               <span>Plataforma</span>
               <strong>{formatCents(payment.economics?.platformNetCents)}</strong>

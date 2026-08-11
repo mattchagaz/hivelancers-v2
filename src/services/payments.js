@@ -1,5 +1,11 @@
 import { api } from './api';
 
+export const isStripeConnectReady = (connectState) => Boolean(
+  connectState?.configured &&
+  connectState?.account?.detailsSubmitted &&
+  connectState?.account?.payoutsEnabled
+);
+
 const extractMessage = (error, fallback) => {
   const data = error?.response?.data;
   const message = data?.message || error?.message || '';
@@ -21,6 +27,24 @@ export const createCheckoutSession = async (payload) => {
     return data;
   } catch (error) {
     throw new Error(extractMessage(error, 'Não foi possível iniciar o pagamento.'));
+  }
+};
+
+export const createProjectCheckoutSession = async (payload) => {
+  try {
+    const { data } = await api.post('/payments/project-checkout-sessions', payload);
+    return data;
+  } catch (error) {
+    throw new Error(extractMessage(error, 'Não foi possível iniciar o pagamento do projeto.'));
+  }
+};
+
+export const cancelCheckoutPayment = async (paymentId) => {
+  try {
+    const { data } = await api.post(`/payments/checkout-sessions/${paymentId}/cancel`);
+    return data;
+  } catch (error) {
+    throw new Error(extractMessage(error, 'Não foi possível cancelar este checkout.'));
   }
 };
 

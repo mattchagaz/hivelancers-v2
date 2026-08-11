@@ -14,7 +14,7 @@ import {
   FaArrowLeft,
 } from 'react-icons/fa';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../../contexts/AuthContext';
+import { useAuth } from '../../../contexts/authContextStore';
 import { completeGoogleLogin, getGoogleLoginUrl, registerUser } from '../../../services/auth';
 import { nextRouteAfterAuth } from '../../../utils/authFlow';
 

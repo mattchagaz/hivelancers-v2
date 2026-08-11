@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { toast, Toaster } from 'sonner';
 import { FaBell, FaPalette, FaShieldHalved, FaUserCheck, FaArrowUpRightFromSquare } from 'react-icons/fa6';
-import { useAuth } from '../../../contexts/AuthContext';
+import { useAuth } from '../../../contexts/authContextStore';
 import { useSettings } from '../../../contexts/SettingsContext';
 import {
   updateProfile as apiUpdateProfile,

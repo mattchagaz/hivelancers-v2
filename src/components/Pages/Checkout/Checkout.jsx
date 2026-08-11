@@ -3,7 +3,8 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { FaCreditCard, FaPix } from 'react-icons/fa6';
 import { toast, Toaster } from 'sonner';
 import { getMyService, getPublicService } from '../../../services/services';
-import { createCheckoutSession, getCheckoutSessionStatus, previewCheckoutCoupon } from '../../../services/payments';
+import { createCheckoutSession, getCheckoutSessionStatus, getMySubscription, previewCheckoutCoupon } from '../../../services/payments';
+import { getClientCheckoutFees } from '../../../utils/marketplaceFees';
 import styles from './Checkout.module.css';
 
 const PAYMENT_METHODS = [
@@ -111,6 +112,17 @@ function Checkout() {
   const [couponInput, setCouponInput] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
+  const [subscription, setSubscription] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    getMySubscription()
+      .then((data) => {
+        if (!cancelled) setSubscription(data.subscription || null);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     if (service?.title) {
@@ -212,7 +224,8 @@ function Checkout() {
   const currentAppliedCoupon = appliedCoupon?.planId === selectedPlan.id ? appliedCoupon : null;
   const subtotalCents = selectedPlan.priceCents || 0;
   const discountCents = currentAppliedCoupon?.discountCents || 0;
-  const totalCents = Math.max(0, subtotalCents - discountCents);
+  const contractCents = Math.max(0, subtotalCents - discountCents);
+  const { clientFeePercent, clientFeeCents, totalCents } = getClientCheckoutFees(contractCents, subscription);
 
   const orderSteps = [
     {
@@ -389,7 +402,7 @@ function Checkout() {
           </div>
           <div className={styles.successCard}>
             <span className={styles.successLabel}>Valor Total</span>
-            <strong>{formatPrice(paymentStatus.amountCents)}</strong>
+            <strong>{formatPrice(paymentStatus.totalCents ?? (paymentStatus.amountCents + (paymentStatus.clientFeeCents || 0)))}</strong>
           </div>
           <div className={styles.successCard}>
             <span className={styles.successLabel}>Status</span>
@@ -645,6 +658,14 @@ function Checkout() {
                   <span className={styles.rowValue}>- {formatPrice(discountCents)}</span>
                 </div>
               )}
+
+              <div className={styles.priceRow}>
+                <span className={styles.rowLabel}>
+                  Taxa de serviço ({clientFeePercent}%)
+                  {clientFeePercent > 0 && <small> Planos pagos reduzem esta taxa</small>}
+                </span>
+                <span className={styles.rowValue}>{clientFeeCents > 0 ? formatPrice(clientFeeCents) : 'Grátis'}</span>
+              </div>
               
               <div className={styles.divider}></div>
               

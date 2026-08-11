@@ -18,7 +18,7 @@ import {
   FaUserShield,
 } from 'react-icons/fa6';
 import { toast } from 'sonner';
-import { useAuth } from '../../../contexts/AuthContext';
+import { useAuth } from '../../../contexts/authContextStore';
 import {
   loadNotificationFeed,
   markAllNotificationsRead,

@@ -9,7 +9,7 @@ import { SERVICE_GRADIENTS } from '../../../data/services';
 import { listCategories, listPublicServices } from '../../../services/services';
 import { addFavoriteService, getMyFavorites, removeFavoriteService } from '../../../services/users';
 import { CategoryIcon } from '../../../utils/categoryIcons';
-import { useAuth } from '../../../contexts/AuthContext';
+import { useAuth } from '../../../contexts/authContextStore';
 import EmptyState from '../../UI/EmptyState/EmptyState';
 import CategoryCarousel from '../../UI/CategoryCarousel/CategoryCarousel';
 import styles from './ExploreServices.module.css';

@@ -107,7 +107,7 @@ export default function PromotionsTab() {
           <div className={styles.userEditorHeader}>
             <div className={styles.userAvatar}><FaGift /></div>
             <div>
-              <span className={styles.sectionKicker}>{selectedCouponId === 'new' ? 'Novo cupom' : 'Editor'}</span>
+              <span className={styles.sectionKicker}>{selectedCouponId === 'new' || !selectedCoupon ? 'Novo cupom' : 'Editor'}</span>
               <h4>{couponDraft.code || 'Cupom promocional'}</h4>
               <p>Controle campanha, janela, limite e desconto.</p>
             </div>

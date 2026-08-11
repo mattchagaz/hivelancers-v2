@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FaArrowLeft, FaCircleCheck, FaLightbulb } from 'react-icons/fa6';
 import { toast } from 'sonner';
-import { useAuth } from '../../../contexts/AuthContext';
+import { useAuth } from '../../../contexts/authContextStore';
 import { createProject } from '../../../services/projects';
 import { listCategories } from '../../../services/services';
 import styles from './CreateProject.module.css';

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
 import styles from '../Settings.module.css';
-import { useAuth } from '../../../../contexts/AuthContext';
+import { useAuth } from '../../../../contexts/authContextStore';
 import { updateUserType } from '../../../../services/users';
 import { toUserType } from '../../../../utils/authFlow';
 import { formatPhoneBR } from '../../../../utils/formatters';

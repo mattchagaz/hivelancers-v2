@@ -6,6 +6,9 @@ const extractMessage = (error, fallback) => {
     const first = Object.values(data.details).flat()[0];
     if (first) return first;
   }
+  if (error?.response?.status === 404 && error?.config?.url?.includes('/admin/coupons')) {
+    return 'A API de cupons não está disponível neste backend. Publique a versão atualizada do backend e tente novamente.';
+  }
   return data?.message || fallback;
 };
 

@@ -8,7 +8,7 @@ import { MemoryRouter } from 'react-router-dom';
 
 const { authUser } = vi.hoisted(() => ({ authUser: { current: { id: 'user-1', firstName: 'Free', userType: 'FREELANCER' } } }));
 
-vi.mock('../../../contexts/AuthContext', () => ({
+vi.mock('../../../contexts/authContextStore', () => ({
   useAuth: () => ({ user: authUser.current }),
 }));
 

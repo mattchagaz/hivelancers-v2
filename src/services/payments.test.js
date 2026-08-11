@@ -14,9 +14,31 @@ vi.mock('./api', () => ({
 
 import {
   createCheckoutSession,
+  createProjectCheckoutSession,
+  cancelCheckoutPayment,
   getCheckoutSessionStatus,
+  isStripeConnectReady,
   previewCheckoutCoupon,
 } from './payments';
+
+describe('isStripeConnectReady', () => {
+  it('só libera publicação quando a plataforma e os repasses estão prontos', () => {
+    expect(isStripeConnectReady({
+      configured: true,
+      account: { detailsSubmitted: true, payoutsEnabled: true },
+    })).toBe(true);
+
+    expect(isStripeConnectReady({
+      configured: true,
+      account: { detailsSubmitted: true, payoutsEnabled: false },
+    })).toBe(false);
+    expect(isStripeConnectReady({ configured: true, account: null })).toBe(false);
+    expect(isStripeConnectReady({
+      configured: false,
+      account: { detailsSubmitted: true, payoutsEnabled: true },
+    })).toBe(false);
+  });
+});
 
 describe('createCheckoutSession', () => {
   beforeEach(() => {
@@ -49,6 +71,34 @@ describe('createCheckoutSession', () => {
     mocks.post.mockRejectedValue({ response: { data: {} } });
 
     await expect(createCheckoutSession({})).rejects.toThrow('Não foi possível iniciar o pagamento.');
+  });
+});
+
+describe('project checkout', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('inicia o checkout protegido de uma proposta', async () => {
+    const payload = {
+      projectId: 'project-1',
+      proposalId: 'proposal-1',
+      paymentMethodType: 'card',
+      couponCode: 'PROJETO10',
+    };
+    mocks.post.mockResolvedValue({ data: { checkoutUrl: 'https://stripe.example/project' } });
+
+    await expect(createProjectCheckoutSession(payload)).resolves.toEqual({
+      checkoutUrl: 'https://stripe.example/project',
+    });
+    expect(mocks.post).toHaveBeenCalledWith('/payments/project-checkout-sessions', payload);
+  });
+
+  it('cancela uma reserva de checkout', async () => {
+    mocks.post.mockResolvedValue({ data: { canceled: true } });
+
+    await expect(cancelCheckoutPayment('payment-1')).resolves.toEqual({ canceled: true });
+    expect(mocks.post).toHaveBeenCalledWith('/payments/checkout-sessions/payment-1/cancel');
   });
 });
 

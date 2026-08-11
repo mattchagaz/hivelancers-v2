@@ -12,7 +12,7 @@ import {
   FaUserGroup,
 } from 'react-icons/fa6';
 import { toast } from 'sonner';
-import { useAuth } from '../../../contexts/AuthContext';
+import { useAuth } from '../../../contexts/authContextStore';
 import { getPublicProfilePath } from '../../../utils/profileEnhancements';
 import {
   createProjectProposal,
@@ -27,6 +27,7 @@ import styles from './ProjectDetails.module.css';
 
 const statusLabels = {
   OPEN: 'Recebendo propostas',
+  PAYMENT_PENDING: 'Aguardando pagamento',
   IN_PROGRESS: 'Profissional selecionado',
   COMPLETED: 'Concluído',
   CANCELED: 'Cancelado',
@@ -159,15 +160,16 @@ function ProjectDetails() {
   };
 
   const reviewProposal = async (proposalId, status) => {
+    if (status === 'ACCEPTED') {
+      navigate(`/projects/${id}/checkout?proposal=${proposalId}`);
+      return;
+    }
     if (actionId) return;
     setActionId(proposalId);
     try {
-      const result = await updateProjectProposalStatus(id, proposalId, status);
+      await updateProjectProposalStatus(id, proposalId, status);
       toast.success(status === 'ACCEPTED' ? 'Proposta aceita.' : 'Proposta recusada.');
       await Promise.all([loadProject(), loadProposals()]);
-      if (status === 'ACCEPTED' && result.conversationId) {
-        navigate(`/messages?chat=${result.conversationId}`);
-      }
     } catch (error) {
       toast.error(error.message);
     } finally {
@@ -299,7 +301,7 @@ function ProjectDetails() {
                         <div><small>Entrega</small><strong>{item.deliveryDays} dias</strong></div>
                         <div><small>Revisões</small><strong>{item.revisions}</strong></div>
                         <span className={`${styles.proposalStatus} ${styles[item.status.toLowerCase()]}`}>
-                          {item.status === 'PENDING' ? 'Aguardando' : item.status === 'ACCEPTED' ? 'Aceita' : 'Recusada'}
+                          {item.status === 'PENDING' ? 'Aguardando' : item.status === 'PAYMENT_PENDING' ? 'Pagamento pendente' : item.status === 'ACCEPTED' ? 'Aceita' : 'Recusada'}
                         </span>
                       </div>
 
@@ -319,7 +321,7 @@ function ProjectDetails() {
                             disabled={Boolean(actionId)}
                             onClick={() => reviewProposal(item.id, 'ACCEPTED')}
                           >
-                            Selecionar proposta <FaArrowRight />
+                            Revisar e contratar <FaArrowRight />
                           </button>
                         </div>
                       )}
@@ -449,16 +451,7 @@ function ProjectDetails() {
                   Encerrar publicação
                 </button>
               )}
-              {project.status === 'IN_PROGRESS' && (
-                <button
-                  type="button"
-                  className={styles.complete}
-                  disabled={Boolean(actionId)}
-                  onClick={() => changeProjectStatus('COMPLETED')}
-                >
-                  <FaCircleCheck /> Marcar como concluído
-                </button>
-              )}
+              {project.status === 'IN_PROGRESS' && <Link to="/orders">Acompanhar contrato e entrega</Link>}
             </section>
           )}
         </aside>

@@ -16,7 +16,7 @@ const mocks = vi.hoisted(() => ({
   getGoogleLoginUrl: vi.fn(() => 'https://google.example/auth'),
 }));
 
-vi.mock('../../../contexts/AuthContext', () => ({
+vi.mock('../../../contexts/authContextStore', () => ({
   useAuth: () => ({ login: mocks.login, setUser: mocks.setUser }),
 }));
 

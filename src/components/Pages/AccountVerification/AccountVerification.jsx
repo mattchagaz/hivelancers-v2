@@ -19,7 +19,7 @@ import {
   submitMyAccountVerification,
   uploadVerificationDocument,
 } from '../../../services/users';
-import { useAuth } from '../../../contexts/AuthContext';
+import { useAuth } from '../../../contexts/authContextStore';
 import SpotlightCard from '../../UI/SpotlightCard/SpotlightCard';
 import styles from './AccountVerification.module.css';
 

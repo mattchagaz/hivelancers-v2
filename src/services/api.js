@@ -4,6 +4,17 @@ import { tokenStorage } from './tokenStorage';
 
 const baseURL = import.meta.env.VITE_API_URL || 'https://hivelancers-backend.fly.dev';
 
+const getTokenSubject = (token) => {
+  try {
+    const payload = token?.split('.')[1]?.replace(/-/g, '+').replace(/_/g, '/');
+    if (!payload) return null;
+    const padded = payload.padEnd(Math.ceil(payload.length / 4) * 4, '=');
+    return JSON.parse(atob(padded)).sub || null;
+  } catch {
+    return null;
+  }
+};
+
 export const api = axios.create({ baseURL, withCredentials: true });
 
 api.interceptors.request.use((config) => {
@@ -48,6 +59,11 @@ api.interceptors.response.use(
           refreshPromise = null;
         });
       const { data } = await refreshPromise;
+      const expectedUserId = tokenStorage.getUser()?.id;
+      const refreshedUserId = getTokenSubject(data.accessToken);
+      if (expectedUserId && refreshedUserId && expectedUserId !== refreshedUserId) {
+        throw new Error('A sessão desta aba não corresponde à conta autenticada no navegador.');
+      }
       tokenStorage.setTokens(data);
       original.headers.Authorization = `Bearer ${data.accessToken}`;
       return api(original);

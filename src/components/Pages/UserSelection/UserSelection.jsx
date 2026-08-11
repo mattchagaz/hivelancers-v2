@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { setStoredUserRole } from '../../../utils/userRole';
 import { toUserType } from '../../../utils/authFlow';
 import { updateUserType } from '../../../services/users';
-import { useAuth } from '../../../contexts/AuthContext';
+import { useAuth } from '../../../contexts/authContextStore';
 import styles from './UserSelection.module.css';
 
 function UserSelection() {

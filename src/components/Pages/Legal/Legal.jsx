@@ -9,7 +9,7 @@ import {
   FaTriangleExclamation,
   FaUserLock,
 } from 'react-icons/fa6';
-import { useAuth } from '../../../contexts/AuthContext';
+import { useAuth } from '../../../contexts/authContextStore';
 import styles from './Legal.module.css';
 
 const UPDATED_AT = '24 de julho de 2026';

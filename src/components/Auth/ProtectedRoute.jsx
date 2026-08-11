@@ -1,5 +1,5 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/authContextStore';
 import { isAdminUser, nextRouteAfterAuth } from '../../utils/authFlow';
 
 function AuthSplash() {

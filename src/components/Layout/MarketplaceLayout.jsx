@@ -1,6 +1,6 @@
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { Toaster } from 'sonner';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/authContextStore';
 import AppLayout from './AppLayout';
 import Logo from '/Logo3.svg';
 import styles from './MarketplaceLayout.module.css';

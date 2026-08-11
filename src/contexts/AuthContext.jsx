@@ -1,9 +1,8 @@
-import { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { AUTH_UNAUTHORIZED_EVENT } from '../services/authEvents';
 import { tokenStorage } from '../services/tokenStorage';
 import { getMe, loginUser, logoutUser } from '../services/auth';
-
-const AuthContext = createContext(null);
+import { AuthContext } from './authContextStore';
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => tokenStorage.getUser());
@@ -68,11 +67,4 @@ export function AuthProvider({ children }) {
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
-
-// eslint-disable-next-line react-refresh/only-export-components
-export function useAuth() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used inside AuthProvider');
-  return ctx;
 }

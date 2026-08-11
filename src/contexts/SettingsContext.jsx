@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { useAuth } from './AuthContext';
+import { useAuth } from './authContextStore';
 import { updateMySettings } from '../services/users';
 
 const STORAGE_KEY = 'hivelancers:settings';
@@ -94,12 +94,15 @@ export function SettingsProvider({ children }) {
   const toastTimer = useRef(null);
   const preferencesSyncTimer = useRef(null);
   const syncedUserIdRef = useRef(null);
+  const shouldNotifySaveRef = useRef(false);
 
   // Sempre mantém uma cópia local — funciona como cache instantâneo (evita
   // flash de tema) e como fallback completo para visitantes não autenticados.
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
     if (settings === initialSettings.current) return;
+    if (!shouldNotifySaveRef.current) return;
+    shouldNotifySaveRef.current = false;
     if (toastTimer.current) clearTimeout(toastTimer.current);
     toastTimer.current = setTimeout(() => {
       toast.success('Preferências salvas.', { id: 'settings-saved', duration: 1500 });
@@ -190,6 +193,7 @@ export function SettingsProvider({ children }) {
   const updateField = useCallback((section, field, value) => {
     const previousValue = settings[section][field];
     const next = { ...settings, [section]: { ...settings[section], [field]: value } };
+    shouldNotifySaveRef.current = true;
     setSettings(next);
 
     if (section === 'privacy' && PRIVACY_FIELDS.includes(field)) {
@@ -203,6 +207,7 @@ export function SettingsProvider({ children }) {
     const previousValue = settings[section][field];
     const value = !previousValue;
     const next = { ...settings, [section]: { ...settings[section], [field]: value } };
+    shouldNotifySaveRef.current = true;
     setSettings(next);
 
     if (section === 'privacy' && PRIVACY_FIELDS.includes(field)) {
@@ -214,6 +219,7 @@ export function SettingsProvider({ children }) {
 
   const updateSection = useCallback((section, updates) => {
     const next = { ...settings, [section]: { ...settings[section], ...updates } };
+    shouldNotifySaveRef.current = true;
     setSettings(next);
 
     if (section === 'privacy') {
@@ -225,7 +231,10 @@ export function SettingsProvider({ children }) {
     }
   }, [settings, syncPrivacyField, schedulePreferencesSync]);
 
-  const resetSettings = useCallback(() => setSettings(DEFAULT_SETTINGS), []);
+  const resetSettings = useCallback(() => {
+    shouldNotifySaveRef.current = true;
+    setSettings(DEFAULT_SETTINGS);
+  }, []);
 
   return (
     <SettingsContext.Provider

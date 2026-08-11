@@ -36,6 +36,7 @@ const SupportTicketDetails = lazy(() => import('./components/Pages/SupportTicket
 const Legal = lazy(() => import('./components/Pages/Legal/Legal'));
 const Projects = lazy(() => import('./components/Pages/Projects/Projects'));
 const ProjectDetails = lazy(() => import('./components/Pages/ProjectDetails/ProjectDetails'));
+const ProjectCheckout = lazy(() => import('./components/Pages/ProjectCheckout/ProjectCheckout'));
 const CreateProject = lazy(() => import('./components/Pages/CreateProject/CreateProject'));
 const MyProjects = lazy(() => import('./components/Pages/MyProjects/MyProjects'));
 const NotFound = lazy(() => import('./components/Pages/NotFound/NotFound'));
@@ -112,6 +113,7 @@ function App() {
             <Route path="/ticket" element={<SupportTicket />} />
             <Route path="/projects/new" element={<CreateProject />} />
             <Route path="/projects/mine" element={<MyProjects />} />
+            <Route path="/projects/:id/checkout" element={<ProjectCheckout />} />
           </Route>
         </Route>
 

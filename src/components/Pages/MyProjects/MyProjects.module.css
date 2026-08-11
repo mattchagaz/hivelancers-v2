@@ -30,6 +30,7 @@
 .status { padding: 5px 8px; border-radius: 999px; font-size: .65rem; font-weight: 800; }
 .draft { color: var(--text-secondary); background: var(--bg-tertiary); }
 .open { color: var(--success-color); background: var(--success-bg); }
+.payment_pending { color: var(--warning-color, #c2410c); background: var(--warning-bg, #fff7ed); }
 .in_progress { color: var(--info-color); background: var(--info-bg); }
 .completed { color: var(--purple-color); background: var(--purple-bg); }
 .canceled { color: var(--danger-color); background: var(--danger-bg); }

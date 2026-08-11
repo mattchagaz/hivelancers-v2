@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { FaArrowLeft, FaArrowRight, FaCircleCheck, FaHeart, FaArrowUpRightFromSquare, FaXmark, FaRegHeart } from 'react-icons/fa6';
 import { toast, Toaster } from 'sonner';
-import { useAuth } from '../../../contexts/AuthContext';
+import { useAuth } from '../../../contexts/authContextStore';
 import {
   addFavoriteFreelancer,
   getMyFavorites,

@@ -14,7 +14,7 @@ import {
   FaUserGear,
 } from 'react-icons/fa6';
 import { toast, Toaster } from 'sonner';
-import { useAuth } from '../../../contexts/AuthContext';
+import { useAuth } from '../../../contexts/authContextStore';
 import {
   listMySupportTickets,
   normalizeSupportTicketStatus,

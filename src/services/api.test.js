@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => {
     create: vi.fn(() => client),
     getAccess: vi.fn(() => null),
     getRefresh: vi.fn(() => null),
+    getUser: vi.fn(() => null),
     post: vi.fn(),
     requestUse,
     responseUse,
@@ -35,6 +36,7 @@ vi.mock('./tokenStorage', () => ({
     clear: mocks.clear,
     getAccess: mocks.getAccess,
     getRefresh: mocks.getRefresh,
+    getUser: mocks.getUser,
     setTokens: mocks.setTokens,
   },
 }));
@@ -74,6 +76,27 @@ describe('interceptor de autenticacao', () => {
       {},
       { withCredentials: true }
     );
+    expect(mocks.clear).toHaveBeenCalledOnce();
+    expect(unauthorizedListener).toHaveBeenCalledOnce();
+  });
+
+  it('impede que a renovacao troque silenciosamente a conta desta aba', async () => {
+    const payload = btoa(JSON.stringify({ sub: 'conta-2' }))
+      .replace(/=/g, '')
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_');
+    mocks.getUser.mockReturnValue({ id: 'conta-1' });
+    mocks.post.mockResolvedValue({ data: { accessToken: `header.${payload}.signature` } });
+
+    await expect(rejectResponse({
+      config: {
+        headers: {},
+        url: '/auth/me',
+      },
+      response: { status: 401 },
+    })).rejects.toThrow('não corresponde');
+
+    expect(mocks.setTokens).not.toHaveBeenCalled();
     expect(mocks.clear).toHaveBeenCalledOnce();
     expect(unauthorizedListener).toHaveBeenCalledOnce();
   });

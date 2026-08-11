@@ -10,7 +10,7 @@ import {
   FaPlus,
 } from 'react-icons/fa6';
 import { toast } from 'sonner';
-import { useAuth } from '../../../contexts/AuthContext';
+import { useAuth } from '../../../contexts/authContextStore';
 import { listMyProjects } from '../../../services/projects';
 import SpotlightCard from '../../UI/SpotlightCard/SpotlightCard';
 import styles from './MyProjects.module.css';
@@ -18,6 +18,7 @@ import styles from './MyProjects.module.css';
 const statusLabels = {
   DRAFT: 'Rascunho',
   OPEN: 'Recebendo propostas',
+  PAYMENT_PENDING: 'Aguardando pagamento',
   IN_PROGRESS: 'Profissional selecionado',
   COMPLETED: 'Concluído',
   CANCELED: 'Cancelado',
@@ -57,7 +58,7 @@ function MyProjects() {
     total: allItems.length,
     open: allItems.filter((project) => project.status === 'OPEN').length,
     proposals: allItems.reduce((sum, project) => sum + Number(project.proposalCount || 0), 0),
-    selected: allItems.filter((project) => project.status === 'IN_PROGRESS').length,
+    selected: allItems.filter((project) => ['PAYMENT_PENDING', 'IN_PROGRESS'].includes(project.status)).length,
     completed: allItems.filter((project) => project.status === 'COMPLETED').length,
   }), [allItems]);
 
@@ -88,6 +89,7 @@ function MyProjects() {
               ['DRAFT', 'Rascunhos'],
               ['OPEN', 'Abertos'],
               ['IN_PROGRESS', 'Em alinhamento'],
+              ['PAYMENT_PENDING', 'Pagamento pendente'],
               ['COMPLETED', 'Concluídos'],
             ].map(([value, label]) => (
               <button

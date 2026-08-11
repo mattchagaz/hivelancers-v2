@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { useAuth } from '../../../contexts/AuthContext';
+import { useAuth } from '../../../contexts/authContextStore';
 import { completeOnboarding } from '../../../services/users';
 import { toRoleSlug } from '../../../utils/authFlow';
 import styles from './WelcomeUser.module.css';

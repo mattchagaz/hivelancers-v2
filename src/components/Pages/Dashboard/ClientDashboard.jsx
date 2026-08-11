@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { FaBriefcase, FaCartShopping, FaComments, FaHeart, FaLayerGroup, FaMessage, FaRocket, FaShop, FaUserCheck } from 'react-icons/fa6';
-import { useAuth } from '../../../contexts/AuthContext';
+import { useAuth } from '../../../contexts/authContextStore';
 import { listCategories, listPublicServices } from '../../../services/services';
 import { listOrders } from '../../../services/orders';
 import { listConversations } from '../../../services/messages';

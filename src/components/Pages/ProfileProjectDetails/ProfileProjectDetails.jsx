@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { FaArrowLeft, FaArrowRight, FaArrowUpRightFromSquare, FaChartLine, FaEye, FaXmark } from 'react-icons/fa6';
 import { toast, Toaster } from 'sonner';
-import { useAuth } from '../../../contexts/AuthContext';
+import { useAuth } from '../../../contexts/authContextStore';
 import { startConversation } from '../../../services/messages';
 import { getPublicProject, trackProjectExternalClick } from '../../../services/users';
 import { getFeaturedProject, getProfileLinks, mergeProfileEnhancements } from '../../../utils/profileEnhancements';
