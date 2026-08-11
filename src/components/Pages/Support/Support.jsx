@@ -1,17 +1,22 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   FaArrowRight,
+  FaBookOpen,
+  FaBriefcase,
+  FaChevronRight,
   FaCircleCheck,
   FaClock,
-  FaComments,
   FaCreditCard,
   FaHeadset,
   FaInbox,
   FaLifeRing,
-  FaLock,
+  FaMagnifyingGlass,
+  FaShieldHalved,
   FaTicket,
-  FaUserGear,
+  FaUserGroup,
+  FaWallet,
+  FaXmark,
 } from 'react-icons/fa6';
 import { toast, Toaster } from 'sonner';
 import { useAuth } from '../../../contexts/authContextStore';
@@ -20,38 +25,22 @@ import {
   normalizeSupportTicketStatus,
   SUPPORT_TICKET_STATUS_LABEL,
 } from '../../../services/tickets';
-import SpotlightCard from '../../UI/SpotlightCard/SpotlightCard';
+import {
+  DEFAULT_HELP_ARTICLE_ID,
+  HELP_ARTICLES,
+  HELP_CATEGORIES,
+  findHelpArticles,
+} from './supportContent';
 import styles from './Support.module.css';
 
-const supportStacks = [
-  {
-    title: 'Gerenciamento',
-    icon: <FaUserGear />,
-    links: [
-      { label: 'Recuperar sua conta', href: '/forget-password' },
-      { label: 'Verificar identidade', href: '/verification' },
-      { label: 'Configurações da conta', href: '/settings' },
-    ],
-  },
-  {
-    title: 'Pagamentos',
-    icon: <FaCreditCard />,
-    links: [
-      { label: 'Reembolso de compra', href: '/orders' },
-      { label: 'Resolver estornos', href: '/finances' },
-      { label: 'Assinatura e plano', href: '/subscription' },
-    ],
-  },
-  {
-    title: 'Privacidade',
-    icon: <FaLock />,
-    links: [
-      { label: 'Dados da conta', href: '/settings' },
-      { label: 'Segurança do perfil', href: '/verification' },
-      { label: 'Mensagens e contatos', href: '/messages' },
-    ],
-  },
-];
+const categoryIcons = {
+  start: <FaBookOpen />,
+  client: <FaUserGroup />,
+  freelancer: <FaBriefcase />,
+  payments: <FaWallet />,
+  orders: <FaCreditCard />,
+  security: <FaShieldHalved />,
+};
 
 const statusTone = {
   OPEN: 'warning',
@@ -65,7 +54,7 @@ const formatDate = (value) => {
   if (!value) return 'Agora';
   return new Intl.DateTimeFormat('pt-BR', {
     day: '2-digit',
-    month: '2-digit',
+    month: 'short',
     hour: '2-digit',
     minute: '2-digit',
   }).format(new Date(value));
@@ -73,29 +62,42 @@ const formatDate = (value) => {
 
 function Support() {
   const { user } = useAuth();
+  const articleRef = useRef(null);
+  const [query, setQuery] = useState('');
+  const [activeArticleId, setActiveArticleId] = useState(DEFAULT_HELP_ARTICLE_ID);
+  const [feedback, setFeedback] = useState('');
   const [tickets, setTickets] = useState([]);
   const [ticketsLoading, setTicketsLoading] = useState(true);
+
+  const activeArticle = useMemo(
+    () => HELP_ARTICLES.find((article) => article.id === activeArticleId) || HELP_ARTICLES[0],
+    [activeArticleId],
+  );
+  const activeCategory = useMemo(
+    () => HELP_CATEGORIES.find((category) => category.id === activeArticle.categoryId),
+    [activeArticle.categoryId],
+  );
+  const searchResults = useMemo(() => findHelpArticles(query), [query]);
 
   const ticketStats = useMemo(() => {
     const active = tickets.filter((ticket) => ['OPEN', 'IN_PROGRESS'].includes(normalizeSupportTicketStatus(ticket.status))).length;
     const answered = tickets.filter((ticket) => (
       normalizeSupportTicketStatus(ticket.status) === 'ANSWERED' || Boolean(ticket.publicReply)
     )).length;
-    const solved = tickets.filter((ticket) => ['RESOLVED', 'CLOSED'].includes(normalizeSupportTicketStatus(ticket.status))).length;
-    return { active, answered, solved };
+    return { active, answered };
   }, [tickets]);
 
-  const loadTickets = async () => {
+  const loadTickets = useCallback(async () => {
     setTicketsLoading(true);
     try {
       const data = await listMySupportTickets({ pageSize: 5 }, user);
       setTickets(data.items || []);
-    } catch (err) {
-      toast.error(err.message);
+    } catch (error) {
+      toast.error(error.message);
     } finally {
       setTicketsLoading(false);
     }
-  };
+  }, [user]);
 
   useEffect(() => {
     const timer = window.setTimeout(loadTickets, 0);
@@ -107,137 +109,287 @@ function Support() {
       window.removeEventListener('support:tickets:changed', refresh);
       window.removeEventListener('storage', refresh);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id, user?.email]);
+  }, [loadTickets]);
+
+  const openArticle = (articleId, { clearSearch = true } = {}) => {
+    setActiveArticleId(articleId);
+    setFeedback('');
+    if (clearSearch) setQuery('');
+    window.requestAnimationFrame(() => {
+      articleRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  };
+
+  const openCategory = (category) => {
+    const firstArticle = category.articles[0];
+    if (firstArticle) openArticle(firstArticle.id);
+  };
 
   return (
     <div className={styles.page}>
-      <section className={styles.hero}>
-        <div className={styles.heroMain}>
-          <span className={styles.eyebrow}>Suporte</span>
-          <h1>Central de suporte Hivelancers</h1>
-          <p>
-            Encontre respostas rápidas, acompanhe seus chamados e abra um ticket quando precisar da equipe.
-          </p>
-          <div className={styles.heroActions}>
-            <Link className={styles.heroAction} to="/support/ticket">
-              <FaTicket /> Abrir ticket
-            </Link>
-            <Link className={styles.heroGhost} to="/messages">
-              <FaComments /> Conversas
-            </Link>
+      <header className={styles.helpHero}>
+        <div className={styles.heroTopline}>
+          <span className={styles.eyebrow}><FaLifeRing /> Central de Ajuda</span>
+          <div className={styles.heroLinks}>
+            <a href="#my-tickets"><FaInbox /> Meus chamados</a>
+            <Link to="/support/ticket"><FaTicket /> Abrir chamado</Link>
           </div>
         </div>
 
-        <div className={styles.heroStats}>
-          <SpotlightCard className={styles.statCard}>
-            <FaTicket />
-            <span>Tickets ativos</span>
-            <strong>{ticketStats.active}</strong>
-          </SpotlightCard>
-          <SpotlightCard className={styles.statCard}>
-            <FaClock />
-            <span>Respondidos</span>
-            <strong>{ticketStats.answered}</strong>
-          </SpotlightCard>
-          <SpotlightCard className={styles.statCard}>
-            <FaCircleCheck />
-            <span>Resolvidos</span>
-            <strong>{ticketStats.solved}</strong>
-          </SpotlightCard>
-        </div>
-      </section>
-
-      <section className={styles.tools}>
-        <div className={styles.sectionHeader}>
-          <div>
-            <span className={styles.sectionKicker}>Atalhos</span>
-            <h2>Ferramentas de suporte</h2>
-          </div>
-          <span className={styles.headerPill}><FaHeadset /> Atendimento organizado por tema</span>
+        <div className={styles.heroCopy}>
+          <h1>Como podemos ajudar?</h1>
+          <p>Pesquise uma dúvida ou navegue pelos guias completos da Hivelancers.</p>
         </div>
 
-        <div className={styles.stackGrid}>
-          {supportStacks.map((stack) => (
-            <SpotlightCard className={styles.stackPanel} key={stack.title}>
-              <div className={styles.stackHead}>
-                <span className={styles.stackIcon}>{stack.icon}</span>
-                <div>
-                  <span className={styles.sectionKicker}>Controle</span>
-                  <h3>{stack.title}</h3>
-                </div>
-              </div>
-              <div className={styles.actionList}>
-                {stack.links.map((item) => (
-                  <Link className={styles.panelAction} to={item.href} key={item.label}>
-                    {item.label} <FaArrowRight />
-                  </Link>
-                ))}
-              </div>
-            </SpotlightCard>
+        <form className={styles.searchBox} onSubmit={(event) => event.preventDefault()} role="search">
+          <FaMagnifyingGlass />
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Busque por pagamento, projeto, entrega, Stripe..."
+            aria-label="Buscar na Central de Ajuda"
+          />
+          {query && (
+            <button type="button" onClick={() => setQuery('')} aria-label="Limpar busca">
+              <FaXmark />
+            </button>
+          )}
+        </form>
+
+        <div className={styles.popularSearches}>
+          <span>Mais buscados:</span>
+          {[
+            ['Publicar um serviço', 'publish-service'],
+            ['Pagamento protegido', 'payment-statuses'],
+            ['Contratar freelancer', 'hire-a-service'],
+          ].map(([label, articleId]) => (
+            <button key={articleId} type="button" onClick={() => openArticle(articleId)}>{label}</button>
           ))}
         </div>
+      </header>
+
+      {query ? (
+        <section className={styles.searchResults} aria-live="polite">
+          <div className={styles.sectionTitle}>
+            <div>
+              <span className={styles.sectionKicker}>Resultados</span>
+              <h2>{searchResults.length} {searchResults.length === 1 ? 'artigo encontrado' : 'artigos encontrados'}</h2>
+            </div>
+            <button type="button" onClick={() => setQuery('')}>Limpar busca</button>
+          </div>
+
+          {searchResults.length ? (
+            <div className={styles.resultList}>
+              {searchResults.map((article) => (
+                <button key={article.id} type="button" onClick={() => openArticle(article.id)}>
+                  <span>{article.categoryTitle}</span>
+                  <strong>{article.title}</strong>
+                  <p>{article.summary}</p>
+                  <FaChevronRight />
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className={styles.noResults}>
+              <FaMagnifyingGlass />
+              <div>
+                <strong>Nenhuma resposta encontrada para “{query}”</strong>
+                <p>Tente palavras mais curtas ou abra um chamado para falar com a equipe.</p>
+              </div>
+              <Link to="/support/ticket">Abrir chamado</Link>
+            </div>
+          )}
+        </section>
+      ) : (
+        <section className={styles.categorySection}>
+          <div className={styles.sectionTitle}>
+            <div>
+              <span className={styles.sectionKicker}>Explore por assunto</span>
+              <h2>Encontre respostas por categoria</h2>
+            </div>
+            <span>{HELP_ARTICLES.length} guias disponíveis</span>
+          </div>
+
+          <div className={styles.categoryGrid}>
+            {HELP_CATEGORIES.map((category) => (
+              <button
+                type="button"
+                key={category.id}
+                className={category.id === activeCategory?.id ? styles.categoryActive : ''}
+                onClick={() => openCategory(category)}
+              >
+                <span className={styles.categoryIcon}>{categoryIcons[category.icon]}</span>
+                <div>
+                  <strong>{category.title}</strong>
+                  <p>{category.description}</p>
+                  <small>{category.articles.length} artigos</small>
+                </div>
+                <FaChevronRight />
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+
+      <section className={styles.helpWorkspace} ref={articleRef}>
+        <aside className={styles.helpNavigation}>
+          <div className={styles.navigationHeading}>
+            <FaBookOpen />
+            <div>
+              <span>Guia Hivelancers</span>
+              <strong>Navegue pelos tópicos</strong>
+            </div>
+          </div>
+
+          <nav aria-label="Artigos da Central de Ajuda">
+            {HELP_CATEGORIES.map((category) => {
+              const isOpen = category.id === activeCategory?.id;
+              return (
+                <div className={styles.navigationGroup} key={category.id}>
+                  <button type="button" className={isOpen ? styles.navigationCategoryActive : ''} onClick={() => openCategory(category)}>
+                    <span>{categoryIcons[category.icon]}</span>
+                    {category.title}
+                    <FaChevronRight />
+                  </button>
+                  {isOpen && (
+                    <div className={styles.navigationArticles}>
+                      {category.articles.map((article) => (
+                        <button
+                          type="button"
+                          key={article.id}
+                          className={article.id === activeArticle.id ? styles.navigationArticleActive : ''}
+                          onClick={() => openArticle(article.id, { clearSearch: false })}
+                        >
+                          {article.title}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </nav>
+
+          <div className={styles.navigationSupport}>
+            <FaHeadset />
+            <strong>Ainda precisa de ajuda?</strong>
+            <p>Nossa equipe pode analisar seu caso.</p>
+            <Link to="/support/ticket">Abrir chamado <FaArrowRight /></Link>
+          </div>
+        </aside>
+
+        <article className={styles.articlePanel}>
+          <div className={styles.breadcrumbs}>
+            <button type="button" onClick={() => openCategory(activeCategory)}>{activeCategory?.title}</button>
+            <FaChevronRight />
+            <span>{activeArticle.title}</span>
+          </div>
+
+          <header className={styles.articleHeader}>
+            <span className={styles.articleBadge}>{activeArticle.audience}</span>
+            <h2>{activeArticle.title}</h2>
+            <p>{activeArticle.summary}</p>
+            <div className={styles.articleMeta}>
+              <span><FaClock /> Leitura de {activeArticle.readTime}</span>
+              <span><FaCircleCheck /> Atualizado em agosto de 2026</span>
+            </div>
+          </header>
+
+          <div className={styles.articleContent}>
+            {activeArticle.sections.map((section, sectionIndex) => (
+              <section key={section.title}>
+                <span className={styles.sectionNumber}>{String(sectionIndex + 1).padStart(2, '0')}</span>
+                <div>
+                  <h3>{section.title}</h3>
+                  {section.paragraphs?.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
+                  {section.bullets && (
+                    <ul>
+                      {section.bullets.map((item) => <li key={item}>{item}</li>)}
+                    </ul>
+                  )}
+                  {section.steps && (
+                    <ol>
+                      {section.steps.map((item, index) => (
+                        <li key={item}><span>{index + 1}</span><p>{item}</p></li>
+                      ))}
+                    </ol>
+                  )}
+                  {section.note && (
+                    <aside className={styles.articleNote}>
+                      <FaShieldHalved />
+                      <div><strong>Importante</strong><p>{section.note}</p></div>
+                    </aside>
+                  )}
+                </div>
+              </section>
+            ))}
+          </div>
+
+          <footer className={styles.articleFooter}>
+            <div>
+              <strong>Este artigo resolveu sua dúvida?</strong>
+              <p>Seu retorno ajuda a melhorar nossa Central de Ajuda.</p>
+            </div>
+            <div className={styles.feedbackActions}>
+              <button
+                type="button"
+                className={feedback === 'yes' ? styles.feedbackSelected : ''}
+                onClick={() => setFeedback('yes')}
+              >
+                <FaCircleCheck /> Sim
+              </button>
+              <button
+                type="button"
+                className={feedback === 'no' ? styles.feedbackSelected : ''}
+                onClick={() => setFeedback('no')}
+              >
+                <FaHeadset /> Ainda preciso de ajuda
+              </button>
+            </div>
+            {feedback === 'yes' && <small>Obrigado pelo feedback!</small>}
+            {feedback === 'no' && <Link to="/support/ticket">Conte o que aconteceu em um chamado <FaArrowRight /></Link>}
+          </footer>
+        </article>
       </section>
 
-      <section className={styles.ticketPanel}>
-        <div className={styles.sectionHeader}>
+      <section className={styles.ticketsSection} id="my-tickets">
+        <div className={styles.sectionTitle}>
           <div>
-            <span className={styles.sectionKicker}>Chamados</span>
-            <h2>Tickets e atendimento</h2>
+            <span className={styles.sectionKicker}>Atendimento</span>
+            <h2>Seus chamados recentes</h2>
+            <p>{ticketStats.active} ativos · {ticketStats.answered} respondidos</p>
           </div>
-          <Link className={styles.heroAction} to="/support/ticket">
-            <FaLifeRing /> Novo ticket
-          </Link>
+          <Link className={styles.newTicketButton} to="/support/ticket"><FaTicket /> Novo chamado</Link>
         </div>
 
-        <div className={styles.supportHubGrid}>
-          <SpotlightCard className={styles.ticketEntry}>
-            <span className={styles.formIcon}><FaTicket /></span>
-            <div>
-              <h3>Enviar um ticket</h3>
-              <p>Abra uma triagem com FAQ e formulário. A resposta padrão chega em até 24h úteis.</p>
-            </div>
-            <Link className={styles.panelAction} to="/support/ticket">
-              Abrir página de ticket <FaArrowRight />
-            </Link>
-          </SpotlightCard>
-
-          <aside className={styles.ticketHistory}>
-            <div className={styles.historyHead}>
-              <span className={styles.formIcon}><FaInbox /></span>
-              <div>
-                <h3>Meus tickets recentes</h3>
-                <p>{tickets.length} chamados encontrados</p>
-              </div>
-            </div>
-
-            <div className={styles.historyList}>
-              {ticketsLoading ? (
-                <div className={styles.emptyState}>Carregando tickets...</div>
-              ) : tickets.length === 0 ? (
-                <div className={styles.emptyState}>Nenhum ticket aberto por enquanto.</div>
-              ) : (
-                tickets.map((ticket) => {
-                  const normalizedStatus = normalizeSupportTicketStatus(ticket.status);
-                  return (
-                    <Link className={styles.ticketCard} to={`/support/tickets/${ticket.id}`} key={ticket.id}>
-                      <div className={styles.ticketTop}>
-                        <span className={styles.ticketCategory}>{ticket.code || ticket.id}</span>
-                        <em className={`${styles.badge} ${styles[statusTone[normalizedStatus] || 'neutral']}`}>
-                          {SUPPORT_TICKET_STATUS_LABEL[normalizedStatus] || normalizedStatus}
-                        </em>
-                      </div>
-                      <strong>{ticket.subject}</strong>
-                      <div className={styles.ticketMeta}>
-                        <span>{formatDate(ticket.updatedAt || ticket.createdAt)}</span>
-                      </div>
-                    </Link>
-                  );
-                })
-              )}
-            </div>
-          </aside>
-        </div>
+        {ticketsLoading ? (
+          <div className={styles.emptyTickets}>Carregando chamados...</div>
+        ) : tickets.length ? (
+          <div className={styles.ticketList}>
+            {tickets.map((ticket) => {
+              const normalizedStatus = normalizeSupportTicketStatus(ticket.status);
+              return (
+                <Link to={`/support/tickets/${ticket.id}`} key={ticket.id} className={styles.ticketCard}>
+                  <span className={styles.ticketIcon}><FaTicket /></span>
+                  <div>
+                    <small>{ticket.code || ticket.id}</small>
+                    <strong>{ticket.subject}</strong>
+                    <p>Atualizado {formatDate(ticket.updatedAt || ticket.createdAt)}</p>
+                  </div>
+                  <em className={`${styles.badge} ${styles[statusTone[normalizedStatus] || 'neutral']}`}>
+                    {SUPPORT_TICKET_STATUS_LABEL[normalizedStatus] || normalizedStatus}
+                  </em>
+                  <FaChevronRight />
+                </Link>
+              );
+            })}
+          </div>
+        ) : (
+          <div className={styles.emptyTickets}>
+            <FaInbox />
+            <div><strong>Você ainda não abriu nenhum chamado</strong><p>Use os artigos acima ou fale com a equipe quando precisar.</p></div>
+          </div>
+        )}
       </section>
 
       <Toaster position="top-center" richColors />

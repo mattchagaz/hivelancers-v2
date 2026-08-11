@@ -3,10 +3,13 @@ import { Link } from 'react-router-dom';
 import {
   FaAngleDown,
   FaArrowRight,
-  FaCircleArrowLeft,
+  FaBookOpen,
+  FaChevronRight,
   FaCircleCheck,
+  FaClock,
   FaComments,
   FaCreditCard,
+  FaHeadset,
   FaInbox,
   FaImage,
   FaLifeRing,
@@ -32,7 +35,6 @@ import {
 } from '../../../services/tickets';
 import { uploadImageToCloudinary } from '../../../services/cloudinary';
 import { listOrders } from '../../../services/orders';
-import SpotlightCard from '../../UI/SpotlightCard/SpotlightCard';
 import styles from './SupportTicket.module.css';
 
 const MAX_ATTACHMENT_SIZE = 2 * 1024 * 1024;
@@ -143,6 +145,24 @@ const topics = [
       {
         question: 'Quero corrigir um serviço publicado',
         answer: 'Edite o serviço pela área de serviços. Se a edição não salvar, registre o erro no ticket.',
+      },
+    ],
+  },
+  {
+    id: 'other',
+    category: 'OTHER',
+    title: 'Outro assunto',
+    summary: 'Uma dúvida que não se encaixa nas categorias anteriores.',
+    icon: <FaLifeRing />,
+    subject: 'Preciso de ajuda com outro assunto',
+    questions: [
+      {
+        question: 'Não encontrei a categoria certa',
+        answer: 'Escolha esta opção e descreva o contexto com o máximo de clareza. A equipe encaminhará o chamado para a área responsável.',
+      },
+      {
+        question: 'Quero enviar uma sugestão',
+        answer: 'Conte qual parte da experiência pode melhorar e, se possível, explique o resultado que você esperava.',
       },
     ],
   },
@@ -257,6 +277,20 @@ function SupportTicket() {
     setTicketDraft((current) => ({
       ...current,
       category: topic.category,
+      relatedOrderId: ['ORDERS', 'PAYMENTS'].includes(topic.category) ? current.relatedOrderId : '',
+    }));
+  };
+
+  const updateCategory = (category) => {
+    const matchingTopic = topics.find((topic) => topic.category === category);
+    if (matchingTopic) {
+      setActiveTopicId(matchingTopic.id);
+      setActiveQuestion(`${matchingTopic.id}-0`);
+    }
+    setTicketDraft((current) => ({
+      ...current,
+      category,
+      relatedOrderId: ['ORDERS', 'PAYMENTS'].includes(category) ? current.relatedOrderId : '',
     }));
   };
 
@@ -265,8 +299,10 @@ function SupportTicket() {
     setTicketDraft((current) => ({
       ...current,
       category: topic.category,
+      subject: current.subject || topic.subject,
       description: current.description || `${question.question}\n\n`,
       priority: topic.category === 'SAFETY' ? 'HIGH' : current.priority,
+      relatedOrderId: ['ORDERS', 'PAYMENTS'].includes(topic.category) ? current.relatedOrderId : '',
     }));
     document.getElementById('ticket-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
@@ -378,32 +414,52 @@ function SupportTicket() {
     }
   };
 
+  const selectedOrder = recentOrders.find((order) => order.id === ticketDraft.relatedOrderId);
+  const ticketReady = ticketDraft.subject.trim().length >= 6 && ticketDraft.description.trim().length >= 20;
+
   return (
     <div className={styles.page}>
-      <section className={styles.hero}>
-        <div>
-          <Link className={styles.backLink} to="/support">
-            <FaCircleArrowLeft /> Voltar para suporte
-          </Link>
-          <span className={styles.eyebrow}>Abrir ticket</span>
-          <h1>Como podemos ajudar?</h1>
-          <p>
-            Escolha um tema, veja respostas rápidas e envie um chamado com as informações certas para a equipe.
-          </p>
+      <header className={styles.hero}>
+        <nav className={styles.breadcrumbs} aria-label="Navegação do suporte">
+          <Link to="/support"><FaBookOpen /> Central de Ajuda</Link>
+          <FaChevronRight />
+          <span>Abrir chamado</span>
+        </nav>
+
+        <div className={styles.heroGrid}>
+          <div>
+            <span className={styles.eyebrow}><FaHeadset /> Atendimento Hivelancers</span>
+            <h1>Conte para nós o que aconteceu</h1>
+            <p>
+              Faça uma triagem rápida e envie os detalhes necessários. Quanto mais contexto, mais precisa será a análise da equipe.
+            </p>
+          </div>
+
+          <aside className={styles.progressCard}>
+            <span className={styles.progressLabel}>Etapas do atendimento</span>
+            {[
+              ['1', 'Escolha o assunto', true],
+              ['2', 'Descreva o problema', ticketReady || Boolean(createdTicket)],
+              ['3', 'Acompanhe a resposta', Boolean(createdTicket)],
+            ].map(([number, label, done]) => (
+              <div className={done ? styles.progressDone : ''} key={number}>
+                <span>{done ? <FaCircleCheck /> : number}</span>
+                <strong>{label}</strong>
+              </div>
+            ))}
+          </aside>
         </div>
-        <SpotlightCard className={styles.heroCard}>
-          <FaLifeRing />
-          <span>Solicitante</span>
-          <strong>{requesterName}</strong>
-          <p>{user?.email || 'Conta autenticada'}</p>
-        </SpotlightCard>
-      </section>
+      </header>
 
       <section className={styles.topicShell}>
         <div className={styles.sectionHeader}>
-          <div>
+          <div className={styles.sectionHeading}>
+            <span className={styles.stepBadge}>1</span>
+            <div>
             <span className={styles.sectionKicker}>FAQ</span>
             <h2>Escolha o assunto antes de enviar</h2>
+              <p>Mostraremos respostas rápidas relacionadas ao tema.</p>
+            </div>
           </div>
           <span className={styles.headerPill}><FaMagnifyingGlass /> Triagem por tema</span>
         </div>
@@ -469,21 +525,36 @@ function SupportTicket() {
             <button type="button" onClick={() => document.getElementById('ticket-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>
               Preencher ticket <FaArrowRight />
             </button>
+            <Link className={styles.helpCenterLink} to="/support">
+              Consultar todos os artigos <FaBookOpen />
+            </Link>
           </aside>
         </div>
       </section>
 
       <section className={styles.ticketShell} id="ticket-form">
         <div className={styles.sectionHeader}>
-          <div>
+          <div className={styles.sectionHeading}>
+            <span className={styles.stepBadge}>2</span>
+            <div>
             <span className={styles.sectionKicker}>Formulário</span>
-            <h2>Enviar ticket de suporte</h2>
+              <h2>Detalhes do chamado</h2>
+              <p>Campos objetivos ajudam a equipe a resolver sem pedir informações adicionais.</p>
+            </div>
           </div>
           <span className={styles.headerPill}><FaTicket /> {SUPPORT_TICKET_CATEGORY_LABEL[ticketDraft.category]}</span>
         </div>
 
         <div className={styles.ticketGrid}>
           <form className={styles.ticketForm} onSubmit={submitTicket}>
+            <div className={styles.formIntro}>
+              <span className={styles.formIcon}><FaPaperPlane /></span>
+              <div>
+                <h3>Informações do chamado</h3>
+                <p>Você poderá acompanhar a resposta pela Central de Ajuda e pelas notificações da plataforma.</p>
+              </div>
+            </div>
+
             {createdTicket && (
               <div className={styles.confirmation}>
                 <FaCircleCheck />
@@ -491,23 +562,25 @@ function SupportTicket() {
                   <span>Ticket enviado</span>
                   <strong>{createdTicket.code || createdTicket.id}</strong>
                   <p>Seu chamado foi registrado. A resposta deve chegar em até 24h úteis e você pode acompanhar o andamento em “Tickets recentes”.</p>
+                  <Link to={`/support/tickets/${createdTicket.id}`}>Acompanhar chamado <FaArrowRight /></Link>
                 </div>
               </div>
             )}
 
             <label className={`${styles.formField} ${styles.formFieldFull}`}>
-              <span>Assunto</span>
+              <span>Assunto <em>*</em></span>
               <input
                 value={ticketDraft.subject}
                 onChange={(event) => updateTicketDraft('subject', event.target.value)}
                 placeholder="Ex: pagamento aprovado não liberou o pedido"
                 maxLength={120}
               />
+              <small>Resuma o problema em uma frase clara. {ticketDraft.subject.length}/120</small>
             </label>
 
             <label className={styles.formField}>
               <span>Categoria</span>
-              <select value={ticketDraft.category} onChange={(event) => updateTicketDraft('category', event.target.value)}>
+              <select value={ticketDraft.category} onChange={(event) => updateCategory(event.target.value)}>
                 {Object.entries(SUPPORT_TICKET_CATEGORY_LABEL).map(([value, label]) => (
                   <option value={value} key={value}>{label}</option>
                 ))}
@@ -545,7 +618,7 @@ function SupportTicket() {
             )}
 
             <label className={`${styles.formField} ${styles.formFieldFull}`}>
-              <span>Descrição</span>
+              <span>Descrição detalhada <em>*</em></span>
               <textarea
                 rows={7}
                 value={ticketDraft.description}
@@ -553,6 +626,7 @@ function SupportTicket() {
                 placeholder="Conte o que aconteceu, quando começou, qual serviço ou conversa está envolvida e qual resultado você esperava."
                 maxLength={1400}
               />
+              <small>Inclua quando começou, o resultado esperado e mensagens de erro. {ticketDraft.description.length}/1400</small>
             </label>
 
             <div className={styles.attachmentField}>
@@ -583,7 +657,7 @@ function SupportTicket() {
             </div>
 
             <div className={styles.formFooter}>
-              <span>{ticketDraft.description.length}/1400</span>
+              <span><FaShieldHalved /> Seus dados são usados apenas para analisar este atendimento.</span>
               <button type="submit" className={styles.submitButton} disabled={submitting}>
                 <FaPaperPlane /> {submitting ? 'Enviando...' : 'Enviar ticket'}
               </button>
@@ -591,6 +665,30 @@ function SupportTicket() {
           </form>
 
           <aside className={styles.ticketHistory}>
+            <section className={styles.ticketSummary}>
+              <div className={styles.summaryHeader}>
+                <span className={styles.formIcon}><FaListCheck /></span>
+                <div>
+                  <small>Resumo</small>
+                  <h3>Seu atendimento</h3>
+                </div>
+              </div>
+              <dl>
+                <div><dt>Solicitante</dt><dd>{requesterName}</dd></div>
+                <div><dt>Categoria</dt><dd>{SUPPORT_TICKET_CATEGORY_LABEL[ticketDraft.category]}</dd></div>
+                <div><dt>Prioridade</dt><dd>{SUPPORT_TICKET_PRIORITY_LABEL[ticketDraft.priority]}</dd></div>
+                <div><dt>Pedido</dt><dd>{selectedOrder ? formatOrderLabel(selectedOrder) : 'Não relacionado'}</dd></div>
+              </dl>
+            </section>
+
+            <section className={styles.responseNotice}>
+              <FaClock />
+              <div>
+                <strong>Resposta em até 24h úteis</strong>
+                <p>Casos de segurança e pagamentos podem exigir verificações adicionais.</p>
+              </div>
+            </section>
+
             <div className={styles.historyHead}>
               <span className={styles.formIcon}><FaInbox /></span>
               <div>

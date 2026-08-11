@@ -293,7 +293,7 @@ export const getStatusTone = (status) => {
   if (normalized.includes('ativo') || normalized.includes('liberado') || normalized.includes('concluído') || normalized.includes('capturado')) return 'success';
   if (normalized.includes('online') || normalized.includes('verificado') || normalized.includes('verificada') || normalized.includes('admin')) return 'success';
   if (normalized.includes('atenção') || normalized.includes('revisão') || normalized.includes('verificação') || normalized.includes('retido') || normalized.includes('análise') || normalized.includes('rascunho')) return 'warning';
-  if (normalized.includes('alto') || normalized.includes('bloqueio') || normalized.includes('atrasado') || normalized.includes('crítico') || normalized.includes('inativo') || normalized.includes('recusada')) return 'danger';
+  if (normalized.includes('alto') || normalized.includes('bloqueio') || normalized.includes('atrasado') || normalized.includes('crítico') || normalized.includes('inativo') || normalized.includes('recusada') || normalized.includes('cancelado') || normalized.includes('expirado') || normalized.includes('falhou')) return 'danger';
   return 'neutral';
 };
 
@@ -305,11 +305,12 @@ export const getIdentityTone = (status) => {
 };
 
 export const PAYMENT_STATUS_LABEL = {
-  CHECKOUT_CREATED: 'Checkout criado',
-  PENDING: 'Pendente',
+  CHECKOUT_CREATED: 'Aguardando pagamento',
+  PENDING: 'Em processamento',
   SUCCEEDED: 'Pago',
   FAILED: 'Falhou',
   CANCELED: 'Cancelado',
+  EXPIRED: 'Expirado',
   REFUNDED: 'Reembolsado',
 };
 

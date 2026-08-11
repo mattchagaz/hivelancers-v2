@@ -3,7 +3,13 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { FaCreditCard, FaPix } from 'react-icons/fa6';
 import { toast, Toaster } from 'sonner';
 import { getMyService, getPublicService } from '../../../services/services';
-import { createCheckoutSession, getCheckoutSessionStatus, getMySubscription, previewCheckoutCoupon } from '../../../services/payments';
+import {
+  cancelCheckoutPayment,
+  createCheckoutSession,
+  getCheckoutSessionStatus,
+  getMySubscription,
+  previewCheckoutCoupon,
+} from '../../../services/payments';
 import { getClientCheckoutFees } from '../../../utils/marketplaceFees';
 import styles from './Checkout.module.css';
 
@@ -62,6 +68,7 @@ function Checkout() {
   const [notFound, setNotFound] = useState(false);
   const checkoutSessionId = searchParams.get('session_id');
   const checkoutReturnStatus = searchParams.get('status');
+  const canceledPaymentId = searchParams.get('payment_id');
 
   useEffect(() => {
     let cancelled = false;
@@ -132,9 +139,22 @@ function Checkout() {
   }, [service]);
 
   useEffect(() => {
-    if (checkoutReturnStatus !== 'cancel') return;
-    toast.message('Pagamento cancelado. Você pode revisar o briefing e tentar novamente.');
-  }, [checkoutReturnStatus]);
+    if (checkoutReturnStatus !== 'cancel' || !canceledPaymentId) return;
+    let cancelled = false;
+
+    cancelCheckoutPayment(canceledPaymentId)
+      .then(() => {
+        if (cancelled) return;
+        toast.info('Checkout cancelado. Você pode revisar os dados e tentar novamente.');
+        const planQuery = searchParams.get('plan') || searchParams.get('package');
+        navigate(`/checkout/${id}${planQuery ? `?plan=${planQuery}` : ''}`, { replace: true });
+      })
+      .catch((error) => {
+        if (!cancelled) toast.error(error.message);
+      });
+
+    return () => { cancelled = true; };
+  }, [canceledPaymentId, checkoutReturnStatus, id, navigate, searchParams]);
 
   useEffect(() => {
     if (checkoutReturnStatus !== 'success' || !checkoutSessionId) return;
@@ -376,7 +396,7 @@ function Checkout() {
 
   if (checkoutReturnStatus === 'success' && checkoutSessionId && paymentStatus && !createdOrder) {
     const isPending = ['CHECKOUT_CREATED', 'PENDING'].includes(paymentStatus.status);
-    const isFailed = ['FAILED', 'CANCELED', 'REFUNDED'].includes(paymentStatus.status);
+    const isFailed = ['FAILED', 'CANCELED', 'EXPIRED', 'REFUNDED'].includes(paymentStatus.status);
 
     return (
       <div className={styles.successState}>

@@ -48,6 +48,15 @@ export const cancelCheckoutPayment = async (paymentId) => {
   }
 };
 
+export const resumeCheckoutPayment = async (paymentId) => {
+  try {
+    const { data } = await api.post(`/payments/checkout-sessions/${paymentId}/resume`);
+    return data;
+  } catch (error) {
+    throw new Error(extractMessage(error, 'Não foi possível retomar este checkout.'));
+  }
+};
+
 export const previewCheckoutCoupon = async (payload) => {
   try {
     const { data } = await api.post('/payments/coupons/preview', payload);

@@ -16,6 +16,7 @@ import {
   createCheckoutSession,
   createProjectCheckoutSession,
   cancelCheckoutPayment,
+  resumeCheckoutPayment,
   getCheckoutSessionStatus,
   isStripeConnectReady,
   previewCheckoutCoupon,
@@ -99,6 +100,15 @@ describe('project checkout', () => {
 
     await expect(cancelCheckoutPayment('payment-1')).resolves.toEqual({ canceled: true });
     expect(mocks.post).toHaveBeenCalledWith('/payments/checkout-sessions/payment-1/cancel');
+  });
+
+  it('retoma uma sessão de checkout ainda ativa', async () => {
+    mocks.post.mockResolvedValue({ data: { checkoutUrl: 'https://stripe.example/resume' } });
+
+    await expect(resumeCheckoutPayment('payment-1')).resolves.toEqual({
+      checkoutUrl: 'https://stripe.example/resume',
+    });
+    expect(mocks.post).toHaveBeenCalledWith('/payments/checkout-sessions/payment-1/resume');
   });
 });
 

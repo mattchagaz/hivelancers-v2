@@ -15,10 +15,12 @@ import {
 } from 'react-icons/fa6';
 import { useAuth } from '../../../contexts/authContextStore';
 import {
+  cancelCheckoutPayment,
   createMyStripeConnectDashboardLink,
   createMyStripeConnectOnboardingLink,
   getMyFinancialOverview,
   getMyStripeConnectStatus,
+  resumeCheckoutPayment,
 } from '../../../services/payments';
 import SpotlightCard from '../../UI/SpotlightCard/SpotlightCard';
 import styles from './Finances.module.css';
@@ -37,6 +39,16 @@ const RELEASE_STATUS_LABEL = {
   TRANSFERRED: 'Repassado',
   FAILED: 'Revisão',
   NOT_REQUIRED: 'Sem repasse',
+};
+
+const PAYMENT_STATUS_LABEL = {
+  CHECKOUT_CREATED: 'Aguardando pagamento',
+  PENDING: 'Pagamento em processamento',
+  SUCCEEDED: 'Pagamento confirmado',
+  FAILED: 'Pagamento falhou',
+  CANCELED: 'Checkout cancelado',
+  EXPIRED: 'Checkout expirado',
+  REFUNDED: 'Pagamento reembolsado',
 };
 
 const REQUIREMENT_LABELS = {
@@ -72,6 +84,16 @@ const formatDate = (value) => {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
+  });
+};
+
+const formatDateTime = (value) => {
+  if (!value) return '';
+  return new Date(value).toLocaleString('pt-BR', {
+    day: '2-digit',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
   });
 };
 
@@ -256,6 +278,33 @@ function Finances() {
     setActiveAction('refresh');
     await Promise.all([loadConnect(), loadOverview()]);
     setActiveAction('');
+  };
+
+  const resumePayment = async (movement) => {
+    setActiveAction(`resume-${movement.id}`);
+    try {
+      const data = await resumeCheckoutPayment(movement.id);
+      if (!data.checkoutUrl) throw new Error('O link deste checkout não está mais disponível.');
+      window.location.assign(data.checkoutUrl);
+    } catch (error) {
+      toast.error(error.message);
+      await loadOverview();
+      setActiveAction('');
+    }
+  };
+
+  const cancelPayment = async (movement) => {
+    setActiveAction(`cancel-${movement.id}`);
+    try {
+      await cancelCheckoutPayment(movement.id);
+      toast.success('Tentativa de pagamento cancelada.');
+      await loadOverview();
+    } catch (error) {
+      toast.error(error.message);
+      await loadOverview();
+    } finally {
+      setActiveAction('');
+    }
   };
 
   const movements = overview?.movements || [];
@@ -459,7 +508,7 @@ function Finances() {
             <div>
               <span className={styles.sectionKicker}>Histórico</span>
               <h2>{isFreelancer ? 'Pedidos e repasses' : 'Pagamentos recentes'}</h2>
-              <p>Últimos pedidos com status financeiro sincronizado.</p>
+              <p>{isFreelancer ? 'Últimos pedidos com status financeiro sincronizado.' : 'Pedidos confirmados e tentativas de checkout ficam separados com clareza.'}</p>
             </div>
             <Link to="/orders" className={styles.panelLink}>
               Ver pedidos <FaArrowRight />
@@ -470,20 +519,62 @@ function Finances() {
             {loadingOverview ? (
               <div className={styles.emptyLine}>Carregando histórico financeiro...</div>
             ) : movements.length ? (
-              movements.map((movement) => (
-                <Link to={movement.order?.id ? `/orders?id=${movement.order.id}` : '/orders'} key={movement.id} className={styles.tableRow}>
-                  <div>
+              movements.map((movement) => {
+                const hasOrder = Boolean(movement.order?.id);
+                const paymentLabel = PAYMENT_STATUS_LABEL[movement.status] || movement.status;
+                const financialLabel = hasOrder
+                  ? (RELEASE_STATUS_LABEL[movement.releaseStatus] || movement.releaseStatus)
+                  : (movement.status === 'PENDING'
+                    ? 'Confirmação pendente'
+                    : (movement.canResume ? 'Pagamento não concluído' : 'Sem cobrança'));
+
+                return (
+                <article key={movement.id} className={styles.tableRow}>
+                  <div className={styles.rowBody}>
                     <strong>{movement.service?.title || movement.project?.title || 'Pagamento Hivelancers'}</strong>
                     <span>
-                      {formatDate(movement.updatedAt)} · {ORDER_STATUS_LABEL[movement.order?.status] || movement.status}
+                      {formatDate(movement.updatedAt)} · {ORDER_STATUS_LABEL[movement.order?.status] || paymentLabel}
                     </span>
+                    {!hasOrder && movement.canResume && movement.sessionExpiresAt && (
+                      <small className={styles.expiryText}>Link disponível até {formatDateTime(movement.sessionExpiresAt)}</small>
+                    )}
                   </div>
-                  <div className={styles.rowMeta}>
-                    <em>{RELEASE_STATUS_LABEL[movement.releaseStatus] || movement.releaseStatus}</em>
-                    <strong>{formatPrice(isFreelancer ? movement.transferAmountCents : movement.amountCents)}</strong>
+                  <div className={styles.rowSide}>
+                    <div className={styles.rowMeta}>
+                      <em>{financialLabel}</em>
+                      <strong>{formatPrice(isFreelancer ? movement.transferAmountCents : (movement.totalCents ?? movement.amountCents))}</strong>
+                    </div>
+                    <div className={styles.rowActions}>
+                      {hasOrder && (
+                        <Link to={`/orders?id=${movement.order.id}`} className={styles.orderAction}>
+                          Ver pedido <FaArrowRight />
+                        </Link>
+                      )}
+                      {!hasOrder && movement.canResume && (
+                        <button
+                          type="button"
+                          className={styles.movementAction}
+                          onClick={() => resumePayment(movement)}
+                          disabled={Boolean(activeAction)}
+                        >
+                          {activeAction === `resume-${movement.id}` ? 'Abrindo...' : 'Retomar pagamento'}
+                        </button>
+                      )}
+                      {!hasOrder && movement.canCancel && (
+                        <button
+                          type="button"
+                          className={styles.cancelMovementAction}
+                          onClick={() => cancelPayment(movement)}
+                          disabled={Boolean(activeAction)}
+                        >
+                          {activeAction === `cancel-${movement.id}` ? 'Cancelando...' : 'Cancelar'}
+                        </button>
+                      )}
+                    </div>
                   </div>
-                </Link>
-              ))
+                </article>
+                );
+              })
             ) : (
               <div className={styles.emptyState}>
                 <div className={styles.emptyIcon}>

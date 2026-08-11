@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { FaTriangleExclamation } from 'react-icons/fa6';
 import styles from './ConfirmDialog.module.css';
 
 function ConfirmDialog({
@@ -9,6 +10,8 @@ function ConfirmDialog({
   cancelLabel = 'Cancelar',
   isLoading = false,
   hideCancel = false,
+  variant = 'default',
+  eyebrow,
   onCancel,
   onConfirm,
 }) {
@@ -28,21 +31,34 @@ function ConfirmDialog({
   return (
     <div className={styles.overlay} onClick={isLoading ? undefined : onCancel}>
       <div
-        className={styles.dialog}
+        className={`${styles.dialog} ${variant === 'danger' ? styles.dangerDialog : ''}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby="confirm-dialog-title"
         aria-describedby="confirm-dialog-description"
         onClick={(event) => event.stopPropagation()}
       >
-        <h3 id="confirm-dialog-title">{title}</h3>
-        <p id="confirm-dialog-description">{description}</p>
+        <div className={styles.header}>
+          {variant === 'danger' && (
+            <div className={styles.dangerIcon} aria-hidden="true">
+              <FaTriangleExclamation />
+            </div>
+          )}
+          <div>
+            {eyebrow && <span className={styles.eyebrow}>{eyebrow}</span>}
+            <h3 id="confirm-dialog-title">{title}</h3>
+          </div>
+        </div>
+
+        <div id="confirm-dialog-description" className={styles.description}>
+          {description}
+        </div>
 
         <div className={styles.actions}>
           {!hideCancel && (
             <button
               type="button"
-              className={styles.cancelButton}
+              className={`${styles.cancelButton} ${variant === 'danger' ? styles.dangerCancelButton : ''}`}
               onClick={onCancel}
               disabled={isLoading}
             >
@@ -51,7 +67,7 @@ function ConfirmDialog({
           )}
           <button
             type="button"
-            className={styles.confirmButton}
+            className={`${styles.confirmButton} ${variant === 'danger' ? styles.dangerConfirmButton : ''}`}
             onClick={onConfirm}
             disabled={isLoading}
           >

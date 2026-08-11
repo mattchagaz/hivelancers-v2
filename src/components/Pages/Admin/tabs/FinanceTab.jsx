@@ -117,7 +117,7 @@ export default function FinanceTab() {
               <span>#{payment.id.slice(-8).toUpperCase()}</span>
               <strong>{payment.service?.title || payment.project?.title || 'Pagamento Hivelancers'}</strong>
               <p>
-                {toUserName(payment.client)} contratou {toUserName(payment.freelancer)}
+                {toUserName(payment.client)} {payment.order ? 'contratou' : 'iniciou checkout com'} {toUserName(payment.freelancer)}
               </p>
             </div>
             <strong>{formatCents(payment.totalCents ?? payment.amountCents)}</strong>
@@ -129,8 +129,10 @@ export default function FinanceTab() {
             <em className={`${styles.badge} ${getStatusTone(PAYMENT_STATUS_LABEL[payment.status] || payment.status)}`}>
               {PAYMENT_STATUS_LABEL[payment.status] || payment.status}
             </em>
-            <em className={`${styles.badge} ${getStatusTone(RELEASE_STATUS_LABEL[payment.releaseStatus] || payment.releaseStatus)}`}>
-              {RELEASE_STATUS_LABEL[payment.releaseStatus] || payment.releaseStatus}
+            <em className={`${styles.badge} ${getStatusTone(payment.order ? (RELEASE_STATUS_LABEL[payment.releaseStatus] || payment.releaseStatus) : 'Sem movimentação')}`}>
+              {payment.order
+                ? (RELEASE_STATUS_LABEL[payment.releaseStatus] || payment.releaseStatus)
+                : 'Sem movimentação'}
             </em>
             <button
               type="button"
