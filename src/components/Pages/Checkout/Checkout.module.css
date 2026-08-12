@@ -611,6 +611,82 @@
   color: var(--text-secondary);
 }
 
+.feeLabelTitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.feeInfo {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.feeInfoButton {
+  display: inline-flex;
+  width: 19px;
+  height: 19px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.86rem;
+  cursor: help;
+  transition: color 0.18s ease, background 0.18s ease, transform 0.18s ease;
+}
+
+.feeInfoButton:hover,
+.feeInfoButton:focus-visible {
+  background: rgba(var(--primary-color-rgb), 0.1);
+  color: var(--primary-color);
+  outline: none;
+  transform: translateY(-1px);
+}
+
+.feeTooltip {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 10px);
+  left: -14px;
+  width: min(270px, calc(100vw - 48px));
+  padding: 11px 13px;
+  border: 1px solid rgba(var(--primary-color-rgb), 0.2);
+  border-radius: 12px;
+  background: var(--bg-primary);
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.2);
+  color: var(--text-primary);
+  font-size: 0.73rem;
+  font-weight: 550;
+  line-height: 1.45;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-4px);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.feeTooltip::before {
+  position: absolute;
+  top: -5px;
+  left: 18px;
+  width: 9px;
+  height: 9px;
+  border-top: 1px solid rgba(var(--primary-color-rgb), 0.2);
+  border-left: 1px solid rgba(var(--primary-color-rgb), 0.2);
+  background: var(--bg-primary);
+  content: '';
+  transform: rotate(45deg);
+}
+
+.feeInfo:hover .feeTooltip,
+.feeInfo:focus-within .feeTooltip {
+  opacity: 1;
+  transform: translateY(0);
+}
+
 .rowValue {
   color: var(--text-primary);
   font-weight: 600;

@@ -12,6 +12,7 @@ import {
   previewCheckoutCoupon,
 } from '../../../services/payments';
 import PixPaymentPanel from './PixPaymentPanel';
+import FeeInfoButton from './FeeInfoButton';
 import { getClientCheckoutFees } from '../../../utils/marketplaceFees';
 import styles from './Checkout.module.css';
 
@@ -719,7 +720,10 @@ function Checkout() {
 
               <div className={styles.priceRow}>
                 <span className={styles.rowLabel}>
-                  Taxa de serviço ({clientFeePercent}%)
+                  <span className={styles.feeLabelTitle}>
+                    Taxa de serviço ({clientFeePercent}%)
+                    <FeeInfoButton />
+                  </span>
                   {clientFeePercent > 0 && <small> Planos pagos reduzem esta taxa</small>}
                 </span>
                 <span className={styles.rowValue}>{clientFeeCents > 0 ? formatPrice(clientFeeCents) : 'Grátis'}</span>

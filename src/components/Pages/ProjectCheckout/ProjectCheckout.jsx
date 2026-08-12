@@ -20,6 +20,7 @@ import {
   previewCheckoutCoupon,
 } from '../../../services/payments';
 import PixPaymentPanel from '../Checkout/PixPaymentPanel';
+import FeeInfoButton from '../Checkout/FeeInfoButton';
 import { getClientCheckoutFees } from '../../../utils/marketplaceFees';
 import styles from '../Checkout/Checkout.module.css';
 
@@ -375,7 +376,16 @@ function ProjectCheckout() {
                 )}
               </div>
               {currentAppliedCoupon && <div className={`${styles.priceRow} ${styles.discountRow}`}><span className={styles.rowLabel}>Desconto ({currentAppliedCoupon.coupon.code})</span><span className={styles.rowValue}>- {formatPrice(discountCents)}</span></div>}
-              <div className={styles.priceRow}><span className={styles.rowLabel}>Taxa de serviço ({fees.clientFeePercent}%)<small>Planos pagos reduzem esta taxa</small></span><span className={styles.rowValue}>{fees.clientFeeCents ? formatPrice(fees.clientFeeCents) : 'Grátis'}</span></div>
+              <div className={styles.priceRow}>
+                <span className={styles.rowLabel}>
+                  <span className={styles.feeLabelTitle}>
+                    Taxa de serviço ({fees.clientFeePercent}%)
+                    <FeeInfoButton />
+                  </span>
+                  <small>Planos pagos reduzem esta taxa</small>
+                </span>
+                <span className={styles.rowValue}>{fees.clientFeeCents ? formatPrice(fees.clientFeeCents) : 'Grátis'}</span>
+              </div>
               <div className={styles.divider} />
               <div className={`${styles.priceRow} ${styles.priceTotal}`}><span>Total a pagar</span><strong>{formatPrice(fees.totalCents)}</strong></div>
             </div>
