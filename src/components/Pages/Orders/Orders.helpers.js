@@ -2,9 +2,8 @@
 // Extraídos de Orders.jsx para reduzir o tamanho do componente — sem mudança de comportamento.
 
 export const ROLE_LABEL = {
-  all: 'Todos',
-  buyer: 'Como cliente',
-  seller: 'Como freelancer',
+  buyer: 'Pedidos como cliente',
+  seller: 'Pedidos como freelancer',
 };
 
 export const STATUS_LABEL = {

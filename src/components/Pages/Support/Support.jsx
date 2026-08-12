@@ -146,7 +146,7 @@ function Support() {
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Busque por pagamento, projeto, entrega, Stripe..."
+            placeholder="Busque por pagamento, Pix, projeto, entrega, Stripe..."
             aria-label="Buscar na Central de Ajuda"
           />
           {query && (

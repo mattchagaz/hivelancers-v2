@@ -7,9 +7,11 @@ import {
   cancelCheckoutPayment,
   createCheckoutSession,
   getCheckoutSessionStatus,
+  getCheckoutOptions,
   getMySubscription,
   previewCheckoutCoupon,
 } from '../../../services/payments';
+import PixPaymentPanel from './PixPaymentPanel';
 import { getClientCheckoutFees } from '../../../utils/marketplaceFees';
 import styles from './Checkout.module.css';
 
@@ -17,10 +19,8 @@ const PAYMENT_METHODS = [
   {
     id: 'pix',
     title: 'Pix',
-    description: 'Temporariamente desabilitado. Logo ativaremos QR Code e copia e cola.',
+    description: 'QR Code e copia e cola com confirmação automática.',
     icon: FaPix,
-    disabled: true,
-    badge: 'Em breve',
   },
   {
     id: 'card',
@@ -66,6 +66,12 @@ function Checkout() {
   const [service, setService] = useState(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [checkoutOptions, setCheckoutOptions] = useState({
+    card: { available: true, reason: '' },
+    pix: { available: false, reason: 'Consultando disponibilidade...' },
+  });
+  const [paymentMethodType, setPaymentMethodType] = useState('card');
+  const [pixCheckout, setPixCheckout] = useState(null);
   const checkoutSessionId = searchParams.get('session_id');
   const checkoutReturnStatus = searchParams.get('status');
   const canceledPaymentId = searchParams.get('payment_id');
@@ -96,6 +102,23 @@ function Checkout() {
     return () => { cancelled = true; };
   }, [id]);
 
+  useEffect(() => {
+    if (!service?.id) return;
+    getCheckoutOptions({ serviceId: service.id })
+      .then((options) => {
+        setCheckoutOptions(options);
+        setPaymentMethodType((current) => (
+          options[current]?.available ? current : options.pix?.available ? 'pix' : 'card'
+        ));
+      })
+      .catch((error) => {
+        setCheckoutOptions({
+          card: { available: false, reason: error.message },
+          pix: { available: false, reason: error.message },
+        });
+      });
+  }, [service?.id]);
+
   const selectedPlan = useMemo(() => {
     if (!service) return null;
     const planId = searchParams.get('plan') || searchParams.get('package');
@@ -115,7 +138,6 @@ function Checkout() {
   const [createdOrder, setCreatedOrder] = useState(null);
   const [paymentStatus, setPaymentStatus] = useState(null);
   const [isCheckingPayment, setIsCheckingPayment] = useState(false);
-  const [paymentMethodType, setPaymentMethodType] = useState('card');
   const [couponInput, setCouponInput] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
@@ -305,8 +327,8 @@ function Checkout() {
   };
 
   const handleSubmit = async () => {
-    if (paymentMethodType === 'pix') {
-      toast.message('Pix está temporariamente desabilitado. Em breve essa forma de pagamento será ativada.');
+    if (!checkoutOptions[paymentMethodType]?.available) {
+      toast.error(checkoutOptions[paymentMethodType]?.reason || 'Forma de pagamento indisponível.');
       return;
     }
 
@@ -334,6 +356,11 @@ function Checkout() {
         paymentMethodType,
         couponCode: currentAppliedCoupon?.coupon?.code || undefined,
       });
+
+      if (paymentMethodType === 'pix' && result.pix && result.payment) {
+        setPixCheckout(result);
+        return;
+      }
 
       if (!result.checkoutUrl) {
         throw new Error('Não foi possível gerar o link de pagamento no momento.');
@@ -391,6 +418,17 @@ function Checkout() {
 
         <Toaster position="top-center" richColors />
       </div>
+    );
+  }
+
+  if (pixCheckout?.payment) {
+    return (
+      <PixPaymentPanel
+        initialPayment={pixCheckout.payment}
+        pix={pixCheckout.pix}
+        onOrderCreated={setCreatedOrder}
+        onBack={() => setPixCheckout(null)}
+      />
     );
   }
 
@@ -710,8 +748,11 @@ function Checkout() {
             <div className={styles.paymentMethodSection}>
               <span className={styles.paymentMethodTitle}>Forma de pagamento</span>
               <div className={styles.paymentMethodGrid} role="radiogroup" aria-label="Forma de pagamento">
-                {PAYMENT_METHODS.map(({ id: methodId, title, description, icon, disabled, badge }) => {
+                {PAYMENT_METHODS.map(({ id: methodId, title, description, icon }) => {
                   const isSelected = paymentMethodType === methodId;
+                  const option = checkoutOptions[methodId];
+                  const disabled = option ? !option.available : false;
+                  const badge = disabled ? 'Indisponível' : null;
 
                   return (
                     <label
@@ -737,7 +778,7 @@ function Checkout() {
                           <strong>{title}</strong>
                           {badge ? <em>{badge}</em> : null}
                         </span>
-                        <small>{description}</small>
+                        <small>{disabled ? option?.reason : description}</small>
                       </span>
                     </label>
                   );
@@ -749,7 +790,7 @@ function Checkout() {
               type="button"
               className={styles.primaryButton}
               onClick={handleSubmit}
-              disabled={isSubmitting}
+              disabled={isSubmitting || !checkoutOptions[paymentMethodType]?.available}
             >
               {isSubmitting ? (
                 <>
@@ -760,7 +801,11 @@ function Checkout() {
                 'Ir para Pagamento Seguro'
               )}
             </button>
-            <p className={styles.secureNote}>Você será redirecionado para o ambiente seguro da plataforma.</p>
+            <p className={styles.secureNote}>
+              {paymentMethodType === 'pix'
+                ? 'O QR Code será gerado pela AbacatePay e confirmado automaticamente.'
+                : 'Você será redirecionado para o ambiente seguro da Stripe.'}
+            </p>
           </section>
 
           {/* Garantias */}

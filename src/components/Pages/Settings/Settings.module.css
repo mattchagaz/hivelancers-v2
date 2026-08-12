@@ -462,6 +462,9 @@ select.input { appearance: none; background-image: url("data:image/svg+xml,%3Csv
 .listCopy { flex: 1; display: flex; flex-direction: column; gap: 4px;}
 .listCopy strong { font-size: 0.95rem; color: var(--text-primary); }
 .listCopy span { font-size: 0.85rem; color: var(--text-secondary); line-height: 1.4; }
+.pixPayoutRow { align-items: flex-start; }
+.pixPayoutForm { display: grid; grid-template-columns: 150px minmax(220px, 1fr) auto; gap: 10px; margin-top: 12px; }
+.pixPayoutForm .input { min-height: 42px; padding: 9px 12px; }
 .emptyContent { color: var(--text-muted); font-size: 0.9rem; font-style: italic; }
 
 .accountDataAction {
@@ -565,6 +568,7 @@ select.input { appearance: none; background-image: url("data:image/svg+xml,%3Csv
   .identityHeader { flex-direction: column; align-items: flex-start; }
   .listRow { flex-direction: column; align-items: flex-start; }
   .btnPrimary, .btnGhost { width: 100%; }
+  .pixPayoutForm { grid-template-columns: 1fr; width: 100%; }
   .accountDataAction,
   .dangerActionBar {
     align-items: stretch;

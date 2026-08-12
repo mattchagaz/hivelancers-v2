@@ -6,12 +6,13 @@ import { MemoryRouter } from 'react-router-dom';
 // e garante que a lista e o painel de detalhe renderizam sem quebrar. Rede de
 // segurança para a refatoração que quebra o Orders em partes.
 
-const { fakeSocket } = vi.hoisted(() => ({
+const { fakeSocket, authUser } = vi.hoisted(() => ({
   fakeSocket: { on: vi.fn(), off: vi.fn(), emit: vi.fn(), connected: false },
+  authUser: { id: 'user-1', userType: 'CLIENT', firstName: 'Cliente' },
 }));
 
 vi.mock('../../../contexts/authContextStore', () => ({
-  useAuth: () => ({ user: { id: 'user-1', userType: 'CLIENT', firstName: 'Cliente' } }),
+  useAuth: () => ({ user: authUser }),
 }));
 
 vi.mock('sonner', () => ({
@@ -71,6 +72,7 @@ describe('Orders (smoke)', () => {
   afterEach(() => {
     cleanup();
     vi.clearAllMocks();
+    authUser.userType = 'CLIENT';
   });
 
   it('monta a página e assina os eventos de socket (estado vazio)', async () => {
@@ -80,6 +82,21 @@ describe('Orders (smoke)', () => {
     await waitFor(() => {
       expect(fakeSocket.on).toHaveBeenCalledWith('order:updated', expect.any(Function));
     });
+    expect(listOrders).toHaveBeenCalledWith({ role: 'buyer' });
+    expect(screen.getByText('Exibindo pedidos como')).toBeInTheDocument();
+    expect(screen.getByText('cliente')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Como cliente' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Como freelancer' })).not.toBeInTheDocument();
+  });
+
+  it('mostra automaticamente somente a fila de freelancer para essa conta', async () => {
+    authUser.userType = 'FREELANCER';
+    renderOrders();
+
+    await waitFor(() => {
+      expect(listOrders).toHaveBeenCalledWith({ role: 'seller' });
+    });
+    expect(screen.getByText('freelancer')).toBeInTheDocument();
   });
 
   it('renderiza o painel de detalhe do pedido selecionado sem quebrar', async () => {

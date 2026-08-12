@@ -43,6 +43,8 @@ vi.mock('../../../services/payments', () => ({
   createMyStripeConnectDashboardLink: vi.fn(),
   createMyStripeConnectOnboardingLink: vi.fn(),
   getMyStripeConnectStatus: vi.fn(() => Promise.resolve({ configured: true, connected: false, account: null })),
+  getMyPixPayoutAccount: vi.fn(() => Promise.resolve({ configured: true, connected: false, account: null })),
+  saveMyPixPayoutAccount: vi.fn(),
   isStripeConnectReady: vi.fn((state) => Boolean(state?.configured && state?.account?.detailsSubmitted && state?.account?.payoutsEnabled)),
 }));
 

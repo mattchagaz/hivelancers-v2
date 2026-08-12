@@ -44,6 +44,11 @@ export const writeStoredNotificationIds = (key, ids, limit = 180) => {
   localStorage.setItem(key, JSON.stringify([...new Set(ids)].slice(-limit)));
 };
 
+export const shouldAlertForNotification = (notification) => {
+  const title = String(notification?.title || '').trim().toLocaleLowerCase('pt-BR');
+  return !title.endsWith('por você');
+};
+
 export const getStoredNotificationHistory = (userId) => {
   const { history } = getNotificationStorageKeys(userId);
   if (!history || !canUseStorage()) return [];

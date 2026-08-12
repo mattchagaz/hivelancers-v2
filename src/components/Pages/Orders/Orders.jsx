@@ -40,9 +40,7 @@ function Orders() {
   const selectedOrderId = searchParams.get('id');
   const setSearchParamsRef = useRef(setSearchParams);
 
-  const defaultRole = useMemo(() => toRoleValue(user?.userType), [user?.userType]);
-
-  const [role, setRole] = useState(defaultRole);
+  const role = useMemo(() => toRoleValue(user?.userType), [user?.userType]);
   const [status, setStatus] = useState('');
   const [orders, setOrders] = useState([]);
   const [selectedOrder, setSelectedOrder] = useState(null);
@@ -63,10 +61,6 @@ function Orders() {
   useEffect(() => {
     setSearchParamsRef.current = setSearchParams;
   }, [setSearchParams]);
-
-  useEffect(() => {
-    setRole(defaultRole);
-  }, [defaultRole]);
 
   const loadOrders = useCallback(async (
     nextRole,
@@ -129,8 +123,9 @@ function Orders() {
   }, []);
 
   useEffect(() => {
-    loadOrders(defaultRole, '', false);
-  }, [defaultRole, loadOrders]);
+    setStatus('');
+    loadOrders(role, '', false);
+  }, [role, loadOrders]);
 
   useEffect(() => {
     loadSelectedOrder(selectedOrderId);
@@ -176,11 +171,6 @@ function Orders() {
       current.off('order:updated', handleOrderEvent);
     };
   }, [role, selectedOrderId, status, user?.id]);
-
-  const handleRoleChange = (nextRole) => {
-    setRole(nextRole);
-    loadOrders(nextRole, status, false);
-  };
 
   const handleStatusChange = (event) => {
     const nextStatus = event.target.value;
@@ -352,17 +342,10 @@ function Orders() {
           </p>
 
           <div className={styles.heroActions}>
-            <div className={styles.roleTabs}>
-              {Object.entries(ROLE_LABEL).map(([value, label]) => (
-                <button
-                  key={value}
-                  type="button"
-                  className={`${styles.roleTab} ${role === value ? styles.roleTabActive : ''}`}
-                  onClick={() => handleRoleChange(value)}
-                >
-                  {label}
-                </button>
-              ))}
+            <div className={styles.roleScope}>
+              <FaBriefcase />
+              <span>Exibindo pedidos como</span>
+              <strong>{role === 'seller' ? 'freelancer' : 'cliente'}</strong>
             </div>
 
             <select className={styles.select} value={status} onChange={handleStatusChange}>
@@ -382,9 +365,7 @@ function Orders() {
             <p>
               {role === 'seller'
                 ? 'Pedidos que dependem de aceite, entrega ou acompanhamento próximo.'
-                : role === 'buyer'
-                ? 'Entregas e conversas que precisam da sua revisão para o projeto avançar.'
-                : 'Pedidos dos dois lados da plataforma que precisam de acompanhamento.'}
+                : 'Entregas e conversas que precisam da sua revisão para o projeto avançar.'}
             </p>
             <button
               type="button"

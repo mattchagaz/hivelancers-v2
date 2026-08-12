@@ -73,15 +73,15 @@ export default function FinanceTab() {
         </div>
         <div className={styles.financeCard}>
           <FaCreditCard />
-          <span>Taxa Stripe estimada</span>
-          <strong>{formatCents(financeSummary.estimatedStripeFeeCents)}</strong>
-          <p>Estimativa por Pix/cartão</p>
+          <span>Custos dos gateways</span>
+          <strong>{formatCents(financeSummary.gatewayFeeCents ?? financeSummary.estimatedStripeFeeCents)}</strong>
+          <p>AbacatePay real · Stripe estimada</p>
         </div>
         <div className={styles.financeCard}>
           <FaArrowTrendUp />
           <span>Líquido da plataforma</span>
           <strong>{formatCents(financeSummary.platformNetCents)}</strong>
-          <p>Comissão menos taxa Stripe estimada</p>
+          <p>Receita de taxas menos custos dos gateways</p>
         </div>
         <div className={styles.financeCard}>
           <FaTriangleExclamation />
@@ -124,7 +124,11 @@ export default function FinanceTab() {
             <div className={styles.ledgerEconomics}>
               <span>Plataforma</span>
               <strong>{formatCents(payment.economics?.platformNetCents)}</strong>
-              <p>Stripe: {formatCents(payment.economics?.estimatedStripeFeeCents)}</p>
+              <p>
+                {payment.provider === 'ABACATEPAY' ? 'AbacatePay' : 'Stripe'}:{' '}
+                {formatCents(payment.economics?.gatewayFeeCents ?? payment.economics?.estimatedStripeFeeCents)}
+                {payment.economics?.gatewayFeeEstimated ? ' (estimado)' : ''}
+              </p>
             </div>
             <em className={`${styles.badge} ${getStatusTone(PAYMENT_STATUS_LABEL[payment.status] || payment.status)}`}>
               {PAYMENT_STATUS_LABEL[payment.status] || payment.status}

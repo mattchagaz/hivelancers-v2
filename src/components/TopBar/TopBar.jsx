@@ -8,6 +8,7 @@ import {
   loadNotificationFeed,
   markAllNotificationsRead as persistAllNotificationsRead,
   markNotificationRead as persistNotificationRead,
+  shouldAlertForNotification,
 } from '../../services/notifications';
 import { connectSocket, getSocket } from '../../services/socket';
 import { getPublicProfilePath } from '../../utils/profileEnhancements';
@@ -120,13 +121,15 @@ function TopBar({ userName = '', userRole = 'freelancer', avatarUrl = '', onMenu
 
         if (newest) {
           knownNotificationIdsRef.current = currentIds;
+          const shouldAlert = shouldAlertForNotification(newest);
 
-          if (notificationSettings[inAppPreferenceFor(newest.type)]) {
+          if (shouldAlert && notificationSettings[inAppPreferenceFor(newest.type)]) {
             playNotificationSound();
             toast(newest.title, { description: newest.description });
           }
 
           if (
+            shouldAlert &&
             notificationSettings[browserPreferenceFor(newest.type)] &&
             'Notification' in window &&
             window.Notification.permission === 'granted'

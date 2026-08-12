@@ -114,7 +114,7 @@ export const HELP_CATEGORIES = [
           },
           {
             title: 'Depois do checkout',
-            paragraphs: ['O pedido e a conversa são criados somente quando a Stripe confirma o pagamento. Se você sair antes de pagar, a tentativa ficará em Financeiro e poderá ser retomada ou cancelada enquanto o link estiver ativo.'],
+            paragraphs: ['O pedido e a conversa são criados somente quando o gateway confirma o pagamento. No cartão, você segue para a Stripe; no Pix, o QR Code da AbacatePay aparece dentro da Hivelancers. Tentativas ainda válidas podem ser retomadas em Financeiro.'],
             note: '“Aguardando pagamento” não significa que existe um pedido. É apenas um checkout aberto e nenhuma cobrança foi confirmada.',
           },
         ],
@@ -245,7 +245,7 @@ export const HELP_CATEGORIES = [
           },
           {
             title: 'Recebendo o valor',
-            paragraphs: ['O valor líquido considera a taxa aplicável ao freelancer. Após a aprovação e liberação, o repasse segue para a conta Stripe conectada, sujeito aos prazos bancários e de disponibilidade da Stripe.'],
+            paragraphs: ['O valor líquido considera a taxa aplicável ao freelancer. Após a aprovação, pagamentos no cartão seguem para a conta Stripe conectada; pagamentos Pix são enviados pela AbacatePay à chave Pix cadastrada e protegida por criptografia.'],
             note: 'A Central financeira separa valores protegidos, repasses concluídos e eventuais pendências da conta recebedora.',
           },
         ],
@@ -270,10 +270,10 @@ export const HELP_CATEGORIES = [
             title: 'Antes da confirmação',
             bullets: [
               'Aguardando pagamento: a sessão foi criada, mas ainda não houve confirmação.',
-              'Em processamento: a cobrança foi enviada e aguarda retorno definitivo da Stripe.',
+              'Em processamento: a cobrança foi enviada e aguarda retorno definitivo do gateway.',
               'Cancelado: o usuário encerrou a tentativa antes do pagamento.',
               'Expirado: o prazo do link terminou sem confirmação.',
-              'Falhou: a Stripe ou a plataforma não conseguiu concluir a tentativa.',
+              'Falhou: o gateway ou a plataforma não conseguiu concluir a tentativa.',
             ],
           },
           {
@@ -306,7 +306,7 @@ export const HELP_CATEGORIES = [
               'O cupom precisa estar ativo, dentro da validade e respeitar o pedido mínimo.',
               'Limites de uso e desconto máximo podem reduzir ou impedir o benefício.',
               'Planos pagos podem reduzir taxas conforme as regras exibidas na assinatura.',
-              'O desconto aplicado sempre aparece antes do redirecionamento à Stripe.',
+              'O desconto aplicado sempre aparece antes de gerar o Pix ou redirecionar para a Stripe.',
             ],
           },
         ],

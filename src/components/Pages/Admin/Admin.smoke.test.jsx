@@ -13,6 +13,24 @@ const { okList } = vi.hoisted(() => ({
   okList: () => Promise.resolve([]),
 }));
 
+const healthFixture = {
+  status: 'healthy',
+  checkedAt: '2026-08-11T15:00:00.000Z',
+  environment: 'test',
+  uptimeSeconds: 120,
+  summary: { operational: 1, degraded: 0, unavailable: 0, total: 1 },
+  services: [{
+    id: 'api',
+    name: 'API e aplicação',
+    description: 'API de teste',
+    status: 'operational',
+    latencyMs: null,
+    message: 'Respondendo',
+    details: [],
+  }],
+  metrics: {},
+};
+
 vi.mock('../../../contexts/authContextStore', () => ({
   useAuth: () => ({ user: { id: 'admin-1', firstName: 'Admin', isAdmin: true } }),
 }));
@@ -37,6 +55,7 @@ vi.mock('../../../services/admin', () => ({
   createRewardLevel: vi.fn(),
   deleteAdminCoupon: vi.fn(),
   deleteRewardLevel: vi.fn(),
+  getAdminSystemHealth: vi.fn(() => Promise.resolve(healthFixture)),
   listAdminAuditLogs: okList,
   listAdminCoupons: okList,
   listRewardLevels: okList,
@@ -58,7 +77,9 @@ vi.mock('../../../services/users', () => ({
 
 vi.mock('../../../services/payments', () => ({
   listAdminPayments: okList,
+  listAdminPixSandboxPayments: vi.fn(() => Promise.resolve({ configured: true, items: [] })),
   retryAdminPaymentTransfer: vi.fn(),
+  simulateAdminPixPayment: vi.fn(),
 }));
 
 vi.mock('../../../services/tickets', () => ({
@@ -80,8 +101,10 @@ const TAB_LABELS = [
   'Taxonomia',
   'Usuários',
   'Financeiro',
+  'Simular Pix',
   'Disputas',
   'Suporte',
+  'Saúde do sistema',
   'Auditoria',
 ];
 

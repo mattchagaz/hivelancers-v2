@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getOrderNotification } from './notifications';
+import { getOrderNotification, shouldAlertForNotification } from './notifications';
 
 describe('order notifications', () => {
   it('presents a dispute as an administrative pause for both participants', () => {
@@ -19,5 +19,16 @@ describe('order notifications', () => {
       to: '/orders?id=order-1',
     }));
     expect(notification.description).toContain('decisão administrativa');
+  });
+});
+
+describe('notification alerts', () => {
+  it('keeps self-authored events in the feed without showing a redundant alert', () => {
+    expect(shouldAlertForNotification({ title: 'Pedido recusado por você' })).toBe(false);
+    expect(shouldAlertForNotification({ title: 'Pedido cancelado por você' })).toBe(false);
+  });
+
+  it('continues alerting about events caused by another participant', () => {
+    expect(shouldAlertForNotification({ title: 'Pedido recusado pelo freelancer' })).toBe(true);
   });
 });

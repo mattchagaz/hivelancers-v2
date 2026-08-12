@@ -4,6 +4,7 @@ import {
   FaArrowUpRightFromSquare,
   FaCircleCheck,
   FaCreditCard,
+  FaPix,
   FaLocationDot,
   FaQuoteLeft,
   FaShieldHalved,
@@ -15,8 +16,10 @@ import {
   createProjectCheckoutSession,
   getCheckoutSessionStatus,
   getMySubscription,
+  getCheckoutOptions,
   previewCheckoutCoupon,
 } from '../../../services/payments';
+import PixPaymentPanel from '../Checkout/PixPaymentPanel';
 import { getClientCheckoutFees } from '../../../utils/marketplaceFees';
 import styles from '../Checkout/Checkout.module.css';
 
@@ -49,6 +52,9 @@ function ProjectCheckout() {
   const [couponInput, setCouponInput] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
+  const [paymentMethodType, setPaymentMethodType] = useState('card');
+  const [checkoutOptions, setCheckoutOptions] = useState({ card: { available: true }, pix: { available: false } });
+  const [pixCheckout, setPixCheckout] = useState(null);
 
   const loadContext = useCallback(async () => {
     const [projectData, proposalData, subscriptionData] = await Promise.all([
@@ -128,6 +134,23 @@ function ProjectCheckout() {
     () => proposals.find((item) => item.id === proposalId) || null,
     [proposalId, proposals]
   );
+
+  useEffect(() => {
+    if (!proposal?.id) return;
+    getCheckoutOptions({ projectId, proposalId: proposal.id })
+      .then((options) => {
+        setCheckoutOptions(options);
+        setPaymentMethodType((current) => (
+          options[current]?.available ? current : options.pix?.available ? 'pix' : 'card'
+        ));
+      })
+      .catch((error) => {
+        setCheckoutOptions({
+          card: { available: false, reason: error.message },
+          pix: { available: false, reason: error.message },
+        });
+      });
+  }, [projectId, proposal?.id]);
   const currentAppliedCoupon = appliedCoupon?.proposalId === proposal?.id ? appliedCoupon : null;
   const discountCents = currentAppliedCoupon?.discountCents || 0;
   const contractCents = Math.max(0, (proposal?.priceCents || 0) - discountCents);
@@ -170,10 +193,15 @@ function ProjectCheckout() {
       const data = await createProjectCheckoutSession({
         projectId,
         proposalId: proposal.id,
-        paymentMethodType: 'card',
+        paymentMethodType,
         couponCode: currentAppliedCoupon?.coupon?.code || undefined,
       });
-      if (!data.checkoutUrl) throw new Error('A Stripe não retornou um link de pagamento.');
+      if (paymentMethodType === 'pix' && data.pix && data.payment) {
+        setPixCheckout(data);
+        setSubmitting(false);
+        return;
+      }
+      if (!data.checkoutUrl) throw new Error('O gateway não retornou um link de pagamento.');
       window.location.assign(data.checkoutUrl);
     } catch (error) {
       toast.error(error.message);
@@ -196,6 +224,17 @@ function ProjectCheckout() {
         </div>
         <Toaster position="top-center" richColors />
       </div>
+    );
+  }
+
+  if (pixCheckout?.payment) {
+    return (
+      <PixPaymentPanel
+        initialPayment={pixCheckout.payment}
+        pix={pixCheckout.pix}
+        onOrderCreated={setCreatedOrder}
+        onBack={() => setPixCheckout(null)}
+      />
     );
   }
 
@@ -340,9 +379,33 @@ function ProjectCheckout() {
               <div className={styles.divider} />
               <div className={`${styles.priceRow} ${styles.priceTotal}`}><span>Total a pagar</span><strong>{formatPrice(fees.totalCents)}</strong></div>
             </div>
-            <div className={styles.paymentMethodSection}><span className={styles.paymentMethodTitle}>Forma de pagamento</span><div className={`${styles.paymentMethodOption} ${styles.paymentMethodOptionActive}`}><span className={styles.paymentMethodIcon}><FaCreditCard /></span><span className={styles.paymentMethodCopy}><strong>Cartão de crédito</strong><small>Confirmação imediata no checkout seguro</small></span></div></div>
-            <button type="button" className={styles.primaryButton} onClick={startCheckout} disabled={!canCheckout || submitting}>{submitting ? 'Abrindo pagamento...' : canCheckout ? 'Pagar e contratar' : 'Proposta indisponível'}</button>
-            <p className={styles.secureNote}>Você será redirecionado para o Checkout seguro da Stripe.</p>
+            <div className={styles.paymentMethodSection}>
+              <span className={styles.paymentMethodTitle}>Forma de pagamento</span>
+              <div className={styles.paymentMethodGrid} role="radiogroup" aria-label="Forma de pagamento">
+                {[
+                  { id: 'pix', label: 'Pix', description: 'QR Code com confirmação automática', icon: FaPix },
+                  { id: 'card', label: 'Cartão de crédito', description: 'Confirmação imediata no checkout seguro', icon: FaCreditCard },
+                ].map((method) => {
+                  const Icon = method.icon;
+                  const disabled = !checkoutOptions[method.id]?.available;
+                  return (
+                    <label
+                      key={method.id}
+                      className={`${styles.paymentMethodOption} ${paymentMethodType === method.id ? styles.paymentMethodOptionActive : ''} ${disabled ? styles.paymentMethodOptionDisabled : ''}`}
+                    >
+                      <input type="radio" name="projectPaymentMethod" checked={paymentMethodType === method.id} disabled={disabled} onChange={() => setPaymentMethodType(method.id)} />
+                      <span className={styles.paymentMethodIcon}><Icon /></span>
+                      <span className={styles.paymentMethodCopy}>
+                        <strong>{method.label}</strong>
+                        <small>{disabled ? checkoutOptions[method.id]?.reason : method.description}</small>
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+            <button type="button" className={styles.primaryButton} onClick={startCheckout} disabled={!canCheckout || submitting || !checkoutOptions[paymentMethodType]?.available}>{submitting ? 'Abrindo pagamento...' : canCheckout ? 'Pagar e contratar' : 'Proposta indisponível'}</button>
+            <p className={styles.secureNote}>{paymentMethodType === 'pix' ? 'O QR Code será gerado pela AbacatePay.' : 'Você será redirecionado para o Checkout seguro da Stripe.'}</p>
           </section>
         </aside>
       </div>

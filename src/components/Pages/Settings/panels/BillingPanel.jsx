@@ -7,6 +7,8 @@ import {
   createMyStripeConnectOnboardingLink,
   getMyStripeConnectStatus,
   isStripeConnectReady,
+  getMyPixPayoutAccount,
+  saveMyPixPayoutAccount,
 } from '../../../../services/payments';
 import { SectionHeader } from '../Settings.ui';
 
@@ -18,11 +20,15 @@ export default function BillingPanel({ isFreelancer }) {
   const [connectState, setConnectState] = useState({ configured: true, connected: false, account: null });
   const [isLoading, setIsLoading] = useState(isFreelancer);
   const [activeStripeAction, setActiveStripeAction] = useState('');
+  const [pixState, setPixState] = useState({ configured: false, connected: false, account: null });
+  const [pixDraft, setPixDraft] = useState({ keyType: 'CPF', key: '' });
+  const [savingPix, setSavingPix] = useState(false);
   const stripeReady = isStripeConnectReady(connectState);
 
   useEffect(() => {
     if (isFreelancer) {
       getMyStripeConnectStatus().then(setConnectState).catch(() => {}).finally(() => setIsLoading(false));
+      getMyPixPayoutAccount().then(setPixState).catch(() => {});
     }
   }, [isFreelancer]);
 
@@ -67,6 +73,61 @@ export default function BillingPanel({ isFreelancer }) {
             >
               {activeStripeAction === 'stripe' ? 'Abrindo...' : connectState.account?.detailsSubmitted ? 'Abrir Stripe' : 'Conectar Stripe'}
             </button>
+          </div>
+          <div className={`${styles.listRow} ${styles.pixPayoutRow}`}>
+            <div className={styles.listIcon}>{renderCardIcon()}</div>
+            <div className={styles.listCopy}>
+              <strong>Recebimento via Pix</strong>
+              <span>
+                {pixState.connected
+                  ? `Chave cadastrada: ${pixState.account?.maskedKey}. Usada somente nos repasses de pedidos pagos via Pix.`
+                  : 'Cadastre uma chave Pix para aceitar pedidos com pagamento protegido via Pix.'}
+              </span>
+              {pixState.configured && (
+                <div className={styles.pixPayoutForm}>
+                  <select
+                    className={styles.input}
+                    value={pixDraft.keyType}
+                    onChange={(event) => setPixDraft((current) => ({ ...current, keyType: event.target.value }))}
+                    disabled={savingPix}
+                  >
+                    <option value="CPF">CPF</option>
+                    <option value="CNPJ">CNPJ</option>
+                    <option value="PHONE">Telefone</option>
+                    <option value="EMAIL">E-mail</option>
+                    <option value="RANDOM">Chave aleatória</option>
+                  </select>
+                  <input
+                    className={styles.input}
+                    value={pixDraft.key}
+                    onChange={(event) => setPixDraft((current) => ({ ...current, key: event.target.value }))}
+                    placeholder={pixState.connected ? 'Digite uma nova chave para substituir' : 'Digite sua chave Pix'}
+                    disabled={savingPix}
+                  />
+                  <button
+                    type="button"
+                    className={styles.btnPrimary}
+                    disabled={savingPix || !pixDraft.key.trim()}
+                    onClick={async () => {
+                      setSavingPix(true);
+                      try {
+                        const next = await saveMyPixPayoutAccount(pixDraft);
+                        setPixState(next);
+                        setPixDraft((current) => ({ ...current, key: '' }));
+                        toast.success('Chave Pix salva com segurança.');
+                      } catch (error) {
+                        toast.error(error.message);
+                      } finally {
+                        setSavingPix(false);
+                      }
+                    }}
+                  >
+                    {savingPix ? 'Salvando...' : pixState.connected ? 'Trocar chave' : 'Salvar chave'}
+                  </button>
+                </div>
+              )}
+              {!pixState.configured && <span>Integração Pix ainda não configurada no servidor.</span>}
+            </div>
           </div>
           <div className={styles.listRow}>
             <div className={styles.listIcon}>{renderCardIcon()}</div>

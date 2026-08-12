@@ -111,7 +111,7 @@ const DOCUMENTS = {
         title: '4. Compartilhamento e transferências',
         paragraphs: [
           'Dados são compartilhados somente quando necessário com o outro participante de uma contratação, administradores autorizados, prestadores de infraestrutura, armazenamento, comunicação, prevenção a fraude e pagamentos, além de autoridades quando houver obrigação válida.',
-          'A operação atual utiliza ou prevê o uso de fornecedores como Fly.io para aplicação, Cloudinary para mídia privada, Stripe para pagamentos e Brevo para e-mails. Alguns fornecedores podem tratar dados fora do Brasil, com salvaguardas contratuais e medidas compatíveis com a LGPD.',
+          'A operação atual utiliza ou prevê o uso de fornecedores como Fly.io para aplicação, Cloudinary para mídia privada, Stripe e AbacatePay para pagamentos e Brevo para e-mails. Alguns fornecedores podem tratar dados fora do Brasil, com salvaguardas contratuais e medidas compatíveis com a LGPD.',
         ],
       },
       {

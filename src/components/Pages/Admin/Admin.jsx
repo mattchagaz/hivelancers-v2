@@ -9,6 +9,8 @@ import {
   FaFileInvoiceDollar,
   FaGift,
   FaHeadset,
+  FaHeartPulse,
+  FaPix,
   FaDownload,
   FaLayerGroup,
   FaMagnifyingGlass,
@@ -106,6 +108,8 @@ import FinanceTab from './tabs/FinanceTab';
 import DisputesTab from './tabs/DisputesTab';
 import SupportTab from './tabs/SupportTab';
 import AuditTab from './tabs/AuditTab';
+import SystemHealthTab from './tabs/SystemHealthTab';
+import PixSimulatorTab from './tabs/PixSimulatorTab';
 
 const tabs = [
   { id: 'overview', label: 'Visão geral', icon: FaArrowTrendUp },
@@ -115,8 +119,10 @@ const tabs = [
   { id: 'taxonomy', label: 'Taxonomia', icon: FaTags },
   { id: 'users', label: 'Usuários', icon: FaUsers },
   { id: 'finance', label: 'Financeiro', icon: FaFileInvoiceDollar },
+  { id: 'pix-simulator', label: 'Simular Pix', icon: FaPix },
   { id: 'disputes', label: 'Disputas', icon: FaTriangleExclamation },
   { id: 'support', label: 'Suporte', icon: FaHeadset },
+  { id: 'health', label: 'Saúde do sistema', icon: FaHeartPulse },
   { id: 'audit', label: 'Auditoria', icon: FaShieldHalved },
 ];
 
@@ -1427,9 +1433,13 @@ function Admin() {
 
         {activeTab === 'finance' && <FinanceTab />}
 
+        {activeTab === 'pix-simulator' && <PixSimulatorTab />}
+
         {activeTab === 'disputes' && <DisputesTab />}
 
         {activeTab === 'support' && <SupportTab />}
+
+        {activeTab === 'health' && <SystemHealthTab />}
 
         {activeTab === 'audit' && <AuditTab />}
 

@@ -39,6 +39,33 @@ export const createProjectCheckoutSession = async (payload) => {
   }
 };
 
+export const getCheckoutOptions = async (params) => {
+  try {
+    const { data } = await api.get('/payments/checkout-options', { params });
+    return data;
+  } catch (error) {
+    throw new Error(extractMessage(error, 'Não foi possível consultar as formas de pagamento.'));
+  }
+};
+
+export const getMyPixPayoutAccount = async () => {
+  try {
+    const { data } = await api.get('/payments/me/pix-payout-account');
+    return data;
+  } catch (error) {
+    throw new Error(extractMessage(error, 'Não foi possível carregar sua chave Pix.'));
+  }
+};
+
+export const saveMyPixPayoutAccount = async (payload) => {
+  try {
+    const { data } = await api.put('/payments/me/pix-payout-account', payload);
+    return data;
+  } catch (error) {
+    throw new Error(extractMessage(error, 'Não foi possível salvar sua chave Pix.'));
+  }
+};
+
 export const cancelCheckoutPayment = async (paymentId) => {
   try {
     const { data } = await api.post(`/payments/checkout-sessions/${paymentId}/cancel`);
@@ -153,5 +180,23 @@ export const retryAdminPaymentTransfer = async (paymentId) => {
     return data.payment;
   } catch (error) {
     throw new Error(extractMessage(error, 'Não foi possível reprocessar o repasse.'));
+  }
+};
+
+export const listAdminPixSandboxPayments = async () => {
+  try {
+    const { data } = await api.get('/payments/admin/pix-sandbox');
+    return data;
+  } catch (error) {
+    throw new Error(extractMessage(error, 'Não foi possível carregar as cobranças Pix de teste.'));
+  }
+};
+
+export const simulateAdminPixPayment = async (paymentId) => {
+  try {
+    const { data } = await api.post(`/payments/admin/payments/${paymentId}/simulate-pix`);
+    return data;
+  } catch (error) {
+    throw new Error(extractMessage(error, 'Não foi possível simular o pagamento Pix.'));
   }
 };

@@ -9,7 +9,19 @@ const extractMessage = (error, fallback) => {
   if (error?.response?.status === 404 && error?.config?.url?.includes('/admin/coupons')) {
     return 'A API de cupons não está disponível neste backend. Publique a versão atualizada do backend e tente novamente.';
   }
+  if (error?.response?.status === 404 && error?.config?.url?.includes('/admin/system-health')) {
+    return 'O diagnóstico do sistema ainda não está disponível neste backend. Publique a versão atualizada e tente novamente.';
+  }
   return data?.message || fallback;
+};
+
+export const getAdminSystemHealth = async () => {
+  try {
+    const { data } = await api.get('/admin/system-health');
+    return data;
+  } catch (error) {
+    throw new Error(extractMessage(error, 'Não foi possível verificar a saúde do sistema.'));
+  }
 };
 
 export const listAdminCoupons = async (params = {}) => {

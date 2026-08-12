@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
   FaArrowRight,
@@ -23,6 +23,8 @@ import {
   resumeCheckoutPayment,
 } from '../../../services/payments';
 import SpotlightCard from '../../UI/SpotlightCard/SpotlightCard';
+import PixPaymentPanel from '../Checkout/PixPaymentPanel';
+import checkoutStyles from '../Checkout/Checkout.module.css';
 import styles from './Finances.module.css';
 
 const ORDER_STATUS_LABEL = {
@@ -195,6 +197,7 @@ function MetricCard({ icon, label, value, detail, tone = 'blue' }) {
 
 function Finances() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const isFreelancer = user?.userType === 'FREELANCER';
 
   const [connectState, setConnectState] = useState({
@@ -206,6 +209,8 @@ function Finances() {
   const [loadingConnect, setLoadingConnect] = useState(isFreelancer);
   const [loadingOverview, setLoadingOverview] = useState(true);
   const [activeAction, setActiveAction] = useState('');
+  const [resumedPix, setResumedPix] = useState(null);
+  const [completedPixOrder, setCompletedPixOrder] = useState(null);
 
   const loadConnect = useCallback(async () => {
     if (!isFreelancer) return;
@@ -284,7 +289,13 @@ function Finances() {
     setActiveAction(`resume-${movement.id}`);
     try {
       const data = await resumeCheckoutPayment(movement.id);
-      if (!data.checkoutUrl) throw new Error('O link deste checkout não está mais disponível.');
+      if (data.pix && data.payment) {
+        setCompletedPixOrder(null);
+        setResumedPix(data);
+        setActiveAction('');
+        return;
+      }
+      if (!data.checkoutUrl) throw new Error('Este checkout não está mais disponível.');
       window.location.assign(data.checkoutUrl);
     } catch (error) {
       toast.error(error.message);
@@ -308,6 +319,74 @@ function Finances() {
   };
 
   const movements = overview?.movements || [];
+
+  if (completedPixOrder) {
+    const orderNumber = String(completedPixOrder.id || '').slice(-8).toUpperCase();
+
+    return (
+      <div className={checkoutStyles.successState}>
+        <div className={checkoutStyles.successIcon}>
+          <FaCircleCheck size={48} />
+        </div>
+        <h1 className={checkoutStyles.successTitle}>Pedido confirmado com sucesso!</h1>
+        <p className={checkoutStyles.successText}>
+          Seu pagamento via Pix foi confirmado e está protegido. Você pode continuar nesta tela e acessar o pedido quando quiser.
+        </p>
+
+        <div className={checkoutStyles.successGrid}>
+          <div className={checkoutStyles.successCard}>
+            <span className={checkoutStyles.successLabel}>Nº do Pedido</span>
+            <strong>#{orderNumber}</strong>
+          </div>
+          <div className={checkoutStyles.successCard}>
+            <span className={checkoutStyles.successLabel}>Status</span>
+            <strong className={checkoutStyles.statusProtected}>Valor Protegido</strong>
+          </div>
+          <div className={checkoutStyles.successCard}>
+            <span className={checkoutStyles.successLabel}>Próximo Passo</span>
+            <strong>Aguardando Aceite</strong>
+          </div>
+        </div>
+
+        <div className={checkoutStyles.successActions}>
+          <button
+            type="button"
+            className={checkoutStyles.primaryButton}
+            onClick={() => navigate(`/orders?id=${completedPixOrder.id}`)}
+          >
+            Acessar painel do pedido
+          </button>
+          <button
+            type="button"
+            className={checkoutStyles.secondaryButton}
+            onClick={() => {
+              setCompletedPixOrder(null);
+              loadOverview();
+            }}
+          >
+            Continuar no financeiro
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (resumedPix?.payment) {
+    return (
+      <PixPaymentPanel
+        initialPayment={resumedPix.payment}
+        pix={resumedPix.pix}
+        onOrderCreated={(order) => {
+          setCompletedPixOrder(order);
+          setResumedPix(null);
+        }}
+        onBack={() => {
+          setResumedPix(null);
+          loadOverview();
+        }}
+      />
+    );
+  }
 
   return (
     <div className={styles.page}>
@@ -606,7 +685,7 @@ function Finances() {
             [
               'Pagamento confirmado',
               formatPrice(isFreelancer ? summary.succeededCents : (summary.succeededChargedCents ?? summary.succeededCents)),
-              'Cliente pagou via Stripe',
+              'Cliente pagou via Stripe ou AbacatePay',
             ],
             ['Valor protegido', formatPrice(summary.heldCents), 'Aguardando aprovação final'],
             ['Repasse liberado', formatPrice(summary.transferredCents), 'Transferência feita ao freelancer'],
