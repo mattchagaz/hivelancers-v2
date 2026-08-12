@@ -65,6 +65,7 @@ function Messages() {
   const [lightboxUrl, setLightboxUrl] = useState(null);
 
   const messagesEndRef = useRef(null);
+  const messagesAreaRef = useRef(null);
   const inputRef = useRef(null);
   const fileInputRef = useRef(null);
   const activeIdRef = useRef(activeId);
@@ -74,7 +75,11 @@ function Messages() {
   const typingStaleTimeoutRef = useRef(null);
 
   const scrollToBottom = useCallback(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    window.requestAnimationFrame(() => {
+      const area = messagesAreaRef.current;
+      if (!area) return;
+      area.scrollTo({ top: area.scrollHeight, behavior: 'smooth' });
+    });
   }, []);
 
   useEffect(() => {
@@ -435,7 +440,7 @@ function Messages() {
       toast.error(err.message);
     } finally {
       setSending(false);
-      setTimeout(() => inputRef.current?.focus(), 0);
+      setTimeout(() => inputRef.current?.focus({ preventScroll: true }), 0);
     }
   };
 
@@ -570,6 +575,7 @@ function Messages() {
     findSenderName,
     setLightboxUrl,
     messagesEndRef,
+    messagesAreaRef,
     replyingTo,
     imagePreview,
     setImagePreview,

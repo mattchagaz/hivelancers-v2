@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, Outlet } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import Sidebar from './Sidebar/Sidebar';
@@ -8,7 +8,13 @@ import { isAdminUser, toRoleSlug } from '../../utils/authFlow';
 import styles from './AppLayout.module.css';
 
 function AppLayout() {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    try {
+      return window.localStorage.getItem('hivelancers:sidebar-collapsed') === 'true';
+    } catch {
+      return false;
+    }
+  });
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const { user } = useAuth();
 
@@ -25,6 +31,14 @@ function AppLayout() {
   };
 
   const closeMobileSidebar = () => setMobileSidebarOpen(false);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem('hivelancers:sidebar-collapsed', String(sidebarCollapsed));
+    } catch {
+      // A navegação continua funcionando mesmo com armazenamento bloqueado.
+    }
+  }, [sidebarCollapsed]);
 
   return (
     <div className={styles.layout}>

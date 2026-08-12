@@ -28,6 +28,7 @@ export default function ChatPanel() {
     findSenderName,
     setLightboxUrl,
     messagesEndRef,
+    messagesAreaRef,
     replyingTo,
     imagePreview,
     setImagePreview,
@@ -39,6 +40,8 @@ export default function ChatPanel() {
     handleTextChange,
     sending,
   } = useMessages();
+
+  const isOtherOnline = Boolean(activeConversation?.online || otherUser?.online);
 
   return (
     <div className={`${styles.chat} ${mobileShowChat ? styles.chatVisible : ''}`}>
@@ -76,9 +79,9 @@ export default function ChatPanel() {
                 <span className={styles.chatUserName}>{otherName || 'Usuário'}</span>
               )}
               <div className={styles.chatHeaderMeta}>
-                <span className={`${styles.chatUserStatus} ${isOtherTyping ? styles.chatUserTyping : ''}`}>
+                <span className={`${styles.chatUserStatus} ${isOtherOnline ? styles.chatUserOnline : ''} ${isOtherTyping ? styles.chatUserTyping : ''}`}>
                   <FaCircle />
-                  {isOtherTyping ? 'Digitando...' : activeConversation?.online || otherUser?.online ? 'Online' : 'Offline'}
+                  {isOtherTyping ? 'Digitando...' : isOtherOnline ? 'Online' : 'Offline'}
                 </span>
                 {activeConversation?.updatedAt ? (
                   <span className={styles.chatUpdatedAt}>
@@ -109,7 +112,7 @@ export default function ChatPanel() {
           </div>
 
           {/* Messages */}
-          <div className={styles.messagesArea}>
+          <div className={styles.messagesArea} ref={messagesAreaRef}>
             {loadingMsgs ? (
               <div className={styles.loadingState}>Carregando mensagens...</div>
             ) : messages.length === 0 ? (
@@ -120,7 +123,7 @@ export default function ChatPanel() {
                 title="Conversa pronta"
                 description={`Envie a primeira mensagem para ${otherName || 'este contato'}.`}
                 actionLabel="Escrever mensagem"
-                actionOnClick={() => inputRef.current?.focus()}
+                actionOnClick={() => inputRef.current?.focus({ preventScroll: true })}
               />
             ) : (
               groupedMessages.map((group) => (
@@ -135,7 +138,7 @@ export default function ChatPanel() {
                           {/* Action buttons */}
                           {!isDeleted && (
                             <div className={`${styles.msgActions} ${isMine ? styles.msgActionsMine : ''}`}>
-                              <button className={styles.msgActionBtn} title="Responder" onClick={() => { setReplyingTo(msg); setTimeout(() => inputRef.current?.focus(), 0); }}>
+                              <button className={styles.msgActionBtn} title="Responder" onClick={() => { setReplyingTo(msg); setTimeout(() => inputRef.current?.focus({ preventScroll: true }), 0); }}>
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                   <polyline points="9 17 4 12 9 7" />
                                   <path d="M20 18v-2a4 4 0 00-4-4H4" />

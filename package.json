@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:vps": "vite --mode vps-staging",
     "build": "vite build",
+    "build:vps": "vite build --mode vps-staging",
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",

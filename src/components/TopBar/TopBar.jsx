@@ -5,10 +5,13 @@ import { useAuth } from '../../contexts/authContextStore';
 import { useSettings } from '../../contexts/SettingsContext';
 import {
   archiveNotifications,
+  getNotificationStorageKeys,
   loadNotificationFeed,
   markAllNotificationsRead as persistAllNotificationsRead,
   markNotificationRead as persistNotificationRead,
+  readStoredNotificationIds,
   shouldAlertForNotification,
+  writeStoredNotificationIds,
 } from '../../services/notifications';
 import { connectSocket, getSocket } from '../../services/socket';
 import { getPublicProfilePath } from '../../utils/profileEnhancements';
@@ -148,9 +151,23 @@ function TopBar({ userName = '', userRole = 'freelancer', avatarUrl = '', onMenu
       }
 
       knownNotificationIdsRef.current = currentIds;
+      const storageKeys = getNotificationStorageKeys(user.id);
+      const storedReadIds = readStoredNotificationIds(storageKeys.read);
+      const storedClearedIds = readStoredNotificationIds(storageKeys.cleared);
+      const nextReadIds = [...new Set([
+        ...storedReadIds,
+        ...history.filter((item) => item.readAt).map((item) => item.id),
+      ])];
+      const nextClearedIds = [...new Set([
+        ...storedClearedIds,
+        ...history.filter((item) => item.archivedAt).map((item) => item.id),
+      ])];
+
       setNotifications(live.slice(0, 14));
-      setReadNotificationIds(history.filter((item) => item.readAt).map((item) => item.id));
-      setClearedNotificationIds(history.filter((item) => item.archivedAt).map((item) => item.id));
+      setReadNotificationIds(nextReadIds);
+      setClearedNotificationIds(nextClearedIds);
+      writeStoredNotificationIds(storageKeys.read, nextReadIds);
+      writeStoredNotificationIds(storageKeys.cleared, nextClearedIds);
     } finally {
       setNotificationsLoading(false);
     }
@@ -210,7 +227,9 @@ function TopBar({ userName = '', userRole = 'freelancer', avatarUrl = '', onMenu
 
   const markNotificationRead = async (id) => {
     if (!id || readNotificationIds.includes(id)) return;
-    setReadNotificationIds([...readNotificationIds, id]);
+    const nextReadIds = [...new Set([...readNotificationIds, id])];
+    setReadNotificationIds(nextReadIds);
+    writeStoredNotificationIds(getNotificationStorageKeys(user?.id).read, nextReadIds);
     try {
       await persistNotificationRead(id);
     } catch {
@@ -219,7 +238,9 @@ function TopBar({ userName = '', userRole = 'freelancer', avatarUrl = '', onMenu
   };
 
   const markAllNotificationsRead = async () => {
-    setReadNotificationIds([...new Set([...readNotificationIds, ...visibleNotifications.map((item) => item.id)])]);
+    const nextReadIds = [...new Set([...readNotificationIds, ...visibleNotifications.map((item) => item.id)])];
+    setReadNotificationIds(nextReadIds);
+    writeStoredNotificationIds(getNotificationStorageKeys(user?.id).read, nextReadIds);
     try {
       await persistAllNotificationsRead();
     } catch {
@@ -230,12 +251,27 @@ function TopBar({ userName = '', userRole = 'freelancer', avatarUrl = '', onMenu
   const clearNotifications = async () => {
     if (visibleNotifications.length === 0) return;
     const visibleIds = visibleNotifications.map((item) => item.id);
-    setReadNotificationIds([...new Set([...readNotificationIds, ...visibleIds])]);
-    setClearedNotificationIds([...new Set([...clearedNotificationIds, ...visibleIds])]);
+    const previousReadIds = readNotificationIds;
+    const previousClearedIds = clearedNotificationIds;
+    const nextReadIds = [...new Set([...previousReadIds, ...visibleIds])];
+    const nextClearedIds = [...new Set([...previousClearedIds, ...visibleIds])];
+    const storageKeys = getNotificationStorageKeys(user?.id);
+
+    setReadNotificationIds(nextReadIds);
+    setClearedNotificationIds(nextClearedIds);
+    writeStoredNotificationIds(storageKeys.read, nextReadIds);
+    writeStoredNotificationIds(storageKeys.cleared, nextClearedIds);
     try {
-      await archiveNotifications(visibleIds);
+      // O dropdown exibe apenas as notificações mais recentes. Sem os IDs,
+      // o backend arquiva toda a caixa ativa para que itens antigos não
+      // ocupem o lugar do lote que acabou de ser limpo.
+      await archiveNotifications();
       toast.success('Notificações limpas.');
     } catch (error) {
+      setReadNotificationIds(previousReadIds);
+      setClearedNotificationIds(previousClearedIds);
+      writeStoredNotificationIds(storageKeys.read, previousReadIds);
+      writeStoredNotificationIds(storageKeys.cleared, previousClearedIds);
       toast.error(error.message || 'Não foi possível limpar as notificações.');
       loadNotifications();
     }

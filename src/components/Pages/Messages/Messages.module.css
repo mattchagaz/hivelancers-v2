@@ -463,6 +463,10 @@
 }
 
 .chatUserStatus svg {
+  color: var(--text-muted, #a0a0ab);
+}
+
+.chatUserOnline svg {
   color: #16a34a;
 }
 
@@ -471,6 +475,10 @@
 }
 
 .chatUserTyping {
+  color: var(--primary-color, #3e73e6);
+}
+
+.chatUserTyping svg {
   color: var(--primary-color, #3e73e6);
 }
 
