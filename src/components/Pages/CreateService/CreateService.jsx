@@ -532,7 +532,7 @@ function CreateService() {
             Todo serviço publicado precisa estar pronto para receber pedidos. Seus repasses são feitos via Pix, então precisamos de uma chave ativa antes de publicar — assim nenhum cliente encontra uma oferta que não pode ser contratada e você não perde oportunidades.
           </p>
           <div className={styles.stripeGateChecklist}>
-            <span><strong>1</strong> Abra Configurações → Faturamento</span>
+            <span><strong>1</strong> Abra Configurações → Pagamentos</span>
             <span><strong>2</strong> Informe sua chave Pix (CPF, e-mail, telefone ou aleatória)</span>
             <span><strong>3</strong> Volte e publique seu serviço</span>
           </div>
