@@ -15,6 +15,7 @@ import {
 } from '../../../../services/orders';
 import {
   DISPUTE_REASON_LABEL,
+  EARLY_TERMINAL_STATUSES,
   EVENT_LABEL,
   MOBILE_STAGE_LABELS,
   ORDER_STAGES,
@@ -22,6 +23,7 @@ import {
   formatDateTime,
   formatPrice,
   formatRelativeDate,
+  getEarlyTerminationNote,
   getEventDescription,
   getName,
   getNextActionCopy,
@@ -123,25 +125,29 @@ export default function OrderDetail() {
                 })}
               </div>
 
-              <div className={styles.mobileStepper}>
-                {ORDER_STAGES.map((stage, index) => {
-                  const state = getOrderStageState(selectedOrder.status, stage.key);
+              {EARLY_TERMINAL_STATUSES.includes(selectedOrder.status) ? (
+                <p className={styles.mobileStepperNote}>{getEarlyTerminationNote(selectedOrder.status)}</p>
+              ) : (
+                <div className={styles.mobileStepper}>
+                  {ORDER_STAGES.map((stage, index) => {
+                    const state = getOrderStageState(selectedOrder.status, stage.key);
 
-                  return (
-                    <div key={stage.key} className={styles.mobileStep}>
-                      <div className={styles.mobileStepLine}>
-                        <span className={`${styles.mobileStepDot} ${styles[`mobileStepDot${state}`]}`} />
-                        {index < ORDER_STAGES.length - 1 && (
-                          <span className={`${styles.mobileStepConnector} ${styles[`mobileStepConnector${state}`]}`} />
-                        )}
+                    return (
+                      <div key={stage.key} className={styles.mobileStep}>
+                        <div className={styles.mobileStepLine}>
+                          <span className={`${styles.mobileStepDot} ${styles[`mobileStepDot${state}`]}`} />
+                          {index < ORDER_STAGES.length - 1 && (
+                            <span className={`${styles.mobileStepConnector} ${styles[`mobileStepConnector${state}`]}`} />
+                          )}
+                        </div>
+                        <span className={`${styles.mobileStepLabel} ${styles[`mobileStepLabel${state}`]}`}>
+                          {MOBILE_STAGE_LABELS[stage.key]}
+                        </span>
                       </div>
-                      <span className={`${styles.mobileStepLabel} ${styles[`mobileStepLabel${state}`]}`}>
-                        {MOBILE_STAGE_LABELS[stage.key]}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             <div className={styles.detailHeroSide}>

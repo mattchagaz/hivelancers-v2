@@ -4,12 +4,14 @@ import styles from '../Orders.module.css';
 import EmptyState from '../../../UI/EmptyState/EmptyState';
 import UserAvatar from '../UserAvatar';
 import {
+  EARLY_TERMINAL_STATUSES,
   MOBILE_STAGE_LABELS,
   MOBILE_STATUS_LABEL,
   ORDER_STAGES,
   STATUS_LABEL,
   formatPrice,
   formatRelativeDate,
+  getEarlyTerminationNote,
   getFlowProgress,
   getName,
   getOrderCounterparty,
@@ -54,24 +56,28 @@ function MobileOrderCard({ order, active, onOpen, user }) {
         {getName(otherUser)} · {formatPrice(order.priceCents)}
       </p>
 
-      <div className={styles.mobileStepper}>
-        {ORDER_STAGES.map((stage, index) => {
-          const state = getOrderStageState(order.status, stage.key);
-          return (
-            <div key={stage.key} className={styles.mobileStep}>
-              <div className={styles.mobileStepLine}>
-                <span className={`${styles.mobileStepDot} ${styles[`mobileStepDot${state}`]}`} />
-                {index < ORDER_STAGES.length - 1 && (
-                  <span className={`${styles.mobileStepConnector} ${styles[`mobileStepConnector${state}`]}`} />
-                )}
+      {EARLY_TERMINAL_STATUSES.includes(order.status) ? (
+        <p className={styles.mobileStepperNote}>{getEarlyTerminationNote(order.status)}</p>
+      ) : (
+        <div className={styles.mobileStepper}>
+          {ORDER_STAGES.map((stage, index) => {
+            const state = getOrderStageState(order.status, stage.key);
+            return (
+              <div key={stage.key} className={styles.mobileStep}>
+                <div className={styles.mobileStepLine}>
+                  <span className={`${styles.mobileStepDot} ${styles[`mobileStepDot${state}`]}`} />
+                  {index < ORDER_STAGES.length - 1 && (
+                    <span className={`${styles.mobileStepConnector} ${styles[`mobileStepConnector${state}`]}`} />
+                  )}
+                </div>
+                <span className={`${styles.mobileStepLabel} ${styles[`mobileStepLabel${state}`]}`}>
+                  {MOBILE_STAGE_LABELS[stage.key]}
+                </span>
               </div>
-              <span className={`${styles.mobileStepLabel} ${styles[`mobileStepLabel${state}`]}`}>
-                {MOBILE_STAGE_LABELS[stage.key]}
-              </span>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
 
       {order.conversationId && (
         <button type="button" className={styles.mobileConvoButton} onClick={handleOpenConversation}>

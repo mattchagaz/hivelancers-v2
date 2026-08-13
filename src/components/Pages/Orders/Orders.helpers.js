@@ -73,6 +73,16 @@ export const MOBILE_STAGE_LABELS = {
 
 export const MOBILE_ONGOING_STATUSES = ['PENDING', 'IN_PROGRESS', 'DELIVERED', 'DISPUTED'];
 
+// Pedidos recusados/cancelados sempre terminam ainda em PENDING (antes da
+// produção começar) — mostrar o stepper de 4 etapas nesses casos parece uma
+// barra travada, então trocamos por uma nota curta.
+export const EARLY_TERMINAL_STATUSES = ['REJECTED', 'CANCELED'];
+
+export const getEarlyTerminationNote = (status) =>
+  status === 'REJECTED'
+    ? 'Pedido recusado antes do início da produção.'
+    : 'Pedido cancelado antes do início da produção.';
+
 export const formatPrice = (cents) =>
   new Intl.NumberFormat('pt-BR', {
     style: 'currency',

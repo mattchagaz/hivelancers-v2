@@ -13,7 +13,8 @@
 .mobileHeader,
 .mobileTabs,
 .mobileOrderList,
-.mobileStepper {
+.mobileStepper,
+.mobileStepperNote {
   display: none;
 }
 
@@ -1437,6 +1438,18 @@
   .mobileStepLabelCurrent {
     color: var(--text-primary, #1a1a2e);
     font-weight: 850;
+  }
+
+  .mobileStepperNote {
+    display: block;
+    margin: 4px 0 0;
+    padding: 10px 12px;
+    border: 1px solid var(--border-color, #e8e8ef);
+    border-radius: 12px;
+    background: var(--bg-secondary, #f5f6fa);
+    color: var(--text-secondary, #6c6d72);
+    font-size: 0.78rem;
+    font-weight: 700;
   }
 
   .mobileConvoButton {
