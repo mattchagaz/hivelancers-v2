@@ -3,6 +3,7 @@ import { Link, Outlet } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import Sidebar from './Sidebar/Sidebar';
 import TopBar from '../TopBar/TopBar';
+import BottomTabBar from './BottomTabBar/BottomTabBar';
 import { useAuth } from '../../contexts/authContextStore';
 import { isAdminUser, toRoleSlug } from '../../utils/authFlow';
 import styles from './AppLayout.module.css';
@@ -71,6 +72,8 @@ function AppLayout() {
           </nav>
         </footer>
       </div>
+
+      <BottomTabBar userRole={userRole} />
 
       <Toaster position="top-center" richColors />
     </div>

@@ -1,7 +1,12 @@
-import { Link } from 'react-router-dom';
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import { FaArrowRight, FaCircleCheck } from 'react-icons/fa6';
 import { SERVICE_GRADIENTS } from '../../../data/services';
 import { CategoryIcon } from '../../../utils/categoryIcons';
+import { useAuth } from '../../../contexts/authContextStore';
+import { updateUserType } from '../../../services/users';
+import { toUserType } from '../../../utils/authFlow';
 import CategoryCarousel from '../../UI/CategoryCarousel/CategoryCarousel';
 import SpotlightCard from '../../UI/SpotlightCard/SpotlightCard';
 import styles from './Dashboard.module.css';
@@ -348,6 +353,162 @@ export function LoadingRows({ count = 4 }) {
           </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+/* ===== Home mobile ===== */
+
+export function MobileGreeting({ name }) {
+  return (
+    <div className={styles.mobileGreeting}>
+      <span>Seja bem-vindo de volta,</span>
+      <strong>{name}</strong>
+    </div>
+  );
+}
+
+export function MobileSearchBar({ placeholder = 'Buscar serviços...' }) {
+  const navigate = useNavigate();
+  const [query, setQuery] = useState('');
+
+  const handleSubmit = (event) => {
+    event.preventDefault();
+    const trimmed = query.trim();
+    navigate(trimmed ? `/explore?q=${encodeURIComponent(trimmed)}` : '/explore');
+  };
+
+  return (
+    <form className={styles.mobileSearch} onSubmit={handleSubmit}>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+        <circle cx="11" cy="11" r="8" />
+        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+      </svg>
+      <input
+        type="text"
+        value={query}
+        onChange={(event) => setQuery(event.target.value)}
+        placeholder={placeholder}
+      />
+    </form>
+  );
+}
+
+export function RoleModeToggle({ userRole }) {
+  const { setUser } = useAuth();
+  const [switching, setSwitching] = useState(false);
+
+  const switchTo = async (nextRole) => {
+    if (nextRole === userRole || switching) return;
+    setSwitching(true);
+    try {
+      const updated = await updateUserType(toUserType(nextRole));
+      setUser(updated);
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setSwitching(false);
+    }
+  };
+
+  return (
+    <div className={styles.roleToggle} role="tablist" aria-label="Modo de uso">
+      <button
+        type="button"
+        role="tab"
+        aria-selected={userRole === 'client'}
+        className={`${styles.roleToggleBtn} ${userRole === 'client' ? styles.roleToggleActive : ''}`}
+        onClick={() => switchTo('client')}
+        disabled={switching}
+      >
+        Cliente
+      </button>
+      <button
+        type="button"
+        role="tab"
+        aria-selected={userRole === 'freelancer'}
+        className={`${styles.roleToggleBtn} ${userRole === 'freelancer' ? styles.roleToggleActive : ''}`}
+        onClick={() => switchTo('freelancer')}
+        disabled={switching}
+      >
+        Freelancer
+      </button>
+    </div>
+  );
+}
+
+export function MobileHighlightOrder({ order, mode, statusText }) {
+  return (
+    <Link to={`/orders?id=${order.id}`} className={styles.highlightCard}>
+      <div className={styles.highlightTop}>
+        <span className={styles.highlightEyebrow}>{ORDER_STATUS_LABEL[order.status] || 'Em andamento'}</span>
+        <span className={styles.highlightMeta}>Entrega em {order.deliveryDays || 1} dia{Number(order.deliveryDays || 1) > 1 ? 's' : ''}</span>
+      </div>
+      <strong className={styles.highlightTitle}>{getOrderTitle(order)}</strong>
+
+      <div className={styles.highlightProgress}>
+        {ORDER_STAGES.map((stage) => {
+          const state = getStageState(order.status, stage.key);
+          return <span key={stage.key} className={`${styles.highlightBar} ${styles[`timeline_${state}`]}`} />;
+        })}
+      </div>
+
+      <div className={styles.highlightFooter}>
+        <span>{statusText || `${mode === 'seller' ? 'Cliente' : 'Freelancer'}: ${getOrderPerson(order, mode)}`}</span>
+        <span className={styles.highlightAction}>Abrir</span>
+      </div>
+    </Link>
+  );
+}
+
+export function MobileServiceList({ services, editable = false }) {
+  return (
+    <div className={styles.mobileServiceList}>
+      {services.map((service, index) => {
+        const price = service.plans?.[0]?.priceCents ?? service.minPriceCents ?? 0;
+        const href = editable ? `/services/${service.id}/edit` : `/services/${service.id}`;
+        return (
+          <Link key={service.id} to={href} className={styles.mobileServiceCard}>
+            <div
+              className={styles.mobileServiceThumb}
+              style={
+                service.coverUrl
+                  ? { background: `url(${service.coverUrl}) center/cover` }
+                  : { background: SERVICE_GRADIENTS[index % SERVICE_GRADIENTS.length] }
+              }
+            />
+            <div className={styles.mobileServiceBody}>
+              <span>{service.category?.name || 'Serviço'}</span>
+              <strong>{service.title}</strong>
+              <p>a partir de {formatPriceBRL(price)} · {service.deliveryDays || service.plans?.[0]?.deliveryDays || 3} dias</p>
+            </div>
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
+
+export function MobileStatRow({ items }) {
+  return (
+    <div className={styles.mobileStatRow}>
+      {items.map((item) => (
+        <div key={item.label} className={styles.mobileStatTile}>
+          <span>{item.label}</span>
+          <strong>{item.value}</strong>
+          {item.detail ? <small>{item.detail}</small> : null}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function MobileAlertCard({ eyebrow, title, actionLabel, actionTo }) {
+  return (
+    <div className={styles.mobileAlertCard}>
+      <span className={styles.highlightEyebrow}>{eyebrow}</span>
+      <strong>{title}</strong>
+      <Link to={actionTo} className={styles.mobileAlertBtn}>{actionLabel}</Link>
     </div>
   );
 }

@@ -9,7 +9,7 @@ import { getMyFavorites } from '../../../services/users';
 import { getFeaturedProject } from '../../../utils/profileEnhancements';
 import styles from './Dashboard.module.css';
 import { ACTIVE_ORDER_STATUSES } from './Dashboard.helpers';
-import { CategoryStrip, ConversationStack, DashboardHero, EmptyBlock, FreelancerShortlist, LoadingRows, OrderStack, Panel, PriorityList, QuickActions, SavedServices, ServiceShowcase, StatGrid } from './Dashboard.ui';
+import { CategoryStrip, ConversationStack, DashboardHero, EmptyBlock, FreelancerShortlist, LoadingRows, MobileGreeting, MobileHighlightOrder, MobileSearchBar, MobileServiceList, OrderStack, Panel, PriorityList, QuickActions, RoleModeToggle, SavedServices, ServiceShowcase, StatGrid } from './Dashboard.ui';
 
 export default function ClientDashboard() {
   const { user } = useAuth();
@@ -125,6 +125,37 @@ export default function ClientDashboard() {
 
   return (
     <div className={styles.page}>
+      <div className={styles.mobileHome}>
+        <MobileGreeting name={user?.firstName || 'cliente'} />
+        <RoleModeToggle userRole="client" />
+        <MobileSearchBar />
+
+        <Panel title="Categorias" actionLabel="Ver tudo" actionTo="/explore">
+          {marketCategories.length ? <CategoryStrip categories={marketCategories} /> : null}
+        </Panel>
+
+        {loading ? (
+          <LoadingRows count={1} />
+        ) : orderPreview.length ? (
+          <MobileHighlightOrder order={orderPreview[0]} mode="buyer" />
+        ) : null}
+
+        <Panel title="Recomendados para você" actionLabel="Ver tudo" actionTo="/explore">
+          {loading ? (
+            <LoadingRows count={3} />
+          ) : featuredServices.length ? (
+            <MobileServiceList services={featuredServices.slice(0, 5)} />
+          ) : (
+            <EmptyBlock
+              icon={<FaShop />}
+              title="Sem serviços publicados no momento"
+              description="Quando freelancers publicarem novas ofertas, elas aparecem aqui."
+            />
+          )}
+        </Panel>
+      </div>
+
+      <div className={styles.desktopHome}>
       <DashboardHero
         eyebrow="Painel do cliente"
         title={`Organize suas contratações, ${user?.firstName || 'cliente'}`}
@@ -261,6 +292,7 @@ export default function ClientDashboard() {
             <PriorityList items={priorities} />
           </Panel>
         </aside>
+      </div>
       </div>
     </div>
   );

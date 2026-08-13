@@ -285,13 +285,6 @@ function TopBar({ userName = '', userRole = 'freelancer', avatarUrl = '', onMenu
     setSearchFocused(false);
   };
 
-  const getGreeting = () => {
-    const h = new Date().getHours();
-    if (h < 12) return 'Bom dia';
-    if (h < 18) return 'Boa tarde';
-    return 'Boa noite';
-  };
-
   const displayName = userName || 'Usuário';
   const initials = displayName.split(' ').map((n) => n[0]).filter(Boolean).join('').slice(0, 2).toUpperCase();
   const firstName = displayName.split(' ')[0];
@@ -321,7 +314,7 @@ function TopBar({ userName = '', userRole = 'freelancer', avatarUrl = '', onMenu
 
       <div className={styles.greeting}>
         <h1 className={styles.greetText}>
-          {getGreeting()}, <span className={styles.greetName}>{firstName}</span>
+          Seja bem-vindo de volta, <span className={styles.greetName}>{firstName}</span>
         </h1>
         <p className={styles.greetSub}>{panelLabel}</p>
       </div>

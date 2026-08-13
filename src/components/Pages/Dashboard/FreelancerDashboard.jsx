@@ -6,8 +6,8 @@ import { listMyServices } from '../../../services/services';
 import { listOrders } from '../../../services/orders';
 import { listConversations } from '../../../services/messages';
 import styles from './Dashboard.module.css';
-import { ACTIVE_ORDER_STATUSES, formatPriceBRL } from './Dashboard.helpers';
-import { ConversationStack, DashboardHero, EmptyBlock, LoadingRows, OrderStack, Panel, PriorityList, QuickActions, ServiceStack, SignalList, StatGrid } from './Dashboard.ui';
+import { ACTIVE_ORDER_STATUSES, formatPriceBRL, getFullName, getOrderTitle } from './Dashboard.helpers';
+import { ConversationStack, DashboardHero, EmptyBlock, LoadingRows, MobileAlertCard, MobileGreeting, MobileSearchBar, MobileServiceList, MobileStatRow, OrderStack, Panel, PriorityList, QuickActions, RoleModeToggle, ServiceStack, SignalList, StatGrid } from './Dashboard.ui';
 
 export default function FreelancerDashboard() {
   const { user } = useAuth();
@@ -75,6 +75,11 @@ export default function FreelancerDashboard() {
     [myServices]
   );
 
+  const receivableTotal = useMemo(
+    () => activeOrders.reduce((sum, order) => sum + Number(order.priceCents || 0), 0),
+    [activeOrders]
+  );
+
   const metrics = [
     {
       label: 'Pedidos ativos',
@@ -124,6 +129,45 @@ export default function FreelancerDashboard() {
 
   return (
     <div className={styles.page}>
+      <div className={styles.mobileHome}>
+        <MobileGreeting name={user?.firstName || 'freelancer'} />
+        <RoleModeToggle userRole="freelancer" />
+        <MobileSearchBar />
+
+        <MobileStatRow
+          items={[
+            { label: 'A receber', value: loading ? '...' : formatPriceBRL(receivableTotal), detail: `${activeOrders.length} pedido${activeOrders.length !== 1 ? 's' : ''} ativo${activeOrders.length !== 1 ? 's' : ''}` },
+            { label: 'Em revisão', value: loading ? '...' : reviewOrders.length, detail: reviewOrders.length ? 'aguardando aprovação' : 'fila limpa' },
+          ]}
+        />
+
+        {!loading && pendingOrders.length ? (
+          <MobileAlertCard
+            eyebrow="Novo pedido"
+            title={`${getFullName(pendingOrders[0].client)} fez um pedido: ${getOrderTitle(pendingOrders[0])}`}
+            actionLabel="Responder"
+            actionTo={`/orders?id=${pendingOrders[0].id}`}
+          />
+        ) : null}
+
+        <Panel title="Seus serviços publicados" actionLabel="Ver tudo" actionTo="/services">
+          {loading ? (
+            <LoadingRows count={3} />
+          ) : myServices.length ? (
+            <MobileServiceList services={myServices.slice(0, 5)} editable />
+          ) : (
+            <EmptyBlock
+              icon={<FaFolderOpen />}
+              title="Publique seu primeiro serviço"
+              description="Serviços bem estruturados deixam sua oferta mais fácil de contratar."
+              actionLabel="Criar serviço"
+              actionTo="/services/new"
+            />
+          )}
+        </Panel>
+      </div>
+
+      <div className={styles.desktopHome}>
       <DashboardHero
         eyebrow="Painel do freelancer"
         title={`Bom te ver, ${user?.firstName || 'freelancer'}`}
@@ -235,6 +279,7 @@ export default function FreelancerDashboard() {
             <PriorityList items={priorities} />
           </Panel>
         </aside>
+      </div>
       </div>
     </div>
   );
