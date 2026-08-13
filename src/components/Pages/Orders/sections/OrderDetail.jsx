@@ -16,6 +16,7 @@ import {
 import {
   DISPUTE_REASON_LABEL,
   EVENT_LABEL,
+  MOBILE_STAGE_LABELS,
   ORDER_STAGES,
   STATUS_LABEL,
   formatDateTime,
@@ -116,6 +117,26 @@ export default function OrderDetail() {
                       <div className={`${styles.progressDot} ${styles[`progress${state}`]}`} />
                       <span className={`${styles.progressLabel} ${styles[`progressLabel${state}`]}`}>
                         {stage.label}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className={styles.mobileStepper}>
+                {ORDER_STAGES.map((stage, index) => {
+                  const state = getOrderStageState(selectedOrder.status, stage.key);
+
+                  return (
+                    <div key={stage.key} className={styles.mobileStep}>
+                      <div className={styles.mobileStepLine}>
+                        <span className={`${styles.mobileStepDot} ${styles[`mobileStepDot${state}`]}`} />
+                        {index < ORDER_STAGES.length - 1 && (
+                          <span className={`${styles.mobileStepConnector} ${styles[`mobileStepConnector${state}`]}`} />
+                        )}
+                      </div>
+                      <span className={`${styles.mobileStepLabel} ${styles[`mobileStepLabel${state}`]}`}>
+                        {MOBILE_STAGE_LABELS[stage.key]}
                       </span>
                     </div>
                   );

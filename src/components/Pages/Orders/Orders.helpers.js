@@ -56,6 +56,23 @@ export const ORDER_STAGES = [
   { key: 'COMPLETED', label: 'Aprovação' },
 ];
 
+// Rótulos e agrupamento usados só no cartão de pedido mobile — mais
+// próximos da linguagem do cliente/freelancer no dia a dia do fluxo.
+export const MOBILE_STATUS_LABEL = {
+  ...STATUS_LABEL,
+  IN_PROGRESS: 'Em produção',
+  DELIVERED: 'Revisão',
+};
+
+export const MOBILE_STAGE_LABELS = {
+  PENDING: 'Briefing',
+  IN_PROGRESS: 'Produção',
+  DELIVERED: 'Revisão',
+  COMPLETED: 'Entrega',
+};
+
+export const MOBILE_ONGOING_STATUSES = ['PENDING', 'IN_PROGRESS', 'DELIVERED', 'DISPUTED'];
+
 export const formatPrice = (cents) =>
   new Intl.NumberFormat('pt-BR', {
     style: 'currency',

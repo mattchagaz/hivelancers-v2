@@ -8,6 +8,15 @@
   animation: fadeIn 0.28s ease;
 }
 
+/* Cabeçalho, tabs e cartões próprios do mobile — escondidos no desktop,
+   a versão desktop (hero/statGrid/orderList) fica intacta e some no mobile. */
+.mobileHeader,
+.mobileTabs,
+.mobileOrderList,
+.mobileStepper {
+  display: none;
+}
+
 .hero {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 320px;
@@ -1228,6 +1237,229 @@
   .primaryLink,
   .profileLink {
     width: 100%;
+  }
+}
+
+/* ===== Tela de pedidos no mobile: cabeçalho + tabs + cartões próprios,
+   a experiência desktop (hero, estatísticas, fila detalhada) some. ===== */
+@media (max-width: 768px) {
+  .hero,
+  .statGrid,
+  .panelHeader,
+  .listSummary,
+  .orderList,
+  .progressTrack {
+    display: none;
+  }
+
+  .page {
+    gap: 14px;
+  }
+
+  .infoGrid,
+  .decisionMetrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .mobileHeader {
+    display: block;
+    padding: 4px 2px 0;
+  }
+
+  .mobileHeader h1 {
+    margin: 0;
+    color: var(--text-primary, #1a1a2e);
+    font-size: 1.7rem;
+    font-weight: 900;
+  }
+
+  .mobileTabs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .mobileTab {
+    display: inline-flex;
+    min-height: 42px;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border-color, #e8e8ef);
+    border-radius: 14px;
+    background: var(--bg-primary, #fff);
+    color: var(--text-secondary, #6c6d72);
+    font-size: 0.9rem;
+    font-weight: 800;
+    transition: border-color 0.18s ease, background 0.18s ease, color 0.18s ease;
+  }
+
+  .mobileTabActive {
+    border-color: rgba(16, 185, 129, 0.4);
+    background: rgba(16, 185, 129, 0.12);
+    color: #047857;
+  }
+
+  .listPanel {
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+    gap: 12px;
+  }
+
+  .mobileOrderList {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .mobileOrderCard {
+    display: flex;
+    width: 100%;
+    flex-direction: column;
+    gap: 10px;
+    padding: 16px;
+    border: 1px solid var(--border-color, #e8e8ef);
+    border-radius: 20px;
+    background: var(--bg-primary, #fff);
+    box-shadow: 0 12px 30px rgba(var(--shadow-rgb, 15, 23, 42), 0.05);
+    text-align: left;
+    cursor: pointer;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+  }
+
+  .mobileOrderCard:active {
+    transform: scale(0.99);
+  }
+
+  .mobileOrderTop {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .mobileOrderTitle {
+    display: -webkit-box;
+    min-width: 0;
+    flex: 1;
+    color: var(--text-primary, #1a1a2e);
+    font-size: 0.96rem;
+    font-weight: 800;
+    line-height: 1.3;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .mobileStatusBadge {
+    display: inline-flex;
+    min-height: 26px;
+    flex-shrink: 0;
+    align-items: center;
+    padding: 0 10px;
+    border-radius: 999px;
+    font-size: 0.68rem;
+    font-weight: 850;
+    white-space: nowrap;
+  }
+
+  .mobileStatusBadge.statusPENDING { background: rgba(245, 158, 11, 0.16); color: #b45309; }
+  .mobileStatusBadge.statusIN_PROGRESS { background: rgba(16, 185, 129, 0.16); color: #047857; }
+  .mobileStatusBadge.statusDELIVERED { background: rgba(245, 158, 11, 0.16); color: #b45309; }
+  .mobileStatusBadge.statusCOMPLETED { background: rgba(16, 185, 129, 0.16); color: #047857; }
+  .mobileStatusBadge.statusDISPUTED,
+  .mobileStatusBadge.statusREJECTED,
+  .mobileStatusBadge.statusCANCELED { background: rgba(239, 68, 68, 0.16); color: #b91c1c; }
+
+  .mobileOrderMeta {
+    margin: 0;
+    color: var(--text-secondary, #6c6d72);
+    font-size: 0.82rem;
+  }
+
+  .mobileStepper {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 4px;
+    padding: 4px 0 2px;
+  }
+
+  .mobileStep {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .mobileStepLine {
+    display: flex;
+    width: 100%;
+    align-items: center;
+  }
+
+  .mobileStepDot {
+    width: 10px;
+    height: 10px;
+    flex-shrink: 0;
+    border: 2px solid var(--border-color, #e8e8ef);
+    border-radius: 50%;
+    background: var(--bg-primary, #fff);
+  }
+
+  .mobileStepDotDone,
+  .mobileStepDotCurrent {
+    border-color: #10b981;
+    background: #10b981;
+  }
+
+  .mobileStepConnector {
+    height: 2px;
+    flex: 1;
+    margin: 0 2px;
+    background: var(--border-color, #e8e8ef);
+  }
+
+  .mobileStepConnectorDone {
+    background: #10b981;
+  }
+
+  .mobileStepLabel {
+    color: var(--text-muted, #a0a0ab);
+    font-size: 0.62rem;
+    font-weight: 700;
+    text-align: center;
+  }
+
+  .mobileStepLabelDone,
+  .mobileStepLabelCurrent {
+    color: var(--text-primary, #1a1a2e);
+    font-weight: 850;
+  }
+
+  .mobileConvoButton {
+    display: inline-flex;
+    width: 100%;
+    min-height: 46px;
+    align-items: center;
+    justify-content: center;
+    margin-top: 2px;
+    border: 1px solid var(--border-color, #e8e8ef);
+    border-radius: 13px;
+    background: var(--bg-secondary, #f5f6fa);
+    color: var(--text-primary, #1a1a2e);
+    font-size: 0.88rem;
+    font-weight: 850;
+    transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+  }
+
+  .mobileConvoButton:hover,
+  .mobileConvoButton:active {
+    border-color: rgba(var(--primary-color-rgb, 62, 115, 230), 0.3);
+    background: rgba(var(--primary-color-rgb, 62, 115, 230), 0.08);
+    color: var(--primary-color, #3e73e6);
   }
 }
 

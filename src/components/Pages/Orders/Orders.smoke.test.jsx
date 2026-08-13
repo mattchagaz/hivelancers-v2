@@ -117,10 +117,13 @@ describe('Orders (smoke)', () => {
     renderOrders();
 
     await waitFor(() => {
-      expect(screen.getByText('Serviço X')).toBeInTheDocument();
+      expect(screen.getAllByText('Serviço X').length).toBeGreaterThan(0);
     });
 
-    fireEvent.click(screen.getByText('Serviço X'));
+    // A lista renderiza uma versão desktop e uma mobile do card (alternadas
+    // por CSS/media query); o jsdom não avalia CSS, então ambas existem no
+    // DOM — clicamos na primeira ocorrência (versão desktop).
+    fireEvent.click(screen.getAllByText('Serviço X')[0]);
 
     await waitFor(() => {
       expect(getOrder).toHaveBeenCalledWith('order-123456789');

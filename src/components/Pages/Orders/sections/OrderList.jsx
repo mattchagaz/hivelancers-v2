@@ -1,17 +1,86 @@
+import { useNavigate } from 'react-router-dom';
 import { FaInbox } from 'react-icons/fa6';
 import styles from '../Orders.module.css';
 import EmptyState from '../../../UI/EmptyState/EmptyState';
 import UserAvatar from '../UserAvatar';
 import {
+  MOBILE_STAGE_LABELS,
+  MOBILE_STATUS_LABEL,
+  ORDER_STAGES,
   STATUS_LABEL,
   formatPrice,
   formatRelativeDate,
   getFlowProgress,
   getName,
   getOrderCounterparty,
+  getOrderStageState,
   getStatusTone,
 } from '../Orders.helpers';
 import { useOrders } from '../OrdersContext';
+
+function MobileOrderCard({ order, active, onOpen, user }) {
+  const navigate = useNavigate();
+  const otherUser = getOrderCounterparty(order, user?.id);
+
+  const handleOpenConversation = (event) => {
+    event.stopPropagation();
+    if (order.conversationId) navigate(`/messages?chat=${order.conversationId}`);
+  };
+
+  const handleKeyDown = (event) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      onOpen(order.id);
+    }
+  };
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      className={`${styles.mobileOrderCard} ${active ? styles.orderCardActive : ''}`}
+      onClick={() => onOpen(order.id)}
+      onKeyDown={handleKeyDown}
+    >
+      <div className={styles.mobileOrderTop}>
+        <UserAvatar person={otherUser} className={`${styles.orderAvatar} ${styles[`avatar${getStatusTone(order.status)}`]}`} />
+        <strong className={styles.mobileOrderTitle}>{order.service?.title || order.planTitle}</strong>
+        <span className={`${styles.mobileStatusBadge} ${styles[`status${order.status}`]}`}>
+          {MOBILE_STATUS_LABEL[order.status] || STATUS_LABEL[order.status] || order.status}
+        </span>
+      </div>
+
+      <p className={styles.mobileOrderMeta}>
+        {getName(otherUser)} · {formatPrice(order.priceCents)}
+      </p>
+
+      <div className={styles.mobileStepper}>
+        {ORDER_STAGES.map((stage, index) => {
+          const state = getOrderStageState(order.status, stage.key);
+          return (
+            <div key={stage.key} className={styles.mobileStep}>
+              <div className={styles.mobileStepLine}>
+                <span className={`${styles.mobileStepDot} ${styles[`mobileStepDot${state}`]}`} />
+                {index < ORDER_STAGES.length - 1 && (
+                  <span className={`${styles.mobileStepConnector} ${styles[`mobileStepConnector${state}`]}`} />
+                )}
+              </div>
+              <span className={`${styles.mobileStepLabel} ${styles[`mobileStepLabel${state}`]}`}>
+                {MOBILE_STAGE_LABELS[stage.key]}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+
+      {order.conversationId && (
+        <button type="button" className={styles.mobileConvoButton} onClick={handleOpenConversation}>
+          Abrir conversa
+        </button>
+      )}
+    </div>
+  );
+}
 
 export default function OrderList() {
   const {
@@ -21,6 +90,8 @@ export default function OrderList() {
     selectedOrderId,
     user,
     handleOpenOrder,
+    mobileTab,
+    mobileOrders,
   } = useOrders();
 
   return (
@@ -100,6 +171,29 @@ export default function OrderList() {
               </button>
             );
           })
+        )}
+      </div>
+
+      <div className={styles.mobileOrderList}>
+        {loadingList && mobileOrders.length === 0 ? (
+          <div className={styles.emptyState}>Carregando pedidos...</div>
+        ) : mobileOrders.length === 0 ? (
+          <EmptyState
+            compact
+            icon={<FaInbox />}
+            title="Nenhum pedido encontrado"
+            description={mobileTab === 'active' ? 'Nenhum pedido em andamento no momento.' : 'Nenhum pedido concluído ainda.'}
+          />
+        ) : (
+          mobileOrders.map((order) => (
+            <MobileOrderCard
+              key={order.id}
+              order={order}
+              user={user}
+              active={order.id === selectedOrderId}
+              onOpen={handleOpenOrder}
+            />
+          ))
         )}
       </div>
     </section>

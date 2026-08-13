@@ -23,6 +23,7 @@ import {
   DISPUTE_REASON_LABEL,
   STATUS_OPTIONS,
   ORDER_STAGES,
+  MOBILE_ONGOING_STATUSES,
   formatPrice,
   toRoleValue,
   getOrderCounterparty,
@@ -42,6 +43,7 @@ function Orders() {
 
   const role = useMemo(() => toRoleValue(user?.userType), [user?.userType]);
   const [status, setStatus] = useState('');
+  const [mobileTab, setMobileTab] = useState('active');
   const [orders, setOrders] = useState([]);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [loadingList, setLoadingList] = useState(true);
@@ -259,6 +261,11 @@ function Orders() {
     return { pending, active, delivered, completed, completedValue };
   }, [orders]);
 
+  const mobileOrders = useMemo(
+    () => orders.filter((order) => MOBILE_ONGOING_STATUSES.includes(order.status) === (mobileTab === 'active')),
+    [orders, mobileTab]
+  );
+
   const statCards = [
     {
       label: 'Total filtrado',
@@ -299,6 +306,9 @@ function Orders() {
     user,
     handleOpenOrder,
     handleCloseOrder,
+    mobileTab,
+    setMobileTab,
+    mobileOrders,
     // detalhe
     loadingOrder,
     selectedOrder,
@@ -335,6 +345,27 @@ function Orders() {
   return (
     <OrdersContext.Provider value={ordersContextValue}>
     <div className={styles.page}>
+      <div className={styles.mobileHeader}>
+        <h1>Meus pedidos</h1>
+      </div>
+
+      <div className={styles.mobileTabs}>
+        <button
+          type="button"
+          className={`${styles.mobileTab} ${mobileTab === 'active' ? styles.mobileTabActive : ''}`}
+          onClick={() => setMobileTab('active')}
+        >
+          Em andamento
+        </button>
+        <button
+          type="button"
+          className={`${styles.mobileTab} ${mobileTab === 'completed' ? styles.mobileTabActive : ''}`}
+          onClick={() => setMobileTab('completed')}
+        >
+          Concluídos
+        </button>
+      </div>
+
       <section className={styles.hero}>
         <div className={styles.heroMain}>
           <div className={styles.eyebrow}>Central de pedidos</div>
