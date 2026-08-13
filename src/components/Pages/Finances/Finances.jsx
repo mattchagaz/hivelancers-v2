@@ -10,16 +10,13 @@ import {
   FaFileShield,
   FaMoneyBillTransfer,
   FaRotateRight,
-  FaTriangleExclamation,
   FaWallet,
 } from 'react-icons/fa6';
 import { useAuth } from '../../../contexts/authContextStore';
 import {
   cancelCheckoutPayment,
-  createMyStripeConnectDashboardLink,
-  createMyStripeConnectOnboardingLink,
   getMyFinancialOverview,
-  getMyStripeConnectStatus,
+  getMyPixPayoutAccount,
   resumeCheckoutPayment,
 } from '../../../services/payments';
 import SpotlightCard from '../../UI/SpotlightCard/SpotlightCard';
@@ -53,27 +50,6 @@ const PAYMENT_STATUS_LABEL = {
   REFUNDED: 'Pagamento reembolsado',
 };
 
-const REQUIREMENT_LABELS = {
-  external_account: 'Conta bancária para repasse',
-  'business_profile.url': 'Site, perfil público ou rede social',
-  'business_profile.mcc': 'Categoria comercial',
-  'business_profile.product_description': 'Descrição dos serviços',
-  'individual.first_name': 'Nome do titular',
-  'individual.last_name': 'Sobrenome do titular',
-  'individual.email': 'E-mail do titular',
-  'individual.phone': 'Telefone do titular',
-  'individual.id_number': 'CPF',
-  'individual.dob.day': 'Data de nascimento',
-  'individual.dob.month': 'Data de nascimento',
-  'individual.dob.year': 'Data de nascimento',
-  'individual.address.line1': 'Endereço',
-  'individual.address.city': 'Cidade',
-  'individual.address.state': 'Estado',
-  'individual.address.postal_code': 'CEP',
-  'individual.verification.document': 'Documento de identidade',
-  'individual.verification.additional_document': 'Documento complementar',
-};
-
 const formatPrice = (cents) =>
   new Intl.NumberFormat('pt-BR', {
     style: 'currency',
@@ -99,88 +75,39 @@ const formatDateTime = (value) => {
   });
 };
 
-const humanizeRequirement = (key) =>
-  REQUIREMENT_LABELS[key] ||
-  key
-    .split('.')
-    .filter(Boolean)
-    .map((part) => part.replace(/_/g, ' '))
-    .join(' · ');
-
-const getVerificationState = (connectState, loading) => {
-  const account = connectState?.account;
-  const currentlyDue = account?.requirementsCurrentlyDue || [];
-  const pastDue = account?.requirementsPastDue || [];
-  const pending = account?.requirementsPendingVerification || [];
-
+const getVerificationState = (pixAccount, loading) => {
   if (loading) {
     return {
       tone: 'blue',
       label: 'Verificando',
-      title: 'Consultando status da Stripe',
-      text: 'Estamos sincronizando os dados da conta recebedora.',
+      title: 'Consultando sua chave Pix',
+      text: 'Estamos sincronizando os dados da sua conta recebedora.',
     };
   }
 
-  if (!connectState?.configured) {
+  if (!pixAccount?.configured) {
     return {
       tone: 'red',
       label: 'Backend',
-      title: 'Stripe ainda não configurada',
-      text: 'Configure as credenciais no backend para ativar verificação e repasses.',
+      title: 'Pix ainda não configurado',
+      text: 'Configure as credenciais no backend para ativar recebimentos.',
     };
   }
 
-  if (!account) {
+  if (!pixAccount.connected) {
     return {
       tone: 'orange',
       label: 'Pendente',
-      title: 'Recebimentos ainda não ativados',
-      text: 'Crie sua conta conectada e complete a verificação para poder receber pedidos pagos.',
-    };
-  }
-
-  if (account.onboardingComplete) {
-    return {
-      tone: 'green',
-      label: 'Pronto',
-      title: 'Conta pronta para repasses',
-      text: 'A Stripe confirmou o cadastro e os repasses podem ser liberados após aprovação dos pedidos.',
-    };
-  }
-
-  if (pastDue.length || account.requirementsDisabledReason) {
-    return {
-      tone: 'red',
-      label: 'Ação urgente',
-      title: 'Conta bloqueada ou com prazo vencido',
-      text: 'Revise a verificação na Stripe para liberar os recebimentos.',
-    };
-  }
-
-  if (currentlyDue.length) {
-    return {
-      tone: 'orange',
-      label: 'Ação necessária',
-      title: 'Faltam dados para liberar repasses',
-      text: 'A Stripe pediu informações adicionais antes de habilitar saques.',
-    };
-  }
-
-  if (pending.length) {
-    return {
-      tone: 'purple',
-      label: 'Em análise',
-      title: 'Documentos em verificação',
-      text: 'A Stripe está revisando os dados enviados. O status atualiza automaticamente pelo webhook.',
+      title: 'Chave Pix ainda não cadastrada',
+      text: 'Cadastre uma chave Pix para poder receber pedidos pagos.',
     };
   }
 
   return {
-    tone: 'blue',
-    label: 'Incompleto',
-    title: 'Onboarding iniciado',
-    text: 'Continue o cadastro na Stripe para finalizar a ativação dos recebimentos.',
+    tone: 'green',
+    label: 'Pronto',
+    title: 'Chave Pix cadastrada',
+    text: 'Os repasses podem ser liberados após aprovação dos pedidos.',
   };
 };
 
@@ -200,7 +127,7 @@ function Finances() {
   const navigate = useNavigate();
   const isFreelancer = user?.userType === 'FREELANCER';
 
-  const [connectState, setConnectState] = useState({
+  const [pixAccount, setPixAccount] = useState({
     configured: true,
     connected: false,
     account: null,
@@ -217,8 +144,8 @@ function Finances() {
 
     setLoadingConnect(true);
     try {
-      const data = await getMyStripeConnectStatus();
-      setConnectState(data);
+      const data = await getMyPixPayoutAccount();
+      setPixAccount(data);
     } catch (error) {
       toast.error(error.message);
     } finally {
@@ -243,41 +170,14 @@ function Finances() {
     loadOverview();
   }, [loadConnect, loadOverview]);
 
-  const verification = getVerificationState(connectState, loadingConnect);
-  const account = connectState.account;
-  const dueRequirements = [
-    ...(account?.requirementsPastDue || []),
-    ...(account?.requirementsCurrentlyDue || []),
-  ];
-  const uniqueRequirements = [...new Set(dueRequirements)].slice(0, 6);
+  const verification = getVerificationState(pixAccount, loadingConnect);
+  const account = pixAccount.account;
 
   const summary = overview?.summary || {};
   const movementCounts = summary.counts || {};
   const releaseCounts = summary.releaseCounts || {};
 
-  const openOnboarding = async () => {
-    setActiveAction('onboarding');
-    try {
-      const data = await createMyStripeConnectOnboardingLink();
-      if (!data.url) throw new Error('A Stripe não retornou um link de verificação.');
-      window.location.assign(data.url);
-    } catch (error) {
-      toast.error(error.message);
-      setActiveAction('');
-    }
-  };
-
-  const openDashboard = async () => {
-    setActiveAction('dashboard');
-    try {
-      const data = await createMyStripeConnectDashboardLink();
-      if (!data.url) throw new Error('A Stripe não retornou um link de dashboard.');
-      window.location.assign(data.url);
-    } catch (error) {
-      toast.error(error.message);
-      setActiveAction('');
-    }
-  };
+  const goToPixSettings = () => navigate('/settings?tab=billing');
 
   const refreshAll = async () => {
     setActiveAction('refresh');
@@ -401,24 +301,14 @@ function Finances() {
           </p>
           <div className={styles.heroActions}>
             {isFreelancer ? (
-              <>
-                <button
-                  type="button"
-                  className={styles.primaryAction}
-                  onClick={openOnboarding}
-                  disabled={activeAction === 'onboarding' || !connectState.configured}
-                >
-                  {account ? 'Revisar verificação' : 'Ativar recebimentos'} <FaArrowRight />
-                </button>
-                <button
-                  type="button"
-                  className={styles.secondaryAction}
-                  onClick={openDashboard}
-                  disabled={activeAction === 'dashboard' || !account?.detailsSubmitted}
-                >
-                  Abrir Stripe
-                </button>
-              </>
+              <button
+                type="button"
+                className={styles.primaryAction}
+                onClick={goToPixSettings}
+                disabled={!pixAccount.configured}
+              >
+                {account ? 'Revisar chave Pix' : 'Cadastrar chave Pix'} <FaArrowRight />
+              </button>
             ) : (
               <Link to="/services" className={styles.primaryAction}>
                 Explorar serviços <FaArrowRight />
@@ -520,10 +410,10 @@ function Finances() {
           <div className={styles.panelHeader}>
             <div>
               <span className={styles.sectionKicker}>Conta recebedora</span>
-              <h2>{isFreelancer ? 'Verificação Stripe Connect' : 'Pagamentos protegidos'}</h2>
+              <h2>{isFreelancer ? 'Chave Pix para repasses' : 'Pagamentos protegidos'}</h2>
               <p>
                 {isFreelancer
-                  ? 'O repasse só é liberado quando a conta conectada está pronta para payouts.'
+                  ? 'O repasse só é liberado quando você tem uma chave Pix ativa cadastrada.'
                   : 'Os pagamentos ficam registrados no pedido e o freelancer recebe apenas após aprovação.'}
               </p>
             </div>
@@ -531,20 +421,13 @@ function Finances() {
 
           {isFreelancer ? (
             <div className={styles.statusStack}>
-              {[
-                ['Conta conectada', Boolean(account)],
-                ['Dados enviados', Boolean(account?.detailsSubmitted)],
-                ['Pagamentos habilitados', Boolean(account?.chargesEnabled)],
-                ['Repasses habilitados', Boolean(account?.payoutsEnabled)],
-              ].map(([label, ready]) => (
-                <div key={label} className={styles.statusRow}>
-                  <span className={ready ? styles.statusDone : styles.statusPending}>
-                    {ready ? <FaCircleCheck /> : <FaClock />}
-                  </span>
-                  <strong>{label}</strong>
-                  <em>{ready ? 'OK' : 'Pendente'}</em>
-                </div>
-              ))}
+              <div className={styles.statusRow}>
+                <span className={pixAccount.connected ? styles.statusDone : styles.statusPending}>
+                  {pixAccount.connected ? <FaCircleCheck /> : <FaClock />}
+                </span>
+                <strong>Chave Pix cadastrada</strong>
+                <em>{pixAccount.connected ? (account?.maskedKey || 'OK') : 'Pendente'}</em>
+              </div>
             </div>
           ) : (
             <div className={styles.protectionBox}>
@@ -555,29 +438,6 @@ function Finances() {
                 <strong>Fluxo protegido por aprovação</strong>
                 <p>Após o pagamento, o pedido é criado e o repasse só ocorre quando você aprova a entrega.</p>
               </div>
-            </div>
-          )}
-
-          {isFreelancer && (
-            <div className={styles.requirementsBox}>
-              <div className={styles.requirementsTitle}>
-                <FaTriangleExclamation />
-                <strong>Pendências da Stripe</strong>
-              </div>
-
-              {uniqueRequirements.length ? (
-                <div className={styles.requirementList}>
-                  {uniqueRequirements.map((item) => (
-                    <span key={item}>{humanizeRequirement(item)}</span>
-                  ))}
-                </div>
-              ) : (
-                <p>Nenhuma pendência aberta retornada pela Stripe neste momento.</p>
-              )}
-
-              {account?.requirementsDisabledReason && (
-                <small>Motivo de bloqueio: {account.requirementsDisabledReason}</small>
-              )}
             </div>
           )}
         </article>
@@ -685,7 +545,7 @@ function Finances() {
             [
               'Pagamento confirmado',
               formatPrice(isFreelancer ? summary.succeededCents : (summary.succeededChargedCents ?? summary.succeededCents)),
-              'Cliente pagou via Stripe ou AbacatePay',
+              'Cliente pagou via cartão ou Pix',
             ],
             ['Valor protegido', formatPrice(summary.heldCents), 'Aguardando aprovação final'],
             ['Repasse liberado', formatPrice(summary.transferredCents), 'Transferência feita ao freelancer'],

@@ -1090,7 +1090,7 @@ function Checkout() {
             <p className={styles.secureNote}>
               {paymentMethodType === 'pix'
                 ? 'O QR Code será gerado pela AbacatePay e confirmado automaticamente.'
-                : 'Você será redirecionado para o ambiente seguro da Stripe.'}
+                : 'Você será redirecionado para o ambiente seguro da AbacatePay.'}
             </p>
           </section>
 

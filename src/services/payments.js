@@ -1,11 +1,5 @@
 import { api } from './api';
 
-export const isStripeConnectReady = (connectState) => Boolean(
-  connectState?.configured &&
-  connectState?.account?.detailsSubmitted &&
-  connectState?.account?.payoutsEnabled
-);
-
 const extractMessage = (error, fallback) => {
   const data = error?.response?.data;
   const message = data?.message || error?.message || '';
@@ -102,33 +96,6 @@ export const getCheckoutSessionStatus = async (sessionId) => {
   }
 };
 
-export const getMyStripeConnectStatus = async () => {
-  try {
-    const { data } = await api.get('/payments/me/connect-account');
-    return data;
-  } catch (error) {
-    throw new Error(extractMessage(error, 'Não foi possível carregar o status da Stripe.'));
-  }
-};
-
-export const createMyStripeConnectOnboardingLink = async () => {
-  try {
-    const { data } = await api.post('/payments/me/connect-account/onboarding-link');
-    return data;
-  } catch (error) {
-    throw new Error(extractMessage(error, 'Não foi possível abrir a conexão com a Stripe.'));
-  }
-};
-
-export const createMyStripeConnectDashboardLink = async () => {
-  try {
-    const { data } = await api.post('/payments/me/connect-account/dashboard-link');
-    return data;
-  } catch (error) {
-    throw new Error(extractMessage(error, 'Não foi possível abrir o painel da Stripe.'));
-  }
-};
-
 export const getMyFinancialOverview = async () => {
   try {
     const { data } = await api.get('/payments/me/financial-overview');
@@ -189,6 +156,15 @@ export const retryAdminPaymentTransfer = async (paymentId) => {
     return data.payment;
   } catch (error) {
     throw new Error(extractMessage(error, 'Não foi possível reprocessar o repasse.'));
+  }
+};
+
+export const approveAdminPaymentRelease = async (paymentId) => {
+  try {
+    const { data } = await api.post(`/payments/admin/payments/${paymentId}/approve-release`);
+    return data;
+  } catch (error) {
+    throw new Error(extractMessage(error, 'Não foi possível aprovar o repasse.'));
   }
 };
 

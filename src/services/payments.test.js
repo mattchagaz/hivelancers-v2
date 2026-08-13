@@ -18,28 +18,8 @@ import {
   cancelCheckoutPayment,
   resumeCheckoutPayment,
   getCheckoutSessionStatus,
-  isStripeConnectReady,
   previewCheckoutCoupon,
 } from './payments';
-
-describe('isStripeConnectReady', () => {
-  it('só libera publicação quando a plataforma e os repasses estão prontos', () => {
-    expect(isStripeConnectReady({
-      configured: true,
-      account: { detailsSubmitted: true, payoutsEnabled: true },
-    })).toBe(true);
-
-    expect(isStripeConnectReady({
-      configured: true,
-      account: { detailsSubmitted: true, payoutsEnabled: false },
-    })).toBe(false);
-    expect(isStripeConnectReady({ configured: true, account: null })).toBe(false);
-    expect(isStripeConnectReady({
-      configured: false,
-      account: { detailsSubmitted: true, payoutsEnabled: true },
-    })).toBe(false);
-  });
-});
 
 describe('createCheckoutSession', () => {
   beforeEach(() => {

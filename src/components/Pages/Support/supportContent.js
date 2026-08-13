@@ -58,7 +58,7 @@ export const HELP_CATEGORIES = [
             bullets: [
               'Use trabalhos reais e descreva qual foi sua participação.',
               'Mantenha os títulos e descrições dos serviços específicos.',
-              'Conecte a Stripe antes de tentar publicar um serviço.',
+              'Cadastre sua chave Pix antes de tentar publicar um serviço.',
             ],
           },
         ],
@@ -114,7 +114,7 @@ export const HELP_CATEGORIES = [
           },
           {
             title: 'Depois do checkout',
-            paragraphs: ['O pedido e a conversa são criados somente quando o gateway confirma o pagamento. No cartão, você segue para a Stripe; no Pix, o QR Code da AbacatePay aparece dentro da Hivelancers. Tentativas ainda válidas podem ser retomadas em Financeiro.'],
+            paragraphs: ['O pedido e a conversa são criados somente quando o gateway confirma o pagamento. No cartão, você segue para o Checkout seguro da AbacatePay; no Pix, o QR Code aparece dentro da Hivelancers. Tentativas ainda válidas podem ser retomadas em Financeiro.'],
             note: '“Aguardando pagamento” não significa que existe um pedido. É apenas um checkout aberto e nenhuma cobrança foi confirmada.',
           },
         ],
@@ -180,15 +180,15 @@ export const HELP_CATEGORIES = [
         summary: 'Prepare uma oferta clara e deixe seus recebimentos prontos.',
         audience: 'Freelancers',
         readTime: '5 min',
-        keywords: ['publicar', 'serviço', 'stripe', 'pacote', 'freelancer'],
+        keywords: ['publicar', 'serviço', 'pix', 'pacote', 'freelancer'],
         sections: [
           {
             title: 'Requisitos para publicar',
-            paragraphs: ['Antes da publicação, sua conta Stripe Connect precisa estar conectada, com os dados enviados e os repasses habilitados. Isso evita que clientes encontrem um serviço que ainda não pode ser contratado.'],
+            paragraphs: ['Antes da publicação, você precisa ter uma chave Pix ativa cadastrada para repasses. Isso evita que clientes encontrem um serviço que ainda não pode ser contratado.'],
             steps: [
-              'Abra Financeiro e inicie a conexão com a Stripe.',
-              'Conclua os dados solicitados no ambiente seguro da Stripe.',
-              'Volte à Hivelancers e use “Já conectei, verificar novamente”.',
+              'Abra Financeiro ou Configurações → Faturamento.',
+              'Informe sua chave Pix (CPF, e-mail, telefone ou aleatória).',
+              'Volte à Hivelancers e use “Já cadastrei, verificar novamente”.',
               'Quando o status estiver pronto, finalize e publique o serviço.',
             ],
           },
@@ -245,7 +245,7 @@ export const HELP_CATEGORIES = [
           },
           {
             title: 'Recebendo o valor',
-            paragraphs: ['O valor líquido considera a taxa aplicável ao freelancer. Após a aprovação, pagamentos no cartão seguem para a conta Stripe conectada; pagamentos Pix são enviados pela AbacatePay à chave Pix cadastrada e protegida por criptografia.'],
+            paragraphs: ['O valor líquido considera a taxa aplicável ao freelancer. Após a aprovação, pagamentos no cartão ou no Pix são repassados pela AbacatePay à sua chave Pix cadastrada e protegida por criptografia.'],
             note: 'A Central financeira separa valores protegidos, repasses concluídos e eventuais pendências da conta recebedora.',
           },
         ],
@@ -306,7 +306,7 @@ export const HELP_CATEGORIES = [
               'O cupom precisa estar ativo, dentro da validade e respeitar o pedido mínimo.',
               'Limites de uso e desconto máximo podem reduzir ou impedir o benefício.',
               'Planos pagos podem reduzir taxas conforme as regras exibidas na assinatura.',
-              'O desconto aplicado sempre aparece antes de gerar o Pix ou redirecionar para a Stripe.',
+              'O desconto aplicado sempre aparece antes de gerar o Pix ou redirecionar para a AbacatePay.',
             ],
           },
         ],

@@ -22,7 +22,7 @@ describe('supportContent', () => {
   });
 
   it('encontra artigos por título, palavras-chave e conteúdo detalhado', () => {
-    expect(findHelpArticles('Stripe').some((article) => article.id === 'publish-service')).toBe(true);
+    expect(findHelpArticles('Pix').some((article) => article.id === 'publish-service')).toBe(true);
     expect(findHelpArticles('checkout_created').some((article) => article.id === 'payment-statuses')).toBe(true);
     expect(findHelpArticles('pagamentos externos').length).toBeGreaterThan(0);
   });

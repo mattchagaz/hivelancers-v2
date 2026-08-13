@@ -3,10 +3,6 @@ import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import styles from '../Settings.module.css';
 import {
-  createMyStripeConnectDashboardLink,
-  createMyStripeConnectOnboardingLink,
-  getMyStripeConnectStatus,
-  isStripeConnectReady,
   getMyPixPayoutAccount,
   saveMyPixPayoutAccount,
 } from '../../../../services/payments';
@@ -17,17 +13,12 @@ function renderCardIcon() {
 }
 
 export default function BillingPanel({ isFreelancer }) {
-  const [connectState, setConnectState] = useState({ configured: true, connected: false, account: null });
-  const [isLoading, setIsLoading] = useState(isFreelancer);
-  const [activeStripeAction, setActiveStripeAction] = useState('');
   const [pixState, setPixState] = useState({ configured: false, connected: false, account: null });
   const [pixDraft, setPixDraft] = useState({ keyType: 'CPF', key: '' });
   const [savingPix, setSavingPix] = useState(false);
-  const stripeReady = isStripeConnectReady(connectState);
 
   useEffect(() => {
     if (isFreelancer) {
-      getMyStripeConnectStatus().then(setConnectState).catch(() => {}).finally(() => setIsLoading(false));
       getMyPixPayoutAccount().then(setPixState).catch(() => {});
     }
   }, [isFreelancer]);
@@ -48,40 +39,14 @@ export default function BillingPanel({ isFreelancer }) {
       </div>
       {isFreelancer ? (
         <>
-          <div className={styles.listRow}>
-            <div className={styles.listIcon}>{renderCardIcon()}</div>
-            <div className={styles.listCopy}>
-              <strong>Conta Stripe Connect</strong>
-              <span>{isLoading ? 'Verificando...' : stripeReady ? 'Conta pronta para receber pedidos e repasses.' : connectState.account ? 'Finalize as pendências da Stripe antes de publicar serviços.' : 'Conecte sua conta recebedora antes de publicar serviços e receber pedidos.'}</span>
-            </div>
-            <button
-              type="button"
-              className={styles.btnGhost}
-              disabled={activeStripeAction === 'stripe'}
-              onClick={async () => {
-                setActiveStripeAction('stripe');
-                try {
-                  const data = connectState.account?.detailsSubmitted
-                    ? await createMyStripeConnectDashboardLink()
-                    : await createMyStripeConnectOnboardingLink();
-                  if (data?.url) window.location.assign(data.url);
-                } catch (error) {
-                  toast.error(error.message || 'Não foi possível abrir a Stripe.');
-                  setActiveStripeAction('');
-                }
-              }}
-            >
-              {activeStripeAction === 'stripe' ? 'Abrindo...' : connectState.account?.detailsSubmitted ? 'Abrir Stripe' : 'Conectar Stripe'}
-            </button>
-          </div>
           <div className={`${styles.listRow} ${styles.pixPayoutRow}`}>
             <div className={styles.listIcon}>{renderCardIcon()}</div>
             <div className={styles.listCopy}>
-              <strong>Recebimento via Pix</strong>
+              <strong>Chave Pix para repasses</strong>
               <span>
                 {pixState.connected
-                  ? `Chave cadastrada: ${pixState.account?.maskedKey}. Usada somente nos repasses de pedidos pagos via Pix.`
-                  : 'Cadastre uma chave Pix para aceitar pedidos com pagamento protegido via Pix.'}
+                  ? `Chave cadastrada: ${pixState.account?.maskedKey}. Usada nos repasses de todos os pedidos, pagos no cartão ou no Pix.`
+                  : 'Cadastre uma chave Pix antes de publicar serviços — é assim que você recebe qualquer pedido, pago no cartão ou no Pix.'}
               </span>
               {pixState.configured && (
                 <div className={styles.pixPayoutForm}>

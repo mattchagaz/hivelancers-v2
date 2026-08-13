@@ -7,11 +7,8 @@ import { uploadImageToCloudinary } from '../../../services/cloudinary';
 import { CategoryIcon } from '../../../utils/categoryIcons';
 import ConfirmDialog from '../../UI/ConfirmDialog/ConfirmDialog';
 import {
-  createMyStripeConnectDashboardLink,
-  createMyStripeConnectOnboardingLink,
   getMyFreelancerFeeRate,
-  getMyStripeConnectStatus,
-  isStripeConnectReady,
+  getMyPixPayoutAccount,
 } from '../../../services/payments';
 
 const TIER_BY_INDEX = ['BASIC', 'STANDARD', 'PREMIUM'];
@@ -70,9 +67,8 @@ function CreateService() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleteBlockedMessage, setDeleteBlockedMessage] = useState('');
-  const [connectState, setConnectState] = useState(null);
-  const [isLoadingConnect, setIsLoadingConnect] = useState(true);
-  const [stripeAction, setStripeAction] = useState('');
+  const [pixAccount, setPixAccount] = useState(null);
+  const [isLoadingPixAccount, setIsLoadingPixAccount] = useState(true);
   const [feeRate, setFeeRate] = useState(null);
 
   // Step 0 — Info básica
@@ -106,41 +102,39 @@ function CreateService() {
       .finally(() => setLoadingCats(false));
   }, []);
 
-  const loadConnectStatus = useCallback(async () => {
-    setIsLoadingConnect(true);
+  const loadPixAccount = useCallback(async () => {
+    setIsLoadingPixAccount(true);
     try {
-      const data = await getMyStripeConnectStatus();
-      setConnectState(data);
+      const data = await getMyPixPayoutAccount();
+      setPixAccount(data);
       return data;
     } catch (err) {
       toast.error(err.message);
       return null;
     } finally {
-      setIsLoadingConnect(false);
+      setIsLoadingPixAccount(false);
     }
   }, []);
 
-  const handleRecheckConnectStatus = async () => {
-    const data = await loadConnectStatus();
+  const handleRecheckPixAccount = async () => {
+    const data = await loadPixAccount();
     if (!data) return;
 
-    if (isStripeConnectReady(data)) {
-      toast.success('Conta Stripe conectada e pronta para receber pagamentos.');
+    if (data.connected) {
+      toast.success('Chave Pix cadastrada e pronta para receber repasses.');
       return;
     }
 
     if (!data.configured) {
-      toast.error('A integração Stripe ainda não está configurada neste ambiente.');
-    } else if (!data.account) {
-      toast.error('A conta Stripe ainda não foi conectada. Conclua o cadastro e tente novamente.');
+      toast.error('O recebimento via Pix ainda não está configurado neste ambiente.');
     } else {
-      toast.error('A conexão ainda possui pendências. Finalize os dados e habilite os repasses na Stripe.');
+      toast.error('Cadastre sua chave Pix em Configurações antes de publicar.');
     }
   };
 
   useEffect(() => {
-    loadConnectStatus();
-  }, [loadConnectStatus]);
+    loadPixAccount();
+  }, [loadPixAccount]);
 
   useEffect(() => {
     getMyFreelancerFeeRate()
@@ -385,10 +379,10 @@ function CreateService() {
   const handlePublish = async () => {
     setIsPublishing(true);
     try {
-      const latestConnectState = await getMyStripeConnectStatus();
-      setConnectState(latestConnectState);
-      if (!isStripeConnectReady(latestConnectState)) {
-        toast.error('Conclua sua conta de recebimentos na Stripe antes de publicar.');
+      const latestPixAccount = await getMyPixPayoutAccount();
+      setPixAccount(latestPixAccount);
+      if (!latestPixAccount.connected) {
+        toast.error('Cadastre sua chave Pix antes de publicar.');
         return;
       }
 
@@ -479,10 +473,10 @@ function CreateService() {
     if (!isEditMode || isArchiving) return;
     setIsArchiving(true);
     try {
-      const latestConnectState = await getMyStripeConnectStatus();
-      setConnectState(latestConnectState);
-      if (!isStripeConnectReady(latestConnectState)) {
-        toast.error('Conclua sua conta de recebimentos na Stripe antes de republicar.');
+      const latestPixAccount = await getMyPixPayoutAccount();
+      setPixAccount(latestPixAccount);
+      if (!latestPixAccount.connected) {
+        toast.error('Cadastre sua chave Pix antes de republicar.');
         return;
       }
 
@@ -503,22 +497,9 @@ function CreateService() {
     </span>
   );
 
-  const openStripe = async () => {
-    if (stripeAction) return;
-    setStripeAction('open');
-    try {
-      const data = connectState?.account?.detailsSubmitted
-        ? await createMyStripeConnectDashboardLink()
-        : await createMyStripeConnectOnboardingLink();
-      if (!data?.url) throw new Error('A Stripe não retornou um link de configuração.');
-      window.location.assign(data.url);
-    } catch (err) {
-      toast.error(err.message);
-      setStripeAction('');
-    }
-  };
+  const goToPixSettings = () => navigate('/settings?tab=billing');
 
-  if (isLoading || (!isEditMode && isLoadingConnect)) {
+  if (isLoading || (!isEditMode && isLoadingPixAccount)) {
     return (
       <div className={styles.page}>
         <div className={styles.header}>
@@ -532,9 +513,9 @@ function CreateService() {
     );
   }
 
-  const stripeReady = isStripeConnectReady(connectState);
+  const pixReady = Boolean(pixAccount?.connected);
 
-  if (!isEditMode && !stripeReady) {
+  if (!isEditMode && !pixReady) {
     return (
       <div className={styles.page}>
         <section className={styles.stripeGate}>
@@ -546,31 +527,31 @@ function CreateService() {
             </svg>
           </div>
           <span className={styles.stripeGateEyebrow}>Recebimentos obrigatórios</span>
-          <h1>Conecte sua conta Stripe antes de publicar</h1>
+          <h1>Cadastre sua chave Pix antes de publicar</h1>
           <p>
-            Todo serviço publicado precisa estar pronto para receber pedidos. Assim, nenhum cliente encontra uma oferta que não pode ser contratada e você não perde oportunidades.
+            Todo serviço publicado precisa estar pronto para receber pedidos. Seus repasses são feitos via Pix, então precisamos de uma chave ativa antes de publicar — assim nenhum cliente encontra uma oferta que não pode ser contratada e você não perde oportunidades.
           </p>
           <div className={styles.stripeGateChecklist}>
-            <span><strong>1</strong> Abra o cadastro seguro da Stripe</span>
-            <span><strong>2</strong> Informe os dados solicitados para repasse</span>
+            <span><strong>1</strong> Abra Configurações → Faturamento</span>
+            <span><strong>2</strong> Informe sua chave Pix (CPF, e-mail, telefone ou aleatória)</span>
             <span><strong>3</strong> Volte e publique seu serviço</span>
           </div>
-          {!connectState?.configured && (
+          {!pixAccount?.configured && (
             <div className={styles.stripeGateWarning}>
-              A integração Stripe ainda não está configurada neste ambiente. Fale com o suporte antes de publicar.
+              O recebimento via Pix ainda não está configurado neste ambiente. Fale com o suporte antes de publicar.
             </div>
           )}
           <div className={styles.stripeGateActions}>
             <button
               type="button"
               className={styles.publishBtn}
-              onClick={openStripe}
-              disabled={Boolean(stripeAction) || !connectState?.configured}
+              onClick={goToPixSettings}
+              disabled={!pixAccount?.configured}
             >
-              {stripeAction ? 'Abrindo Stripe...' : connectState?.account?.detailsSubmitted ? 'Revisar conta Stripe' : 'Conectar conta Stripe'}
+              Cadastrar chave Pix
             </button>
-            <button type="button" className={styles.backBtn} onClick={handleRecheckConnectStatus} disabled={isLoadingConnect}>
-              {isLoadingConnect ? 'Verificando...' : 'Já conectei, verificar novamente'}
+            <button type="button" className={styles.backBtn} onClick={handleRecheckPixAccount} disabled={isLoadingPixAccount}>
+              {isLoadingPixAccount ? 'Verificando...' : 'Já cadastrei, verificar novamente'}
             </button>
           </div>
           <button type="button" className={styles.stripeGateBack} onClick={() => navigate('/finances')}>
@@ -630,14 +611,14 @@ function CreateService() {
         )}
       </div>
 
-      {isEditMode && !isLoadingConnect && !stripeReady && (
+      {isEditMode && !isLoadingPixAccount && !pixReady && (
         <div className={styles.stripeNotice}>
           <div>
-            <strong>Conecte a Stripe para manter este serviço contratável</strong>
-            <span>Você pode editar o conteúdo, mas precisa concluir os recebimentos antes de republicar.</span>
+            <strong>Cadastre sua chave Pix para manter este serviço contratável</strong>
+            <span>Você pode editar o conteúdo, mas precisa cadastrar uma chave Pix antes de republicar.</span>
           </div>
-          <button type="button" className={styles.backBtn} onClick={openStripe} disabled={Boolean(stripeAction) || !connectState?.configured}>
-            {stripeAction ? 'Abrindo...' : 'Configurar recebimentos'}
+          <button type="button" className={styles.backBtn} onClick={goToPixSettings} disabled={!pixAccount?.configured}>
+            Configurar recebimentos
           </button>
         </div>
       )}

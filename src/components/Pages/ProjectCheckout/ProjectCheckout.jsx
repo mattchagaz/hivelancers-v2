@@ -245,7 +245,7 @@ function ProjectCheckout() {
       <div className={styles.successState}>
         <div className={styles.processingIcon}><FaCreditCard /></div>
         <h1 className={styles.successTitle}>{pending ? 'Confirmando pagamento...' : 'Pagamento não confirmado'}</h1>
-        <p className={styles.successText}>{pending ? 'O contrato será criado automaticamente assim que a Stripe confirmar o pagamento.' : 'A proposta não foi aceita e nenhum contrato foi iniciado.'}</p>
+        <p className={styles.successText}>{pending ? 'O contrato será criado automaticamente assim que o pagamento for confirmado.' : 'A proposta não foi aceita e nenhum contrato foi iniciado.'}</p>
         <Link to={`/projects/${projectId}`} className={styles.secondaryButton}>Voltar ao projeto</Link>
         <Toaster position="top-center" richColors />
       </div>
@@ -415,7 +415,7 @@ function ProjectCheckout() {
               </div>
             </div>
             <button type="button" className={styles.primaryButton} onClick={startCheckout} disabled={!canCheckout || submitting || !checkoutOptions[paymentMethodType]?.available}>{submitting ? 'Abrindo pagamento...' : canCheckout ? 'Pagar e contratar' : 'Proposta indisponível'}</button>
-            <p className={styles.secureNote}>{paymentMethodType === 'pix' ? 'O QR Code será gerado pela AbacatePay.' : 'Você será redirecionado para o Checkout seguro da Stripe.'}</p>
+            <p className={styles.secureNote}>{paymentMethodType === 'pix' ? 'O QR Code será gerado pela AbacatePay.' : 'Você será redirecionado para o ambiente seguro da AbacatePay.'}</p>
           </section>
         </aside>
       </div>

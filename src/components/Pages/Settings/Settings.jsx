@@ -125,23 +125,6 @@ function Settings() {
     return undefined;
   }, [searchParams, tabs]);
 
-  useEffect(() => {
-    const stripeFlow = searchParams.get('stripe');
-    if (!stripeFlow) return undefined;
-
-    const timer = window.setTimeout(() => setActiveTab('billing'), 0);
-
-    if (stripeFlow === 'return') {
-      toast.success('Voltamos da Stripe. Atualizando o status da sua conta.');
-      return () => window.clearTimeout(timer);
-    }
-
-    if (stripeFlow === 'refresh') {
-      toast.info('O link da Stripe expirou. Gere um novo para continuar a conexão.');
-    }
-    return () => window.clearTimeout(timer);
-  }, [searchParams]);
-
   const activeTabData = tabs.find((tab) => tab.id === activeTab) || tabs[0];
 
   const updateProfileField = (field, value) => {

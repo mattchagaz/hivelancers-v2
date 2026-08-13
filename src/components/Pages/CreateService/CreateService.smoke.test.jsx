@@ -22,13 +22,11 @@ vi.mock('../../../services/cloudinary', () => ({
 }));
 
 vi.mock('../../../services/payments', () => ({
-  isStripeConnectReady: () => true,
-  getMyStripeConnectStatus: vi.fn(() => Promise.resolve({
+  getMyPixPayoutAccount: vi.fn(() => Promise.resolve({
     configured: true,
-    account: { detailsSubmitted: true, payoutsEnabled: true },
+    connected: true,
+    account: { keyType: 'EMAIL', maskedKey: '••••••1234' },
   })),
-  createMyStripeConnectOnboardingLink: vi.fn(),
-  createMyStripeConnectDashboardLink: vi.fn(),
   getMyFreelancerFeeRate: vi.fn(() => Promise.resolve({ planId: 'essential', feePercent: 10 })),
 }));
 
