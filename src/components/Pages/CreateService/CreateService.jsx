@@ -9,6 +9,7 @@ import ConfirmDialog from '../../UI/ConfirmDialog/ConfirmDialog';
 import {
   createMyStripeConnectDashboardLink,
   createMyStripeConnectOnboardingLink,
+  getMyFreelancerFeeRate,
   getMyStripeConnectStatus,
   isStripeConnectReady,
 } from '../../../services/payments';
@@ -72,6 +73,7 @@ function CreateService() {
   const [connectState, setConnectState] = useState(null);
   const [isLoadingConnect, setIsLoadingConnect] = useState(true);
   const [stripeAction, setStripeAction] = useState('');
+  const [feeRate, setFeeRate] = useState(null);
 
   // Step 0 — Info básica
   const [title, setTitle] = useState('');
@@ -139,6 +141,25 @@ function CreateService() {
   useEffect(() => {
     loadConnectStatus();
   }, [loadConnectStatus]);
+
+  useEffect(() => {
+    getMyFreelancerFeeRate()
+      .then(setFeeRate)
+      .catch(() => setFeeRate(null));
+  }, []);
+
+  const formatMoney = (value) =>
+    value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+  // Estimativa: assume o cliente no tier padrão. Se ele tiver desconto de
+  // assinatura, o piso mínimo de taxa combinada pode reduzir levemente esse
+  // valor — por isso é sempre uma cota-parte no mínimo tão boa quanto a exibida.
+  const netAmountForPrice = (price) => {
+    if (!feeRate || !price || isNaN(price)) return null;
+    const amount = Number(price);
+    if (amount <= 0) return null;
+    return amount * (1 - feeRate.feePercent / 100);
+  };
 
   useEffect(() => {
     if (!isEditMode) return;
@@ -835,6 +856,12 @@ function CreateService() {
                               style={{ paddingLeft: '40px' }}
                             />
                           </div>
+                          {netAmountForPrice(plan.price) !== null && (
+                            <span className={styles.hint}>
+                              Você recebe aproximadamente {formatMoney(netAmountForPrice(plan.price))}
+                              {' '}(taxa da plataforma: {feeRate.feePercent}%)
+                            </span>
+                          )}
                         </div>
 
                         <div className={styles.planRow}>
@@ -1040,6 +1067,11 @@ function CreateService() {
                       <span className={styles.reviewPlanMeta}>
                         {plan.delivery ? `${plan.delivery} dias` : '—'} · {plan.revisions || '0'} revisões
                       </span>
+                      {netAmountForPrice(plan.price) !== null && (
+                        <span className={styles.reviewPlanMeta}>
+                          Você recebe {formatMoney(netAmountForPrice(plan.price))} após a taxa da plataforma ({feeRate.feePercent}%)
+                        </span>
+                      )}
                       <div className={styles.reviewFeats}>
                         {plan.features.filter(Boolean).map((f, fi) => (
                           <div key={fi} className={styles.reviewFeat}>

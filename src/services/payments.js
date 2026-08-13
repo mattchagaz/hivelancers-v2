@@ -147,6 +147,15 @@ export const getMySubscription = async () => {
   }
 };
 
+export const getMyFreelancerFeeRate = async () => {
+  try {
+    const { data } = await api.get('/payments/me/freelancer-fee-rate');
+    return data;
+  } catch (error) {
+    throw new Error(extractMessage(error, 'Não foi possível carregar a taxa da plataforma.'));
+  }
+};
+
 export const createSubscriptionCheckoutSession = async (payload) => {
   try {
     const { data } = await api.post('/payments/subscription/checkout-session', payload);
