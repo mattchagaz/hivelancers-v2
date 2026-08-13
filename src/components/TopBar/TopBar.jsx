@@ -83,7 +83,7 @@ const browserPreferenceFor = (type) => ({
   admin: 'pushSupport',
 }[type] || 'pushSupport');
 
-function TopBar({ userName = '', userRole = 'freelancer', avatarUrl = '', onMenuToggle }) {
+function TopBar({ userName = '', userRole = 'freelancer', avatarUrl = '', onMenuToggle, immersive = false }) {
   const [searchFocused, setSearchFocused] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
@@ -303,7 +303,7 @@ function TopBar({ userName = '', userRole = 'freelancer', avatarUrl = '', onMenu
   };
 
   return (
-    <header className={styles.bar}>
+    <header className={`${styles.bar} ${immersive ? styles.barImmersive : ''}`}>
       <button className={styles.menuBtn} onClick={onMenuToggle} aria-label="Menu">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
           <line x1="3" y1="6" x2="21" y2="6" />

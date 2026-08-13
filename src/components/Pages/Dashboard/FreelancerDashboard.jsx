@@ -7,7 +7,7 @@ import { listOrders } from '../../../services/orders';
 import { listConversations } from '../../../services/messages';
 import styles from './Dashboard.module.css';
 import { ACTIVE_ORDER_STATUSES, formatPriceBRL, getFullName, getOrderTitle } from './Dashboard.helpers';
-import { ConversationStack, DashboardHero, EmptyBlock, LoadingRows, MobileAlertCard, MobileGreeting, MobileSearchBar, MobileServiceList, MobileStatRow, OrderStack, Panel, PriorityList, QuickActions, RoleModeToggle, ServiceStack, SignalList, StatGrid } from './Dashboard.ui';
+import { ConversationStack, DashboardHero, EmptyBlock, LoadingRows, MobileAlertCard, MobileGreeting, MobileServiceList, MobileStatRow, OrderStack, Panel, PriorityList, QuickActions, RoleModeToggle, ServiceStack, SignalList, StatGrid } from './Dashboard.ui';
 
 export default function FreelancerDashboard() {
   const { user } = useAuth();
@@ -132,7 +132,6 @@ export default function FreelancerDashboard() {
       <div className={styles.mobileHome}>
         <MobileGreeting name={user?.firstName || 'freelancer'} />
         <RoleModeToggle userRole="freelancer" />
-        <MobileSearchBar />
 
         <MobileStatRow
           items={[

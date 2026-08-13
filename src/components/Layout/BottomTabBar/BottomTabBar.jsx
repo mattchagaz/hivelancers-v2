@@ -57,7 +57,7 @@ function TabLink({ path, icon, label, badge }) {
   );
 }
 
-function BottomTabBar({ userRole = 'freelancer' }) {
+function BottomTabBar({ userRole = 'freelancer', immersive = false }) {
   const isFreelancer = userRole === 'freelancer';
   const [badges, setBadges] = useState({ orders: 0, messages: 0 });
 
@@ -101,7 +101,7 @@ function BottomTabBar({ userRole = 'freelancer' }) {
     : { label: 'Publicar projeto', to: '/projects/new' };
 
   return (
-    <nav className={styles.tabBar} aria-label="Navegação principal">
+    <nav className={`${styles.tabBar} ${immersive ? styles.tabBarImmersive : ''}`} aria-label="Navegação principal">
       <TabLink path="/dashboard" icon="home" label="Dashboard" />
       <TabLink path="/explore" icon="explore" label="Explorar" />
 

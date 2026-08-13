@@ -32,7 +32,7 @@ import {
 } from './Orders.helpers';
 import { OrdersContext } from './OrdersContext';
 import OrderList from './sections/OrderList';
-import OrderDetail from './sections/OrderDetail';
+import OrderDetailModal from './sections/OrderDetailModal';
 
 function Orders() {
   const { user } = useAuth();
@@ -182,6 +182,10 @@ function Orders() {
     setSearchParams({ id: orderId });
   };
 
+  const handleCloseOrder = () => {
+    setSearchParams({}, { replace: true });
+  };
+
   const updateFromAction = (result, successMessage) => {
     setSelectedOrder(result.order);
     setOrders((prev) => {
@@ -297,6 +301,7 @@ function Orders() {
     selectedOrderId,
     user,
     handleOpenOrder,
+    handleCloseOrder,
     // detalhe
     loadingOrder,
     selectedOrder,
@@ -390,11 +395,9 @@ function Orders() {
         ))}
       </section>
 
-      <div className={styles.layout}>
-        <OrderList />
+      <OrderList />
 
-        <OrderDetail />
-      </div>
+      <OrderDetailModal />
     </div>
     </OrdersContext.Provider>
   );

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { toast, Toaster } from 'sonner';
+import { FaChevronLeft } from 'react-icons/fa6';
 import { getPublicService, getMyService } from '../../../services/services';
 import { startConversation } from '../../../services/messages';
 import { addFavoriteService, getMyFavorites, getPublicProfile, removeFavoriteService } from '../../../services/users';
@@ -8,6 +9,7 @@ import { useAuth } from '../../../contexts/authContextStore';
 import { CategoryIcon } from '../../../utils/categoryIcons';
 import { recordRecentActivity } from '../../../utils/clientRecentActivity';
 import { getReviewAuthor } from '../../../utils/reviews';
+import { SERVICE_GRADIENTS } from '../../../data/services';
 import styles from './ServiceDetails.module.css';
 
 const formatPrice = (cents) =>
@@ -293,6 +295,83 @@ function ServiceDetails() {
 
   return (
     <div className={styles.page}>
+      <div
+        className={styles.mobileHeroImage}
+        style={{
+          background: service.images?.[0]?.url
+            ? `url(${service.images[0].url}) center/cover`
+            : SERVICE_GRADIENTS[0],
+        }}
+      >
+        <button type="button" className={styles.mobileBackBtn} onClick={() => navigate(-1)} aria-label="Voltar">
+          <FaChevronLeft />
+        </button>
+      </div>
+
+      <div className={styles.mobileService}>
+        <h1 className={styles.mobileServiceTitle}>{service.title}</h1>
+
+        <div className={styles.mobileStatsRow}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>
+          <strong>{averageRating ? averageRating.toFixed(1) : 'Novo'}</strong>
+          <span>· {reviewCount} avaliações</span>
+          {minDeliveryDays > 0 && (
+            <span>· entrega em {minDeliveryDays} {minDeliveryDays === 1 ? 'dia' : 'dias'}</span>
+          )}
+        </div>
+
+        {sellerProfileHref ? (
+          <Link to={sellerProfileHref} className={styles.mobileSellerCard}>
+            <div className={styles.mobileSellerAvatar}>
+              {sellerAvatarUrl ? <img src={sellerAvatarUrl} alt={sellerName} /> : sellerInitial}
+            </div>
+            <div className={styles.mobileSellerInfo}>
+              <strong>{sellerName}</strong>
+              {service.owner?.headline && <span>{service.owner.headline}</span>}
+            </div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
+          </Link>
+        ) : (
+          <div className={styles.mobileSellerCard}>
+            <div className={styles.mobileSellerAvatar}>
+              {sellerAvatarUrl ? <img src={sellerAvatarUrl} alt={sellerName} /> : sellerInitial}
+            </div>
+            <div className={styles.mobileSellerInfo}>
+              <strong>{sellerName}</strong>
+              {service.owner?.headline && <span>{service.owner.headline}</span>}
+            </div>
+          </div>
+        )}
+
+        {service.description && <p className={styles.mobileDescription}>{service.description}</p>}
+
+        <div className={styles.mobilePackages}>
+          <h2 className={styles.mobilePackagesTitle}>Escolha o pacote</h2>
+          {service.plans.map((plan) => {
+            const isActive = plan.id === selectedPlanId;
+            const features = planFeatures(plan);
+            return (
+              <button
+                key={plan.id}
+                type="button"
+                className={`${styles.mobilePlanCard} ${isActive ? styles.mobilePlanCardActive : ''}`}
+                onClick={() => setSelectedPlanId(plan.id)}
+              >
+                <span className={`${styles.mobilePlanRadio} ${isActive ? styles.mobilePlanRadioActive : ''}`} />
+                <span className={styles.mobilePlanInfo}>
+                  <strong>{plan.title}</strong>
+                  <span>
+                    {features.length > 0 ? features.join(', ') : TIER_LABEL[plan.tier]} · {plan.deliveryDays} {plan.deliveryDays === 1 ? 'dia' : 'dias'}
+                  </span>
+                </span>
+                <strong className={styles.mobilePlanPrice}>{formatPrice(plan.priceCents)}</strong>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className={styles.desktopService}>
       <div className={styles.breadcrumbs}>
         <Link to={user ? '/dashboard' : '/explore'}>{user ? 'Dashboard' : 'Marketplace'}</Link>
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 18l6-6-6-6"/></svg>
@@ -719,6 +798,17 @@ function ServiceDetails() {
             </div>
           </div>
         </aside>
+      </div>
+      </div>
+
+      <div className={styles.mobileActionBar}>
+        <div className={styles.mobileActionTotal}>
+          <span>Total</span>
+          <strong>{formatPrice(selectedPlan?.priceCents)}</strong>
+        </div>
+        <button type="button" className={styles.mobileActionBtn} onClick={handleOrder}>
+          Contratar agora
+        </button>
       </div>
 
       {/* Lightbox Modal */}

@@ -224,6 +224,43 @@ function ExploreServices() {
 
   return (
     <div className={styles.page}>
+      <div className={styles.mobileExplore}>
+        <h1 className={styles.mobileTitle}>Explorar</h1>
+
+        <div className={styles.catScroll}>
+          {categoryChips.map((cat) => (
+            <button
+              key={cat.slug}
+              type="button"
+              className={`${styles.catChip} ${activeCategorySlug === cat.slug ? styles.catChipActive : ''}`}
+              onClick={() => {
+                setActiveCategorySlug(cat.slug);
+                setActiveSubcategorySlug('');
+              }}
+            >
+              {cat.name}
+            </button>
+          ))}
+        </div>
+
+        <div className={styles.mobileResultsBar}>
+          <span className={styles.resultsCount}>
+            {loading ? 'Buscando...' : `${total} ${total === 1 ? 'serviço encontrado' : 'serviços encontrados'}`}
+          </span>
+          <button
+            className={styles.filterToggle}
+            onClick={openFilters}
+            aria-controls="explore-filters"
+            aria-expanded={showFilters}
+          >
+            <FaSliders />
+            Filtros
+            {hasActiveFilters && <span className={styles.filterDot} />}
+          </button>
+        </div>
+      </div>
+
+      <div className={styles.desktopExplore}>
       <section className={styles.hero}>
         <div className={styles.heroMain}>
           <span className={styles.eyebrow}>Marketplace Hivelancers</span>
@@ -370,6 +407,7 @@ function ExploreServices() {
             </button>
           </div>
         </div>
+      </div>
       </div>
 
       <div className={styles.main}>

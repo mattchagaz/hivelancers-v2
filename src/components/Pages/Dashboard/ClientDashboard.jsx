@@ -9,7 +9,7 @@ import { getMyFavorites } from '../../../services/users';
 import { getFeaturedProject } from '../../../utils/profileEnhancements';
 import styles from './Dashboard.module.css';
 import { ACTIVE_ORDER_STATUSES } from './Dashboard.helpers';
-import { CategoryStrip, ConversationStack, DashboardHero, EmptyBlock, FreelancerShortlist, LoadingRows, MobileGreeting, MobileHighlightOrder, MobileSearchBar, MobileServiceList, OrderStack, Panel, PriorityList, QuickActions, RoleModeToggle, SavedServices, ServiceShowcase, StatGrid } from './Dashboard.ui';
+import { CategoryStrip, ConversationStack, DashboardHero, EmptyBlock, FreelancerShortlist, LoadingRows, MobileGreeting, MobileHighlightOrder, MobileServiceList, OrderStack, Panel, PriorityList, QuickActions, RoleModeToggle, SavedServices, ServiceShowcase, StatGrid } from './Dashboard.ui';
 
 export default function ClientDashboard() {
   const { user } = useAuth();
@@ -128,7 +128,6 @@ export default function ClientDashboard() {
       <div className={styles.mobileHome}>
         <MobileGreeting name={user?.firstName || 'cliente'} />
         <RoleModeToggle userRole="client" />
-        <MobileSearchBar />
 
         <Panel title="Categorias" actionLabel="Ver tudo" actionTo="/explore">
           {marketCategories.length ? <CategoryStrip categories={marketCategories} /> : null}

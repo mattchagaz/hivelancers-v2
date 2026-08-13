@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, Outlet } from 'react-router-dom';
+import { Link, Outlet, useLocation } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import Sidebar from './Sidebar/Sidebar';
 import TopBar from '../TopBar/TopBar';
@@ -18,6 +18,12 @@ function AppLayout() {
   });
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const { user } = useAuth();
+  const location = useLocation();
+
+  // Tela de detalhe de serviço usa um layout imersivo no mobile (sem
+  // TopBar/tab bar) — mas não as rotas /services/new nem /services/:id/edit.
+  const serviceDetailMatch = location.pathname.match(/^\/services\/([^/]+)$/);
+  const isImmersivePage = Boolean(serviceDetailMatch) && serviceDetailMatch[1] !== 'new';
 
   const isAdmin = isAdminUser(user);
   const userRole = toRoleSlug(user?.userType) || 'freelancer';
@@ -52,12 +58,13 @@ function AppLayout() {
         onMobileClose={closeMobileSidebar}
       />
 
-      <div className={`${styles.mainArea} ${sidebarCollapsed ? styles.collapsed : ''}`}>
+      <div className={`${styles.mainArea} ${sidebarCollapsed ? styles.collapsed : ''} ${isImmersivePage ? styles.immersive : ''}`}>
         <TopBar
           userName={userName}
           userRole={isAdmin ? 'admin' : userRole}
           avatarUrl={user?.avatarUrl}
           onMenuToggle={toggleSidebar}
+          immersive={isImmersivePage}
         />
         <main className={styles.content}>
           <Outlet />
@@ -73,7 +80,7 @@ function AppLayout() {
         </footer>
       </div>
 
-      <BottomTabBar userRole={userRole} />
+      <BottomTabBar userRole={userRole} immersive={isImmersivePage} />
 
       <Toaster position="top-center" richColors />
     </div>

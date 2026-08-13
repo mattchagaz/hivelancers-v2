@@ -343,14 +343,6 @@
 .purple .statIcon { background: var(--purple-bg, #f0e9ff); color: var(--purple-color, #7c3aed); }
 .orange .statIcon { background: var(--warning-bg, #fff5e6); color: var(--warning-color, #d97706); }
 
-.layout {
-  display: grid;
-  grid-template-columns: 370px minmax(0, 1fr);
-  gap: 20px;
-  align-items: start;
-  min-width: 0;
-}
-
 .listPanel,
 .detailPanel,
 .section,
@@ -378,11 +370,7 @@
 }
 
 .listPanel {
-  position: sticky;
-  top: 88px;
-  max-height: calc(100vh - 108px);
-  overflow: auto;
-  scrollbar-width: thin;
+  width: 100%;
 }
 
 .panelHeader,
@@ -475,7 +463,6 @@
   font-size: 1.18rem;
 }
 
-.orderList,
 .timeline,
 .actionStack,
 .detailMain,
@@ -484,6 +471,12 @@
 .detailHeroSide {
   display: flex;
   flex-direction: column;
+  gap: 14px;
+}
+
+.orderList {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: 14px;
 }
 
@@ -1166,10 +1159,6 @@
 }
 
 @media (max-width: 1280px) {
-  .layout {
-    grid-template-columns: 340px minmax(0, 1fr);
-  }
-
   .detailGrid {
     grid-template-columns: 1fr;
   }
@@ -1181,21 +1170,8 @@
 
 @media (max-width: 1100px) {
   .hero,
-  .layout,
   .detailHero {
     grid-template-columns: 1fr;
-  }
-
-  .listPanel {
-    position: static;
-    max-height: none;
-    overflow: visible;
-  }
-
-  .orderList {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 14px;
   }
 
   .statGrid {
@@ -1252,5 +1228,109 @@
   .primaryLink,
   .profileLink {
     width: 100%;
+  }
+}
+
+/* ===== Modal de detalhe do pedido ===== */
+
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(7, 11, 20, 0.68);
+  backdrop-filter: blur(9px);
+  animation: fadeIn 0.2s ease-out both;
+}
+
+.modalDialog {
+  position: relative;
+  width: min(980px, 100%);
+  max-height: min(880px, 90vh);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--border-color, #e8e8ef);
+  border-radius: 28px;
+  background: var(--bg-primary, #fff);
+  box-shadow: 0 40px 120px rgba(0, 0, 0, 0.35);
+  animation: modalDialogIn 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.modalClose {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  z-index: 2;
+  display: flex;
+  width: 38px;
+  height: 38px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-color, #e8e8ef);
+  border-radius: 12px;
+  background: var(--bg-primary, #fff);
+  color: var(--text-secondary, #6c6d72);
+  cursor: pointer;
+  transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease;
+}
+
+.modalClose:hover {
+  background: var(--bg-tertiary, #eef0f6);
+  color: var(--text-primary, #1a1a2e);
+  transform: rotate(90deg);
+}
+
+.modalBody {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 18px;
+  padding: 26px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+@keyframes modalDialogIn {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .modalOverlay,
+  .modalDialog {
+    animation: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .modalOverlay {
+    padding: 0;
+  }
+
+  .modalDialog {
+    width: 100%;
+    height: 100%;
+    max-height: 100vh;
+    border-radius: 0;
+  }
+
+  .modalBody {
+    padding: 64px 16px 32px;
+  }
+
+  .modalClose {
+    top: 14px;
+    right: 14px;
   }
 }

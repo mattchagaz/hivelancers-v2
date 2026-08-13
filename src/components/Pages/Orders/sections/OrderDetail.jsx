@@ -31,7 +31,6 @@ import { useOrders } from '../OrdersContext';
 
 export default function OrderDetail() {
   const {
-    selectedOrderId,
     loadingOrder,
     selectedOrder,
     selectedTone,
@@ -66,14 +65,8 @@ export default function OrderDetail() {
   } = useOrders();
 
   return (
-    <section className={styles.detailPanel}>
-      {!selectedOrderId ? (
-        <div className={styles.emptyStateLarge}>
-          <div className={styles.emptyIcon}><FaInbox /></div>
-          <strong>Selecione um pedido</strong>
-          <p>Escolha um item da fila para ver briefing, entrega, histórico e ações disponíveis.</p>
-        </div>
-      ) : loadingOrder ? (
+    <section className={styles.modalBody}>
+      {loadingOrder ? (
         <div className={styles.emptyStateLarge}>Carregando pedido...</div>
       ) : !selectedOrder ? (
         <div className={styles.emptyStateLarge}>

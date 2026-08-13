@@ -83,4 +83,12 @@
   .mainArea {
     padding-bottom: calc(78px + env(safe-area-inset-bottom, 0px));
   }
+
+  .immersive {
+    padding-bottom: calc(78px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .immersive .content {
+    padding-top: 0;
+  }
 }
