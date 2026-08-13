@@ -415,7 +415,7 @@ function ProjectCheckout() {
               </div>
             </div>
             <button type="button" className={styles.primaryButton} onClick={startCheckout} disabled={!canCheckout || submitting || !checkoutOptions[paymentMethodType]?.available}>{submitting ? 'Abrindo pagamento...' : canCheckout ? 'Pagar e contratar' : 'Proposta indisponível'}</button>
-            <p className={styles.secureNote}>{paymentMethodType === 'pix' ? 'O QR Code será gerado pela AbacatePay.' : 'Você será redirecionado para o ambiente seguro da AbacatePay.'}</p>
+            <p className={styles.secureNote}>{paymentMethodType === 'pix' ? 'O QR Code será gerado pela AbacatePay.' : 'Você será redirecionado para o ambiente seguro da Stripe.'}</p>
           </section>
         </aside>
       </div>

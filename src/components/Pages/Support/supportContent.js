@@ -114,7 +114,7 @@ export const HELP_CATEGORIES = [
           },
           {
             title: 'Depois do checkout',
-            paragraphs: ['O pedido e a conversa são criados somente quando o gateway confirma o pagamento. No cartão, você segue para o Checkout seguro da AbacatePay; no Pix, o QR Code aparece dentro da Hivelancers. Tentativas ainda válidas podem ser retomadas em Financeiro.'],
+            paragraphs: ['O pedido e a conversa são criados somente quando o gateway confirma o pagamento. No cartão, você segue para o Checkout seguro da Stripe; no Pix, o QR Code aparece dentro da Hivelancers. Tentativas ainda válidas podem ser retomadas em Financeiro.'],
             note: '“Aguardando pagamento” não significa que existe um pedido. É apenas um checkout aberto e nenhuma cobrança foi confirmada.',
           },
         ],
@@ -306,7 +306,7 @@ export const HELP_CATEGORIES = [
               'O cupom precisa estar ativo, dentro da validade e respeitar o pedido mínimo.',
               'Limites de uso e desconto máximo podem reduzir ou impedir o benefício.',
               'Planos pagos podem reduzir taxas conforme as regras exibidas na assinatura.',
-              'O desconto aplicado sempre aparece antes de gerar o Pix ou redirecionar para a AbacatePay.',
+              'O desconto aplicado sempre aparece antes de gerar o Pix ou redirecionar para a Stripe.',
             ],
           },
         ],
