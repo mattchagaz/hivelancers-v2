@@ -23,6 +23,17 @@ export default function AppearancePanel({ appearance, setAppearance }) {
         {[{id:'blue',c:'#3b82f6'},{id:'green',c:'#10b981'},{id:'amber',c:'#f59e0b'},{id:'purple',c:'#8b5cf6'}].map(a => (
           <button key={a.id} type="button" className={`${styles.accentDot} ${appearance.accent === a.id ? styles.accentActive : ''}`} style={{ background: a.c }} onClick={() => setAppearance(p => ({ ...p, accent: a.id }))} />
         ))}
+        <label
+          className={`${styles.accentDot} ${styles.accentCustom} ${appearance.accent === 'custom' ? styles.accentActive : ''}`}
+          title="Cor personalizada"
+        >
+          <input
+            type="color"
+            className={styles.accentCustomInput}
+            value={appearance.customAccent || '#6366f1'}
+            onChange={(e) => setAppearance(p => ({ ...p, accent: 'custom', customAccent: e.target.value }))}
+          />
+        </label>
       </div>
     </section>
   );

@@ -21,6 +21,7 @@ const DEFAULT_SETTINGS = {
   appearance: {
     theme: 'light',
     accent: 'blue',
+    customAccent: '#6366f1',
     density: 'comfortable',
     reducedMotion: false,
   },
@@ -47,6 +48,19 @@ const ACCENT_COLORS = {
   pink: { primary: '219, 39, 119', secondary: '244, 114, 182' },
   teal: { primary: '13, 148, 136', secondary: '45, 212, 191' },
 };
+
+function hexToRgb(hex) {
+  const match = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex || '');
+  if (!match) return null;
+  return [match[1], match[2], match[3]].map((h) => parseInt(h, 16)).join(', ');
+}
+
+function lightenRgb(rgb, amount = 0.35) {
+  return rgb
+    .split(',')
+    .map((n) => Math.round(Number(n) + (255 - Number(n)) * amount))
+    .join(', ');
+}
 
 // Campos de privacidade persistem como colunas próprias do usuário no backend
 // (não fazem parte do blob `preferences`), por isso ficam fora do merge de preferências.
@@ -143,13 +157,18 @@ export function SettingsProvider({ children }) {
   }, [settings.appearance.theme]);
 
   useEffect(() => {
-    const palette = ACCENT_COLORS[settings.appearance.accent] || ACCENT_COLORS.blue;
+    const customRgb = settings.appearance.accent === 'custom'
+      ? hexToRgb(settings.appearance.customAccent)
+      : null;
+    const palette = customRgb
+      ? { primary: customRgb, secondary: lightenRgb(customRgb) }
+      : (ACCENT_COLORS[settings.appearance.accent] || ACCENT_COLORS.blue);
     const root = document.documentElement;
     root.style.setProperty('--primary-color', `rgb(${palette.primary})`);
     root.style.setProperty('--primary-color-rgb', palette.primary);
     root.style.setProperty('--secondary-color', `rgb(${palette.secondary})`);
     root.style.setProperty('--secondary-color-rgb', palette.secondary);
-  }, [settings.appearance.accent]);
+  }, [settings.appearance.accent, settings.appearance.customAccent]);
 
   useEffect(() => {
     const root = document.documentElement;
