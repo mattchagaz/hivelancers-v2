@@ -79,6 +79,7 @@ vi.mock('../../../services/payments', () => ({
   listAdminPayments: okList,
   listAdminPixSandboxPayments: vi.fn(() => Promise.resolve({ configured: true, items: [] })),
   retryAdminPaymentTransfer: vi.fn(),
+  approveAdminPaymentRelease: vi.fn(),
   simulateAdminPixPayment: vi.fn(),
 }));
 

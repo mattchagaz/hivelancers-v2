@@ -164,6 +164,7 @@ function Admin() {
   const [paymentStatusFilter, setPaymentStatusFilter] = useState('');
   const [releaseStatusFilter, setReleaseStatusFilter] = useState('');
   const [retryingPaymentId, setRetryingPaymentId] = useState('');
+  const [approvingPaymentId, setApprovingPaymentId] = useState('');
   const [adminServices, setAdminServices] = useState([]);
   const [adminServicesTotal, setAdminServicesTotal] = useState(0);
   const [adminServicesSummary, setAdminServicesSummary] = useState({});
@@ -1311,6 +1312,8 @@ function Admin() {
     paymentsTotalPages,
     retryingPaymentId,
     setRetryingPaymentId,
+    approvingPaymentId,
+    setApprovingPaymentId,
     // disputes
     loadDisputes,
     disputesLoading,

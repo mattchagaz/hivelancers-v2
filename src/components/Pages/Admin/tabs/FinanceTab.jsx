@@ -7,7 +7,7 @@ import {
 } from 'react-icons/fa6';
 import { toast } from 'sonner';
 import styles from '../Admin.module.css';
-import { retryAdminPaymentTransfer } from '../../../../services/payments';
+import { approveAdminPaymentRelease, retryAdminPaymentTransfer } from '../../../../services/payments';
 import {
   formatCents,
   toUserName,
@@ -36,6 +36,8 @@ export default function FinanceTab() {
     paymentsTotalPages,
     retryingPaymentId,
     setRetryingPaymentId,
+    approvingPaymentId,
+    setApprovingPaymentId,
   } = useAdmin();
 
   return (
@@ -133,35 +135,62 @@ export default function FinanceTab() {
             <em className={`${styles.badge} ${getStatusTone(PAYMENT_STATUS_LABEL[payment.status] || payment.status)}`}>
               {PAYMENT_STATUS_LABEL[payment.status] || payment.status}
             </em>
-            <em className={`${styles.badge} ${getStatusTone(payment.order ? (RELEASE_STATUS_LABEL[payment.releaseStatus] || payment.releaseStatus) : 'Sem movimentação')}`}>
-              {payment.order
-                ? (RELEASE_STATUS_LABEL[payment.releaseStatus] || payment.releaseStatus)
-                : 'Sem movimentação'}
-            </em>
-            <button
-              type="button"
-              className={styles.ghostButton}
-              disabled={
-                retryingPaymentId === payment.id ||
-                payment.status !== 'SUCCEEDED' ||
-                payment.releaseStatus === 'TRANSFERRED' ||
-                payment.releaseStatus === 'NOT_REQUIRED'
-              }
-              onClick={async () => {
-                setRetryingPaymentId(payment.id);
-                try {
-                  await retryAdminPaymentTransfer(payment.id);
-                  toast.success('Repasse reprocessado.');
-                  await loadAdminPayments();
-                } catch (err) {
-                  toast.error(err.message);
-                } finally {
-                  setRetryingPaymentId('');
+            <div>
+              <em className={`${styles.badge} ${getStatusTone(payment.order ? (RELEASE_STATUS_LABEL[payment.releaseStatus] || payment.releaseStatus) : 'Sem movimentação')}`}>
+                {payment.order
+                  ? (RELEASE_STATUS_LABEL[payment.releaseStatus] || payment.releaseStatus)
+                  : 'Sem movimentação'}
+              </em>
+              {payment.releaseStatus === 'HELD' && payment.releaseEligibleAt && (
+                <p>Libera sozinho em {new Date(payment.releaseEligibleAt).toLocaleString('pt-BR')}</p>
+              )}
+            </div>
+            <div className={styles.buttonGroup}>
+              {payment.canApproveRelease && (
+                <button
+                  type="button"
+                  className={styles.ghostButton}
+                  disabled={approvingPaymentId === payment.id}
+                  onClick={async () => {
+                    setApprovingPaymentId(payment.id);
+                    try {
+                      await approveAdminPaymentRelease(payment.id);
+                      toast.success('Repasse aprovado e enviado.');
+                      await loadAdminPayments();
+                    } catch (err) {
+                      toast.error(err.message);
+                    } finally {
+                      setApprovingPaymentId('');
+                    }
+                  }}
+                >
+                  {approvingPaymentId === payment.id ? 'Aprovando...' : 'Aprovar repasse'}
+                </button>
+              )}
+              <button
+                type="button"
+                className={styles.ghostButton}
+                disabled={
+                  retryingPaymentId === payment.id ||
+                  payment.status !== 'SUCCEEDED' ||
+                  payment.releaseStatus !== 'FAILED'
                 }
-              }}
-            >
-              {retryingPaymentId === payment.id ? 'Reprocessando...' : 'Reprocessar'}
-            </button>
+                onClick={async () => {
+                  setRetryingPaymentId(payment.id);
+                  try {
+                    await retryAdminPaymentTransfer(payment.id);
+                    toast.success('Repasse reprocessado.');
+                    await loadAdminPayments();
+                  } catch (err) {
+                    toast.error(err.message);
+                  } finally {
+                    setRetryingPaymentId('');
+                  }
+                }}
+              >
+                {retryingPaymentId === payment.id ? 'Reprocessando...' : 'Reprocessar'}
+              </button>
+            </div>
           </article>
           ))
         ) : (
