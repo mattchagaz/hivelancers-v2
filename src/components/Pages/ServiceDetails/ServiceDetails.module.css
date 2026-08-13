@@ -164,6 +164,12 @@
   line-height: 1.65;
 }
 
+/* .tagList usa margin-top: auto pra ficar no fim do card no desktop — aqui
+   ela é só mais um bloco na coluna, então zeramos isso. */
+.mobileTagList {
+  margin-top: 0;
+}
+
 .mobilePackages {
   display: flex;
   flex-direction: column;

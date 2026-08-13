@@ -345,6 +345,15 @@ function ServiceDetails() {
 
         {service.description && <p className={styles.mobileDescription}>{service.description}</p>}
 
+        {tags.length > 0 && (
+          <div className={`${styles.tagList} ${styles.mobileTagList}`}>
+            {tags.slice(0, 10).map((tag) => (
+              <span key={tag} className={styles.tag}>{tag}</span>
+            ))}
+            {tags.length > 10 && <span className={styles.tag}>+{tags.length - 10}</span>}
+          </div>
+        )}
+
         <div className={styles.mobilePackages}>
           <h2 className={styles.mobilePackagesTitle}>Escolha o pacote</h2>
           {service.plans.map((plan) => {
