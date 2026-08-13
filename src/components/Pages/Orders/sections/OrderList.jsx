@@ -1,5 +1,6 @@
 import { FaInbox } from 'react-icons/fa6';
 import styles from '../Orders.module.css';
+import EmptyState from '../../../UI/EmptyState/EmptyState';
 import UserAvatar from '../UserAvatar';
 import {
   STATUS_LABEL,
@@ -49,11 +50,12 @@ export default function OrderList() {
         {loadingList && orders.length === 0 ? (
           <div className={styles.emptyState}>Carregando pedidos...</div>
         ) : orders.length === 0 ? (
-          <div className={styles.emptyState}>
-            <div className={styles.emptyIcon}><FaInbox /></div>
-            <strong>Nenhum pedido encontrado</strong>
-            <p>Altere o papel ou o status para procurar em outro recorte.</p>
-          </div>
+          <EmptyState
+            compact
+            icon={<FaInbox />}
+            title="Nenhum pedido encontrado"
+            description="Altere o papel ou o status para procurar em outro recorte."
+          />
         ) : (
           orders.map((order) => {
             const otherUser = getOrderCounterparty(order, user?.id);
