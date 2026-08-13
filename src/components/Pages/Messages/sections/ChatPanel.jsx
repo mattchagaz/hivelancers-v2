@@ -1,9 +1,48 @@
 import { Link } from 'react-router-dom';
 import { FaCircle, FaClock, FaComments, FaPaperPlane } from 'react-icons/fa';
+import { FaFileInvoiceDollar } from 'react-icons/fa6';
 import styles from '../Messages.module.css';
 import EmptyState from '../../../UI/EmptyState/EmptyState';
 import { formatFullTime, formatTime, getSenderId, toId } from '../Messages.helpers';
 import { useMessages } from '../MessagesContext';
+
+const formatPrice = (cents = 0) => new Intl.NumberFormat('pt-BR', {
+  style: 'currency',
+  currency: 'BRL',
+}).format(cents / 100);
+
+const PROPOSAL_STATUS_LABEL = {
+  PENDING: 'Aguardando resposta',
+  PAYMENT_PENDING: 'Pagamento em processamento',
+  ACCEPTED: 'Aceita',
+  DECLINED: 'Recusada',
+  EXPIRED: 'Expirada',
+};
+
+function ProposalCard({ proposal, isMine, onAccept, onNegotiate }) {
+  const canRespond = !isMine && proposal.status === 'PENDING';
+  return (
+    <div className={styles.proposalCard}>
+      <span className={styles.proposalKicker}><FaFileInvoiceDollar /> Proposta</span>
+      <strong className={styles.proposalTitle}>{proposal.title}</strong>
+      {proposal.description && <p className={styles.proposalDescription}>{proposal.description}</p>}
+      <div className={styles.proposalMeta}>
+        <span>{formatPrice(proposal.priceCents)}</span>
+        <span>{proposal.deliveryDays} dias</span>
+      </div>
+      {canRespond ? (
+        <div className={styles.proposalActions}>
+          <button type="button" className={styles.proposalAccept} onClick={() => onAccept(proposal)}>Aceitar</button>
+          <button type="button" className={styles.proposalNegotiate} onClick={onNegotiate}>Negociar</button>
+        </div>
+      ) : (
+        <span className={`${styles.proposalStatus} ${styles[`proposalStatus${proposal.status}`] || ''}`}>
+          {PROPOSAL_STATUS_LABEL[proposal.status] || proposal.status}
+        </span>
+      )}
+    </div>
+  );
+}
 
 export default function ChatPanel() {
   const {
@@ -37,11 +76,25 @@ export default function ChatPanel() {
     handleFileSelect,
     uploading,
     text,
+    setText,
     handleTextChange,
     sending,
+    showProposalForm,
+    setShowProposalForm,
+    proposalForm,
+    updateProposalForm,
+    sendingProposal,
+    handleSendProposal,
+    openAcceptModal,
   } = useMessages();
 
   const isOtherOnline = Boolean(activeConversation?.online || otherUser?.online);
+  const canSendProposal = user?.userType === 'FREELANCER';
+
+  const handleNegotiate = () => {
+    setText((current) => current || `Sobre a proposta: `);
+    setTimeout(() => inputRef.current?.focus({ preventScroll: true }), 0);
+  };
 
   return (
     <div className={`${styles.chat} ${mobileShowChat ? styles.chatVisible : ''}`}>
@@ -154,6 +207,14 @@ export default function ChatPanel() {
                               )}
                             </div>
                           )}
+                          {msg.proposal && !isDeleted ? (
+                            <ProposalCard
+                              proposal={msg.proposal}
+                              isMine={isMine}
+                              onAccept={openAcceptModal}
+                              onNegotiate={handleNegotiate}
+                            />
+                          ) : (
                           <div className={`${styles.bubble} ${isMine ? styles.bubbleMine : styles.bubbleTheirs} ${isDeleted ? styles.bubbleDeleted : ''}`}>
                             {/* Reply quote */}
                             {msg.replyTo && (
@@ -188,6 +249,7 @@ export default function ChatPanel() {
                             )}
                             <span className={styles.bubbleTime}>{formatFullTime(msg.createdAt)}</span>
                           </div>
+                          )}
                         </div>
                       </div>
                     );
@@ -248,6 +310,11 @@ export default function ChatPanel() {
                 </svg>
               )}
             </button>
+            {canSendProposal && (
+              <button type="button" className={styles.attachBtn} onClick={() => setShowProposalForm(true)} title="Enviar proposta">
+                <FaFileInvoiceDollar />
+              </button>
+            )}
             <input
               ref={inputRef}
               className={styles.messageInput}
@@ -266,6 +333,78 @@ export default function ChatPanel() {
             </button>
           </form>
         </>
+      )}
+
+      {showProposalForm && (
+        <div className={styles.modalOverlay} onClick={() => !sendingProposal && setShowProposalForm(false)}>
+          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+            <h3>Nova proposta</h3>
+            <div className={styles.proposalFormField}>
+              <label htmlFor="proposal-title">Título</label>
+              <input
+                id="proposal-title"
+                type="text"
+                value={proposalForm.title}
+                onChange={(e) => updateProposalForm('title', e.target.value)}
+                placeholder="Ex: Landing page + integração de formulário"
+                disabled={sendingProposal}
+              />
+            </div>
+            <div className={styles.proposalFormField}>
+              <label htmlFor="proposal-description">Escopo</label>
+              <textarea
+                id="proposal-description"
+                rows={3}
+                value={proposalForm.description}
+                onChange={(e) => updateProposalForm('description', e.target.value)}
+                placeholder="O que está incluído nessa proposta?"
+                disabled={sendingProposal}
+              />
+            </div>
+            <div className={styles.proposalFormRow}>
+              <div className={styles.proposalFormField}>
+                <label htmlFor="proposal-price">Valor (R$)</label>
+                <input
+                  id="proposal-price"
+                  type="number"
+                  min="1"
+                  step="0.01"
+                  value={proposalForm.price}
+                  onChange={(e) => updateProposalForm('price', e.target.value)}
+                  disabled={sendingProposal}
+                />
+              </div>
+              <div className={styles.proposalFormField}>
+                <label htmlFor="proposal-delivery">Prazo (dias)</label>
+                <input
+                  id="proposal-delivery"
+                  type="number"
+                  min="1"
+                  value={proposalForm.deliveryDays}
+                  onChange={(e) => updateProposalForm('deliveryDays', e.target.value)}
+                  disabled={sendingProposal}
+                />
+              </div>
+              <div className={styles.proposalFormField}>
+                <label htmlFor="proposal-revisions">Revisões</label>
+                <input
+                  id="proposal-revisions"
+                  type="number"
+                  min="0"
+                  value={proposalForm.revisions}
+                  onChange={(e) => updateProposalForm('revisions', e.target.value)}
+                  disabled={sendingProposal}
+                />
+              </div>
+            </div>
+            <div className={styles.modalActions}>
+              <button className={styles.modalCancel} onClick={() => setShowProposalForm(false)} disabled={sendingProposal}>Cancelar</button>
+              <button className={styles.proposalSubmitBtn} onClick={handleSendProposal} disabled={sendingProposal}>
+                {sendingProposal ? 'Enviando...' : 'Enviar proposta'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

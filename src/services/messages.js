@@ -66,6 +66,15 @@ export const deleteMessage = async (conversationId, messageId) => {
   }
 };
 
+export const sendProposal = async (conversationId, payload) => {
+  try {
+    const { data } = await api.post(`/conversations/${conversationId}/proposals`, payload);
+    return data?.message || null;
+  } catch (error) {
+    throw new Error(extractMessage(error, 'Não foi possível enviar a proposta.'));
+  }
+};
+
 export const deleteConversation = async (conversationId) => {
   try {
     const { data } = await api.delete(`/conversations/${conversationId}`);

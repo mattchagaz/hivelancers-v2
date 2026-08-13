@@ -26,7 +26,17 @@ function AppLayout() {
   const serviceDetailMatch = location.pathname.match(/^\/services\/([^/]+)$/);
   const isServiceDetailImmersive = Boolean(serviceDetailMatch) && serviceDetailMatch[1] !== 'new';
   const isCheckoutImmersive = /^\/checkout\/[^/]+$/.test(location.pathname);
-  const isImmersivePage = isServiceDetailImmersive || isCheckoutImmersive;
+
+  // Página de mensagens: no mobile, a lista de conversas esconde só a
+  // TopBar (mantém a tab bar para navegação); ao abrir uma conversa
+  // (?chat=) o chat vira tela cheia, escondendo TopBar e tab bar.
+  const isMessagesRoute = location.pathname === '/messages';
+  const hasActiveChat = new URLSearchParams(location.search).has('chat');
+  const isMessagesChatImmersive = isMessagesRoute && hasActiveChat;
+  const isMessagesListImmersive = isMessagesRoute && !hasActiveChat;
+
+  const isImmersivePage = isServiceDetailImmersive || isCheckoutImmersive || isMessagesChatImmersive;
+  const isTopBarImmersive = isImmersivePage || isMessagesListImmersive;
 
   const isAdmin = isAdminUser(user);
   const userRole = toRoleSlug(user?.userType) || 'freelancer';
@@ -67,7 +77,7 @@ function AppLayout() {
           userRole={isAdmin ? 'admin' : userRole}
           avatarUrl={user?.avatarUrl}
           onMenuToggle={toggleSidebar}
-          immersive={isImmersivePage}
+          immersive={isTopBarImmersive}
         />
         <main className={styles.content}>
           <Outlet />

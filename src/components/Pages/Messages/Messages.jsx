@@ -6,9 +6,16 @@ import {
   listConversations,
   getMessages,
   sendMessage,
+  sendProposal,
   deleteMessage as apiDeleteMessage,
   deleteConversation as apiDeleteConversation,
 } from '../../../services/messages';
+import {
+  createConversationProposalCheckoutSession,
+  getCheckoutSessionStatus,
+  cancelCheckoutPayment,
+} from '../../../services/payments';
+import PixPaymentPanel from '../Checkout/PixPaymentPanel';
 import { uploadImageToCloudinary } from '../../../services/cloudinary';
 import {
   connectSocket,
@@ -63,6 +70,13 @@ function Messages() {
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [deleteMsgConfirm, setDeleteMsgConfirm] = useState(null);
   const [lightboxUrl, setLightboxUrl] = useState(null);
+  const [showProposalForm, setShowProposalForm] = useState(false);
+  const [proposalForm, setProposalForm] = useState({ title: '', description: '', price: '', deliveryDays: '', revisions: '1' });
+  const [sendingProposal, setSendingProposal] = useState(false);
+  const [acceptModalProposal, setAcceptModalProposal] = useState(null);
+  const [acceptMethod, setAcceptMethod] = useState('card');
+  const [accepting, setAccepting] = useState(false);
+  const [pixCheckout, setPixCheckout] = useState(null);
 
   const messagesEndRef = useRef(null);
   const messagesAreaRef = useRef(null);
@@ -444,6 +458,139 @@ function Messages() {
     }
   };
 
+  const updateProposalForm = (field, value) => setProposalForm((prev) => ({ ...prev, [field]: value }));
+
+  const handleSendProposal = async () => {
+    if (!activeId || sendingProposal) return;
+    const title = proposalForm.title.trim();
+    const description = proposalForm.description.trim();
+    const priceCents = Math.round(Number(proposalForm.price) * 100);
+    const deliveryDays = Number(proposalForm.deliveryDays);
+    const revisions = Number(proposalForm.revisions);
+
+    if (title.length < 5) { toast.error('Dê um título com pelo menos 5 caracteres.'); return; }
+    if (description.length < 10) { toast.error('Descreva melhor o escopo da proposta.'); return; }
+    if (!priceCents || priceCents <= 0) { toast.error('Defina um valor válido.'); return; }
+    if (!deliveryDays || deliveryDays <= 0) { toast.error('Defina o prazo de entrega.'); return; }
+
+    setSendingProposal(true);
+    try {
+      const msg = await sendProposal(activeId, {
+        title,
+        description,
+        priceCents,
+        deliveryDays,
+        revisions: Number.isFinite(revisions) ? revisions : 1,
+      });
+      if (msg) {
+        appendIncomingMessage({
+          conversationId: activeId,
+          message: { ...msg, senderId: getSenderId(msg) || user?.id },
+        });
+      }
+      setShowProposalForm(false);
+      setProposalForm({ title: '', description: '', price: '', deliveryDays: '', revisions: '1' });
+      toast.success('Proposta enviada.');
+      setTimeout(scrollToBottom, 50);
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setSendingProposal(false);
+    }
+  };
+
+  const openAcceptModal = (proposal) => {
+    setAcceptModalProposal(proposal);
+    setAcceptMethod('card');
+  };
+
+  const confirmAcceptProposal = async () => {
+    if (!acceptModalProposal || accepting) return;
+    setAccepting(true);
+    try {
+      const data = await createConversationProposalCheckoutSession({
+        proposalId: acceptModalProposal.id,
+        paymentMethodType: acceptMethod,
+      });
+      if (acceptMethod === 'pix' && data.pix && data.payment) {
+        setPixCheckout(data);
+        setAcceptModalProposal(null);
+        setAccepting(false);
+        return;
+      }
+      if (!data.checkoutUrl) throw new Error('O gateway não retornou um link de pagamento.');
+      window.location.assign(data.checkoutUrl);
+    } catch (err) {
+      toast.error(err.message);
+      setAccepting(false);
+    }
+  };
+
+  const refreshActiveMessages = useCallback(() => {
+    if (!activeId) return;
+    getMessages(activeId).then((data) => setMessages(getMessageList(data))).catch(() => {});
+  }, [activeId]);
+
+  // Retomada do checkout de proposta ao voltar da Stripe / cancelamento.
+  useEffect(() => {
+    const proposalCheckoutStatus = searchParams.get('proposalCheckout');
+    if (!proposalCheckoutStatus) return undefined;
+
+    const clearParams = () => {
+      const next = new URLSearchParams(searchParams);
+      next.delete('proposalCheckout');
+      next.delete('session_id');
+      next.delete('payment_id');
+      setSearchParams(next, { replace: true });
+    };
+
+    if (proposalCheckoutStatus === 'cancel') {
+      const canceledPaymentId = searchParams.get('payment_id');
+      if (!canceledPaymentId) { clearParams(); return undefined; }
+      cancelCheckoutPayment(canceledPaymentId)
+        .then(() => toast.info('Pagamento cancelado. A proposta voltou a ficar disponível.'))
+        .catch((err) => toast.error(err.message))
+        .finally(clearParams);
+      return undefined;
+    }
+
+    const sessionId = searchParams.get('session_id');
+    if (!sessionId) { clearParams(); return undefined; }
+    let cancelled = false;
+    let intervalId = null;
+
+    const check = async () => {
+      try {
+        const { payment } = await getCheckoutSessionStatus(sessionId);
+        if (cancelled) return false;
+        if (payment.order) {
+          toast.success('Proposta aceita! Pedido criado.');
+          refreshActiveMessages();
+          return false;
+        }
+        return ['CHECKOUT_CREATED', 'PENDING'].includes(payment.status);
+      } catch (err) {
+        if (!cancelled) toast.error(err.message);
+        return false;
+      }
+    };
+
+    check().then((keepPolling) => {
+      if (!keepPolling || cancelled) return;
+      intervalId = window.setInterval(async () => {
+        const shouldContinue = await check();
+        if (!shouldContinue && intervalId) window.clearInterval(intervalId);
+      }, 4000);
+    });
+    clearParams();
+
+    return () => {
+      cancelled = true;
+      if (intervalId) window.clearInterval(intervalId);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleDeleteMessage = async () => {
     if (!deleteMsgConfirm) return;
     try {
@@ -584,9 +731,33 @@ function Messages() {
     handleFileSelect,
     uploading,
     text,
+    setText,
     handleTextChange,
     sending,
+    // propostas
+    showProposalForm,
+    setShowProposalForm,
+    proposalForm,
+    updateProposalForm,
+    sendingProposal,
+    handleSendProposal,
+    openAcceptModal,
   };
+
+  if (pixCheckout?.payment) {
+    return (
+      <PixPaymentPanel
+        initialPayment={pixCheckout.payment}
+        pix={pixCheckout.pix}
+        onOrderCreated={() => {
+          toast.success('Proposta aceita! Pedido criado.');
+          setPixCheckout(null);
+          refreshActiveMessages();
+        }}
+        onBack={() => setPixCheckout(null)}
+      />
+    );
+  }
 
   return (
     <MessagesContext.Provider value={messagesContextValue}>
@@ -620,6 +791,32 @@ function Messages() {
             <div className={styles.modalActions}>
               <button className={styles.modalCancel} onClick={() => setDeleteMsgConfirm(null)}>Cancelar</button>
               <button className={styles.modalConfirm} onClick={handleDeleteMessage}>Apagar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Accept proposal modal */}
+      {acceptModalProposal && (
+        <div className={styles.modalOverlay} onClick={() => !accepting && setAcceptModalProposal(null)}>
+          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+            <h3>Aceitar proposta</h3>
+            <p>{acceptModalProposal.title} · {(acceptModalProposal.priceCents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+            <div className={styles.proposalMethodChoice}>
+              <label className={acceptMethod === 'pix' ? styles.proposalMethodActive : ''}>
+                <input type="radio" name="acceptMethod" checked={acceptMethod === 'pix'} onChange={() => setAcceptMethod('pix')} />
+                Pix
+              </label>
+              <label className={acceptMethod === 'card' ? styles.proposalMethodActive : ''}>
+                <input type="radio" name="acceptMethod" checked={acceptMethod === 'card'} onChange={() => setAcceptMethod('card')} />
+                Cartão
+              </label>
+            </div>
+            <div className={styles.modalActions}>
+              <button className={styles.modalCancel} onClick={() => setAcceptModalProposal(null)} disabled={accepting}>Cancelar</button>
+              <button className={styles.proposalSubmitBtn} onClick={confirmAcceptProposal} disabled={accepting}>
+                {accepting ? 'Abrindo pagamento...' : 'Confirmar e pagar'}
+              </button>
             </div>
           </div>
         </div>

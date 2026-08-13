@@ -33,6 +33,15 @@ export const createProjectCheckoutSession = async (payload) => {
   }
 };
 
+export const createConversationProposalCheckoutSession = async (payload) => {
+  try {
+    const { data } = await api.post('/payments/conversation-proposal-checkout-sessions', payload);
+    return data;
+  } catch (error) {
+    throw new Error(extractMessage(error, 'Não foi possível iniciar o pagamento da proposta.'));
+  }
+};
+
 export const getCheckoutOptions = async (params) => {
   try {
     const { data } = await api.get('/payments/checkout-options', { params });
