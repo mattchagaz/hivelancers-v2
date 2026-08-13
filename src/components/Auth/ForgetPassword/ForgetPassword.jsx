@@ -13,6 +13,7 @@ import {
 } from 'react-icons/fa';
 import styles from './ForgetPassword.module.css';
 import { forgotPassword, resetPassword } from '../../../services/auth';
+import BrandLogo from '../../UI/BrandLogo/BrandLogo';
 
 const OTP_LENGTH = 6;
 const RESEND_COOLDOWN_SECONDS = 60;
@@ -165,7 +166,7 @@ function ForgetPassword() {
     <div className={styles.page}>
       <div className={styles.brandSide}>
         <div className={styles.brandContent}>
-          <div className={styles.logoMark}>H</div>
+          <div className={styles.logoMark}><BrandLogo /></div>
           <h1 className={styles.brandTitle}>Hivelancers</h1>
           <p className={styles.brandTagline}>
             Recupere o acesso à sua conta em poucos segundos, com segurança.

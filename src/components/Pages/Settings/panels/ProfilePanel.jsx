@@ -9,10 +9,10 @@ export default function ProfilePanel({ profile, updateProfile, updateLocation, o
 
       <div className={styles.formGrid}>
         <Field label="Nome">
-          <input type="text" className={styles.input} value={profile.firstName} onChange={(e) => updateProfile('firstName', e.target.value)} />
+          <input type="text" className={styles.input} value={profile.firstName} onChange={(e) => updateProfile('firstName', e.target.value)} autoCapitalize="words" autoComplete="given-name" />
         </Field>
         <Field label="Sobrenome">
-          <input type="text" className={styles.input} value={profile.lastName} onChange={(e) => updateProfile('lastName', e.target.value)} />
+          <input type="text" className={styles.input} value={profile.lastName} onChange={(e) => updateProfile('lastName', e.target.value)} autoCapitalize="words" autoComplete="family-name" />
         </Field>
         <Field label="Nome de Usuário (URL)" hint="Use letras e números, sem espaços." full>
           <div className={styles.inputWithPrefix}>

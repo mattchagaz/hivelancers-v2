@@ -3,8 +3,8 @@ import { NavLink } from 'react-router-dom';
 import { listConversations } from '../../../services/messages';
 import { listOrders } from '../../../services/orders';
 import { connectSocket, getSocket } from '../../../services/socket';
+import BrandLogo from '../../UI/BrandLogo/BrandLogo';
 import styles from './Sidebar.module.css';
-import Logo from '/Logo3.svg';
 
 const ACTIVE_ORDER_STATUSES = new Set(['PENDING', 'IN_PROGRESS', 'DELIVERED']);
 
@@ -190,8 +190,8 @@ function Sidebar({ userRole = 'freelancer', isAdmin = false, collapsed, mobileOp
         {/* Logo */}
         <div className={styles.logoArea}>
           <div className={styles.logoMark}>
-            <img src={Logo} alt="Hivelancers" width={29} height={29} />
-            </div>
+            <BrandLogo />
+          </div>
           <div className={`${styles.logoTextWrap} ${collapsed ? styles.hidden : ''}`}>
             <span className={styles.logoText}>Hivelancers</span>
           </div>

@@ -37,15 +37,14 @@
 }
 
 .brandMark {
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+  width: 29px;
+  height: 32px;
+  color: var(--primary-color);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  box-shadow: 0 2px 8px rgba(var(--primary-color-rgb), 0.25);
+  filter: drop-shadow(0 4px 8px rgba(var(--primary-color-rgb), 0.2));
 }
 
 .brand:hover,

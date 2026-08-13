@@ -2,7 +2,7 @@ import { Link, Outlet, useLocation } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { useAuth } from '../../contexts/authContextStore';
 import AppLayout from './AppLayout';
-import Logo from '/Logo3.svg';
+import BrandLogo from '../UI/BrandLogo/BrandLogo';
 import styles from './MarketplaceLayout.module.css';
 
 function MarketplaceLayout() {
@@ -25,7 +25,7 @@ function MarketplaceLayout() {
         <div className={styles.headerInner}>
           <Link to="/explore" className={styles.brand} aria-label="Hivelancers">
             <span className={styles.brandMark}>
-              <img src={Logo} alt="" width={20} height={20} />
+              <BrandLogo />
             </span>
             <span className={styles.brandLabel}>Hivelancers</span>
           </Link>

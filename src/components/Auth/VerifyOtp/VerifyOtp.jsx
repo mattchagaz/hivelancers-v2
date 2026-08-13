@@ -6,6 +6,7 @@ import styles from './VerifyOtp.module.css';
 import { verifyOtp, resendOtp } from '../../../services/auth';
 import { useAuth } from '../../../contexts/authContextStore';
 import { nextRouteAfterAuth } from '../../../utils/authFlow';
+import BrandLogo from '../../UI/BrandLogo/BrandLogo';
 
 const OTP_LENGTH = 6;
 const RESEND_COOLDOWN_SECONDS = 60;
@@ -122,7 +123,7 @@ function VerifyOtp() {
     <div className={styles.page}>
       <div className={styles.brandSide}>
         <div className={styles.brandContent}>
-          <div className={styles.logoMark}>H</div>
+          <div className={styles.logoMark}><BrandLogo /></div>
           <h1 className={styles.brandTitle}>Hivelancers</h1>
           <p className={styles.brandTagline}>
             Falta pouco! Confirme seu e-mail para liberar o acesso à plataforma.

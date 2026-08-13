@@ -10,7 +10,7 @@
   position: relative;
   overflow: hidden;
   padding: 30px clamp(24px, 5vw, 64px) 36px;
-  border: 1px solid rgba(var(--primary-color-rgb, 62, 115, 230), 0.18);
+  border: none;
   border-radius: 28px;
   background:
     radial-gradient(circle at 85% 0%, rgba(45, 212, 191, 0.28), transparent 32%),

@@ -8,3 +8,13 @@ export function formatPhoneBR(value) {
   }
   return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
 }
+
+export function formatPersonName(value) {
+  return String(value || '')
+    .normalize('NFC')
+    .replace(/[^\p{L}\p{M}\s'’-]/gu, '')
+    .toLocaleLowerCase('pt-BR')
+    .replace(/(^|[\s'’-])(\p{L})/gu, (_, separator, letter) => (
+      `${separator}${letter.toLocaleUpperCase('pt-BR')}`
+    ));
+}

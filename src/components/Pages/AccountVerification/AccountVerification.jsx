@@ -20,6 +20,7 @@ import {
   uploadVerificationDocument,
 } from '../../../services/users';
 import { useAuth } from '../../../contexts/authContextStore';
+import { formatPersonName } from '../../../utils/formatters';
 import SpotlightCard from '../../UI/SpotlightCard/SpotlightCard';
 import styles from './AccountVerification.module.css';
 
@@ -85,11 +86,6 @@ const formatPhone = (value = '') => {
   if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
   return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
 };
-
-const formatLegalName = (value = '') =>
-  value
-    .toLocaleLowerCase('pt-BR')
-    .replace(/(^|\s)(\p{L})/gu, (_, prefix, letter) => `${prefix}${letter.toLocaleUpperCase('pt-BR')}`);
 
 const toDateInput = (value) => {
   if (!value) return '';
@@ -382,7 +378,14 @@ function AccountVerification() {
           <div className={styles.formGrid}>
             <label className={styles.formField}>
               <span>Nome legal completo</span>
-              <input value={form.legalName} onChange={(event) => updateField('legalName', formatLegalName(event.target.value))} placeholder="Nome completo" required />
+              <input
+                value={form.legalName}
+                onChange={(event) => updateField('legalName', formatPersonName(event.target.value))}
+                placeholder="Nome completo"
+                autoCapitalize="words"
+                autoComplete="name"
+                required
+              />
             </label>
             <label className={styles.formField}>
               <span>CPF</span>

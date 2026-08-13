@@ -17,6 +17,8 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../contexts/authContextStore';
 import { completeGoogleLogin, getGoogleLoginUrl, registerUser } from '../../../services/auth';
 import { nextRouteAfterAuth } from '../../../utils/authFlow';
+import { formatPersonName } from '../../../utils/formatters';
+import BrandLogo from '../../UI/BrandLogo/BrandLogo';
 
 function SignupP() {
   const [step, setStep] = useState(1);
@@ -102,7 +104,7 @@ function SignupP() {
     if (name === 'phone') {
       setFormData({ ...formData, [name]: formatPhoneNumber(value) });
     } else if (name === 'firstName' || name === 'lastName') {
-      setFormData({ ...formData, [name]: formatName(value) });
+      setFormData({ ...formData, [name]: formatPersonName(value) });
     } else {
       setFormData({ ...formData, [name]: value });
     }
@@ -116,13 +118,6 @@ function SignupP() {
       return clean.replace(/^(\d{2})(\d{4})(\d{0,4})/, '($1) $2-$3');
     }
     return clean.replace(/^(\d{2})(\d{5})(\d{0,4})/, '($1) $2-$3');
-  };
-
-  const formatName = (value) => {
-    return value
-      .replace(/[^a-zA-ZÀ-ÿ\s]/g, '')
-      .toLowerCase()
-      .replace(/\b(\w)/g, (char) => char.toUpperCase());
   };
 
   const validateStep1 = () => {
@@ -217,7 +212,7 @@ function SignupP() {
       {/* Lado esquerdo — branding */}
       <div className={styles.brandSide}>
         <div className={styles.brandContent}>
-          <div className={styles.logoMark}>H</div>
+          <div className={styles.logoMark}><BrandLogo /></div>
           <h1 className={styles.brandTitle}>Hivelancers</h1>
           <p className={styles.brandTagline}>
             Crie sua conta e comece a vender seus serviços ou encontre o profissional ideal para seu projeto.
@@ -309,6 +304,8 @@ function SignupP() {
                         placeholder="João"
                         value={formData.firstName}
                         onChange={handleChange}
+                        autoCapitalize="words"
+                        autoComplete="given-name"
                       />
                     </div>
                   </div>
@@ -324,6 +321,8 @@ function SignupP() {
                         placeholder="Silva"
                         value={formData.lastName}
                         onChange={handleChange}
+                        autoCapitalize="words"
+                        autoComplete="family-name"
                       />
                     </div>
                   </div>

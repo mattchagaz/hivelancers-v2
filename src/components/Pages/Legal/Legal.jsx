@@ -10,6 +10,7 @@ import {
   FaUserLock,
 } from 'react-icons/fa6';
 import { useAuth } from '../../../contexts/authContextStore';
+import BrandLogo from '../../UI/BrandLogo/BrandLogo';
 import styles from './Legal.module.css';
 
 const UPDATED_AT = '24 de julho de 2026';
@@ -236,7 +237,7 @@ function Legal() {
           <FaArrowLeft /> Voltar
         </Link>
         <Link to="/legal" className={styles.brand}>
-          <span>H</span>
+          <span className={styles.brandLogo}><BrandLogo /></span>
           <strong>Hivelancers</strong>
         </Link>
         <span className={styles.version}>Atualizado em {UPDATED_AT}</span>

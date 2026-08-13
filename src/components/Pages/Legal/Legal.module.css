@@ -41,15 +41,12 @@
   font-size: 1.08rem;
 }
 
-.brand span {
-  display: grid;
-  width: 38px;
-  height: 38px;
-  place-items: center;
-  border-radius: 12px;
-  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-  color: #fff;
-  font-weight: 900;
+.brand .brandLogo {
+  display: inline-flex;
+  width: 30px;
+  height: 33px;
+  color: var(--primary-color);
+  filter: drop-shadow(0 4px 8px rgba(var(--primary-color-rgb, 62, 115, 230), 0.2));
 }
 
 .version {

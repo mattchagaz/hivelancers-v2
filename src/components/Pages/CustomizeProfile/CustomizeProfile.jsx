@@ -31,6 +31,7 @@ import {
 } from '../../../utils/profileEnhancements';
 import { buildCustomizeProfileErrors, normalizeExternalUrl } from '../../../utils/profileValidation';
 import { SKILL_SUGGESTIONS } from '../../../utils/skillSuggestions';
+import { formatPersonName } from '../../../utils/formatters';
 import ConfirmDialog from '../../UI/ConfirmDialog/ConfirmDialog';
 import styles from './CustomizeProfile.module.css';
 
@@ -206,7 +207,10 @@ function CustomizeProfile() {
   }, [skillInput, skills]);
 
   const updateProfileField = (field, value) => {
-    setProfile((prev) => ({ ...prev, [field]: value }));
+    const nextValue = field === 'firstName' || field === 'lastName'
+      ? formatPersonName(value)
+      : value;
+    setProfile((prev) => ({ ...prev, [field]: nextValue }));
   };
 
   const updateProfileLocation = (value, details) => {
@@ -685,10 +689,10 @@ function CustomizeProfile() {
 
             <div className={styles.formGrid}>
               <Field label="Nome" error={validation.profile.firstName}>
-                <input className={inputClassName(validation.profile.firstName)} value={profile.firstName} onChange={(e) => updateProfileField('firstName', e.target.value)} />
+                <input className={inputClassName(validation.profile.firstName)} value={profile.firstName} onChange={(e) => updateProfileField('firstName', e.target.value)} autoCapitalize="words" autoComplete="given-name" />
               </Field>
               <Field label="Sobrenome" error={validation.profile.lastName}>
-                <input className={inputClassName(validation.profile.lastName)} value={profile.lastName} onChange={(e) => updateProfileField('lastName', e.target.value)} />
+                <input className={inputClassName(validation.profile.lastName)} value={profile.lastName} onChange={(e) => updateProfileField('lastName', e.target.value)} autoCapitalize="words" autoComplete="family-name" />
               </Field>
               <Field label="Usuário público (URL)" error={validation.profile.username}>
                 <div className={`${styles.inputWithPrefix} ${validation.profile.username ? styles.inputWithPrefixError : ''}`}>

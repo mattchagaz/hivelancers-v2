@@ -308,11 +308,11 @@ export default function UsersTab() {
               <div className={styles.formGrid}>
                 <label className={styles.formField}>
                   <span>Nome</span>
-                  <input value={userDraft.firstName} onChange={(event) => updateUserDraft('firstName', event.target.value)} />
+                  <input value={userDraft.firstName} onChange={(event) => updateUserDraft('firstName', event.target.value)} autoCapitalize="words" autoComplete="given-name" />
                 </label>
                 <label className={styles.formField}>
                   <span>Sobrenome</span>
-                  <input value={userDraft.lastName} onChange={(event) => updateUserDraft('lastName', event.target.value)} />
+                  <input value={userDraft.lastName} onChange={(event) => updateUserDraft('lastName', event.target.value)} autoCapitalize="words" autoComplete="family-name" />
                 </label>
                 <label className={`${styles.formField} ${styles.formFieldFull}`}>
                   <span>Email</span>

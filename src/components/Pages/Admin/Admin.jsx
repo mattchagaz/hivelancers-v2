@@ -26,6 +26,7 @@ import {
 import { toast, Toaster } from 'sonner';
 import SpotlightCard from '../../UI/SpotlightCard/SpotlightCard';
 import { useAuth } from '../../../contexts/authContextStore';
+import { formatPersonName } from '../../../utils/formatters';
 import {
   createCategory,
   deleteCategory,
@@ -808,7 +809,10 @@ function Admin() {
   };
 
   const updateUserDraft = (field, value) => {
-    setUserDraft((current) => ({ ...current, [field]: value }));
+    const nextValue = field === 'firstName' || field === 'lastName'
+      ? formatPersonName(value)
+      : value;
+    setUserDraft((current) => ({ ...current, [field]: nextValue }));
   };
 
   const saveUser = async () => {

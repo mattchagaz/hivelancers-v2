@@ -15,7 +15,7 @@
   align-items: stretch;
   overflow: hidden;
   padding: 28px;
-  border: 1px solid rgba(var(--primary-color-rgb, 62, 115, 230), 0.12);
+  border: none;
   border-radius: 26px;
   background:
     linear-gradient(135deg, rgba(17, 24, 39, 0.98), var(--primary-color, #3e73e6) 50%, rgba(13, 148, 136, 0.9)),

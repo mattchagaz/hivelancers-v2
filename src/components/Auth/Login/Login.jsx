@@ -6,6 +6,7 @@ import { FaEnvelope, FaLock, FaEye, FaEyeSlash } from 'react-icons/fa';
 import { useAuth } from '../../../contexts/authContextStore';
 import { completeGoogleLogin, getGoogleLoginUrl, resendOtp } from '../../../services/auth';
 import { nextRouteAfterAuth } from '../../../utils/authFlow';
+import BrandLogo from '../../UI/BrandLogo/BrandLogo';
 
 const destinationAfterLogin = (user, returnTo) => {
   const expected = nextRouteAfterAuth(user);
@@ -108,7 +109,7 @@ function Login() {
       {/* Lado esquerdo — branding */}
       <div className={styles.brandSide}>
         <div className={styles.brandContent}>
-          <div className={styles.logoMark}>H</div>
+          <div className={styles.logoMark}><BrandLogo /></div>
           <h1 className={styles.brandTitle}>Hivelancers</h1>
           <p className={styles.brandTagline}>
             Conectando talentos a oportunidades. Sua próxima grande conquista começa aqui.

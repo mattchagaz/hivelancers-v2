@@ -10,6 +10,7 @@ import {
 import { uploadImageToCloudinary } from '../../../services/cloudinary';
 import CityAutocomplete from '../../CityAutocomplete/CityAutocomplete';
 import { toRoleSlug } from '../../../utils/authFlow';
+import { formatPersonName } from '../../../utils/formatters';
 import SpotlightCard from '../../UI/SpotlightCard/SpotlightCard';
 import ConfirmDialog from '../../UI/ConfirmDialog/ConfirmDialog';
 import styles from './Settings.module.css';
@@ -49,6 +50,7 @@ function Settings() {
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [showRemoveAvatarConfirm, setShowRemoveAvatarConfirm] = useState(false);
   const avatarInputRef = useRef(null);
+  const profilePanelRef = useRef(null);
 
   const serverProfile = useMemo(() => profileFromUser(user), [user]);
   const { notifications, appearance, privacy, language } = settings;
@@ -93,6 +95,13 @@ function Settings() {
 
   const publicProfileHref = profile.username ? `/profile/${profile.username}` : null;
 
+  const openProfilePanel = () => {
+    setActiveTab('profile');
+    window.requestAnimationFrame(() => {
+      profilePanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  };
+
   const tabs = useMemo(
     () => [
       { id: 'profile', label: 'Perfil Público', icon: 'user', description: 'Apresentação e vitrine' },
@@ -136,7 +145,10 @@ function Settings() {
   const activeTabData = tabs.find((tab) => tab.id === activeTab) || tabs[0];
 
   const updateProfileField = (field, value) => {
-    setProfile((prev) => ({ ...prev, [field]: value }));
+    const nextValue = field === 'firstName' || field === 'lastName'
+      ? formatPersonName(value)
+      : value;
+    setProfile((prev) => ({ ...prev, [field]: nextValue }));
   };
 
   const updateProfileLocation = (value, details) => {
@@ -249,7 +261,7 @@ function Settings() {
   const checklist = [
     { label: 'Foto de perfil', done: Boolean(profile.avatarUrl) },
     { label: 'Headline estratégica', done: Boolean(profile.headline) },
-    { label: 'Biografia', done: (profile.bio || '').length >= 80 },
+    { label: 'Biografia', done: Boolean((profile.bio || '').trim()) },
     { label: 'Website ou Link', done: Boolean(profile.website) },
   ];
 
@@ -271,7 +283,7 @@ function Settings() {
             {publicProfileHref ? (
               <Link to={publicProfileHref} className={styles.primaryAction}>Ver Perfil Público <FaArrowUpRightFromSquare /></Link>
             ) : (
-              <button type="button" className={styles.primaryAction} onClick={() => setActiveTab('profile')}>Completar Perfil</button>
+              <button type="button" className={styles.primaryAction} onClick={openProfilePanel}>Completar Perfil</button>
             )}
             <Link to="/profile/customize" className={styles.secondaryAction}>Editor de Portfólio</Link>
           </div>
@@ -371,7 +383,7 @@ function Settings() {
         </aside>
 
         {/* Content Area */}
-        <main className={styles.main}>
+        <main ref={profilePanelRef} className={styles.main}>
           <section className={styles.panelHero}>
             <div>
               <span className={styles.panelEyebrow}>{activeTabData.label}</span>
