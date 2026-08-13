@@ -1,6 +1,6 @@
 import { createElement, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { FaCreditCard, FaPix } from 'react-icons/fa6';
+import { FaChevronLeft, FaCreditCard, FaPix } from 'react-icons/fa6';
 import { toast, Toaster } from 'sonner';
 import { getMyService, getPublicService } from '../../../services/services';
 import {
@@ -143,6 +143,7 @@ function Checkout() {
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
   const [subscription, setSubscription] = useState(null);
+  const [mobileStep, setMobileStep] = useState(1);
 
   useEffect(() => {
     let cancelled = false;
@@ -295,6 +296,24 @@ function Checkout() {
     'Suporte ativo caso haja divergência no escopo',
   ];
 
+  const goToMobileStep2 = () => {
+    if (!briefing.trim() || briefing.trim().length < 30) {
+      toast.error('Descreva o briefing com pelo menos 30 caracteres para orientar bem o profissional.');
+      return;
+    }
+    setMobileStep(2);
+  };
+
+  const goToMobileStep3 = () => setMobileStep(3);
+
+  const goToPrevMobileStep = () => {
+    if (mobileStep === 1) {
+      navigate(-1);
+      return;
+    }
+    setMobileStep((current) => Math.max(1, current - 1));
+  };
+
   const handleApplyCoupon = async () => {
     const code = couponInput.trim();
     if (!code) {
@@ -378,43 +397,86 @@ function Checkout() {
   if (createdOrder) {
     return (
       <div className={styles.successState}>
-        <div className={styles.successIcon}>
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-            <polyline points="22 4 12 14.01 9 11.01"></polyline>
-          </svg>
-        </div>
-        <h1 className={styles.successTitle}>Pedido confirmado com sucesso!</h1>
-        <p className={styles.successText}>
-          Seu pagamento está protegido. O briefing foi enviado para <strong>{sellerName}</strong> e em breve você receberá atualizações no seu painel.
-        </p>
+        <div className={styles.mobileSuccessState}>
+          <div className={styles.mobileSuccessIcon}>
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+              <polyline points="22 4 12 14.01 9 11.01"></polyline>
+            </svg>
+          </div>
+          <h1 className={styles.mobileSuccessTitle}>Pedido confirmado!</h1>
+          <p className={styles.mobileSuccessText}>
+            Seu pagamento está protegido. O briefing foi enviado para <strong>{sellerName}</strong> e em breve você receberá atualizações no seu painel.
+          </p>
 
-        <div className={styles.successGrid}>
-          <div className={styles.successCard}>
-            <span className={styles.successLabel}>Nº do Pedido</span>
-            <strong>#{createdOrder.id.slice(-8).toUpperCase()}</strong>
+          <div className={styles.mobileSuccessCard}>
+            <div className={styles.mobileSuccessRow}>
+              <span>Nº do Pedido</span>
+              <strong>#{createdOrder.id.slice(-8).toUpperCase()}</strong>
+            </div>
+            <div className={styles.mobileSuccessRow}>
+              <span>Status</span>
+              <strong className={styles.statusProtected}>Valor Protegido</strong>
+            </div>
+            <div className={styles.mobileSuccessRow}>
+              <span>Próximo Passo</span>
+              <strong>Aguardando Aceite</strong>
+            </div>
           </div>
-          <div className={styles.successCard}>
-            <span className={styles.successLabel}>Status</span>
-            <strong className={styles.statusProtected}>Valor Protegido</strong>
-          </div>
-          <div className={styles.successCard}>
-            <span className={styles.successLabel}>Próximo Passo</span>
-            <strong>Aguardando Aceite</strong>
+
+          <div className={styles.mobileSuccessActions}>
+            <button type="button" className={styles.mobileActionBtn} onClick={() => navigate(`/orders?id=${createdOrder.id}`)}>
+              Acessar painel do pedido
+            </button>
+            <button
+              type="button"
+              className={styles.mobileSuccessSecondaryBtn}
+              onClick={() => navigate(`/messages${createdOrder.conversationId ? `?chat=${createdOrder.conversationId}` : ''}`)}
+            >
+              Enviar mensagem
+            </button>
           </div>
         </div>
 
-        <div className={styles.successActions}>
-          <button type="button" className={styles.primaryButton} onClick={() => navigate(`/orders?id=${createdOrder.id}`)}>
-            Acessar painel do pedido
-          </button>
-          <button
-            type="button"
-            className={styles.secondaryButton}
-            onClick={() => navigate(`/messages${createdOrder.conversationId ? `?chat=${createdOrder.conversationId}` : ''}`)}
-          >
-            Enviar mensagem
-          </button>
+        <div className={styles.desktopSuccessState}>
+          <div className={styles.successIcon}>
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+              <polyline points="22 4 12 14.01 9 11.01"></polyline>
+            </svg>
+          </div>
+          <h1 className={styles.successTitle}>Pedido confirmado com sucesso!</h1>
+          <p className={styles.successText}>
+            Seu pagamento está protegido. O briefing foi enviado para <strong>{sellerName}</strong> e em breve você receberá atualizações no seu painel.
+          </p>
+
+          <div className={styles.successGrid}>
+            <div className={styles.successCard}>
+              <span className={styles.successLabel}>Nº do Pedido</span>
+              <strong>#{createdOrder.id.slice(-8).toUpperCase()}</strong>
+            </div>
+            <div className={styles.successCard}>
+              <span className={styles.successLabel}>Status</span>
+              <strong className={styles.statusProtected}>Valor Protegido</strong>
+            </div>
+            <div className={styles.successCard}>
+              <span className={styles.successLabel}>Próximo Passo</span>
+              <strong>Aguardando Aceite</strong>
+            </div>
+          </div>
+
+          <div className={styles.successActions}>
+            <button type="button" className={styles.primaryButton} onClick={() => navigate(`/orders?id=${createdOrder.id}`)}>
+              Acessar painel do pedido
+            </button>
+            <button
+              type="button"
+              className={styles.secondaryButton}
+              onClick={() => navigate(`/messages${createdOrder.conversationId ? `?chat=${createdOrder.conversationId}` : ''}`)}
+            >
+              Enviar mensagem
+            </button>
+          </div>
         </div>
 
         <Toaster position="top-center" richColors />
@@ -513,6 +575,226 @@ function Checkout() {
 
   return (
     <div className={styles.page}>
+      <div className={styles.mobileCheckout}>
+        <div className={styles.mobileStepHeader}>
+          <button type="button" className={styles.mobileBackBtn} onClick={goToPrevMobileStep} aria-label="Voltar">
+            <FaChevronLeft />
+          </button>
+          <h1>Contratar</h1>
+        </div>
+
+        <div className={styles.mobileProgressBar}>
+          {[1, 2, 3].map((stepNumber) => (
+            <span
+              key={stepNumber}
+              className={`${styles.mobileProgressSegment} ${mobileStep >= stepNumber ? styles.mobileProgressSegmentActive : ''}`}
+            />
+          ))}
+        </div>
+
+        {mobileStep === 1 && (
+          <div className={styles.mobileStepContent}>
+            <h2 className={styles.mobileStepTitle}>Instruções e Briefing</h2>
+            <p className={styles.mobileStepSubtitle}>Passe todas as diretrizes para garantir uma entrega certeira.</p>
+
+            <label className={styles.field}>
+              <span className={styles.label}>Título do Projeto (Interno)</span>
+              <input
+                className={styles.input}
+                type="text"
+                value={orderTitle}
+                onChange={(e) => setOrderTitle(e.target.value)}
+                placeholder="Ex: Identidade Visual da Loja Nova"
+              />
+            </label>
+
+            <label className={styles.field}>
+              <span className={styles.label}>Prazo ideal ou Nota especial</span>
+              <input
+                className={styles.input}
+                type="text"
+                value={deliveryNote}
+                onChange={(e) => setDeliveryNote(e.target.value)}
+                placeholder="Ex: Preciso revisar antes do dia 15"
+              />
+            </label>
+
+            <label className={styles.field}>
+              <span className={styles.label}>Briefing detalhado <span className={styles.required}>*</span></span>
+              <textarea
+                className={styles.textarea}
+                rows={5}
+                value={briefing}
+                onChange={(e) => setBriefing(e.target.value)}
+                placeholder="Qual o objetivo do projeto? Quem é o público? Qual o tom de voz ou estilo visual esperado? Descreva com o máximo de detalhes possível."
+              />
+            </label>
+
+            <label className={styles.field}>
+              <span className={styles.label}>Links, Arquivos e Referências</span>
+              <textarea
+                className={styles.textarea}
+                rows={3}
+                value={attachments}
+                onChange={(e) => setAttachments(e.target.value)}
+                placeholder="Cole aqui links do Google Drive, Figma, referências do Pinterest, etc."
+              />
+            </label>
+          </div>
+        )}
+
+        {mobileStep === 2 && (
+          <div className={styles.mobileStepContent}>
+            <h2 className={styles.mobileStepTitle}>O que acontece agora?</h2>
+            <p className={styles.mobileStepSubtitle}>Entenda o fluxo seguro da plataforma.</p>
+
+            <div className={styles.timeline}>
+              {orderSteps.map((stepItem, index) => (
+                <div key={stepItem.title} className={styles.timelineItem}>
+                  <div className={styles.timelineIcon}>
+                    {index === 0 && <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>}
+                    {index === 1 && <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>}
+                    {index === 2 && <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>}
+                    {index === 3 && <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>}
+                  </div>
+                  <div className={styles.timelineContent}>
+                    <h3>{stepItem.title}</h3>
+                    <p>{stepItem.text}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <section className={styles.protectionCard}>
+              <div className={styles.shieldIcon}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+              </div>
+              <div>
+                <h3>Garantia Plataforma</h3>
+                <ul className={styles.protectionList}>
+                  {protections.map((item, idx) => (
+                    <li key={idx}>{item}</li>
+                  ))}
+                </ul>
+              </div>
+            </section>
+          </div>
+        )}
+
+        {mobileStep === 3 && (
+          <div className={styles.mobileStepContent}>
+            <h2 className={styles.mobileStepTitle}>Pagamento</h2>
+
+            <div className={styles.mobilePaymentMethods}>
+              {PAYMENT_METHODS.map(({ id: methodId, title, description, icon }) => {
+                const isSelected = paymentMethodType === methodId;
+                const option = checkoutOptions[methodId];
+                const disabled = option ? !option.available : false;
+                return (
+                  <button
+                    key={methodId}
+                    type="button"
+                    className={`${styles.mobilePlanCard} ${isSelected ? styles.mobilePlanCardActive : ''}`}
+                    onClick={() => { if (!disabled) setPaymentMethodType(methodId); }}
+                    disabled={disabled}
+                  >
+                    <span className={`${styles.mobilePlanRadio} ${isSelected ? styles.mobilePlanRadioActive : ''}`} />
+                    <span className={styles.mobilePaymentIcon}>{createElement(icon)}</span>
+                    <span className={styles.mobilePlanInfo}>
+                      <strong>{title}</strong>
+                      <span>{disabled ? option?.reason : description}</span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className={styles.mobileCouponRow}>
+              {currentAppliedCoupon ? (
+                <div className={styles.appliedCoupon}>
+                  <div>
+                    <strong>{currentAppliedCoupon.coupon.name}</strong>
+                    <span>{currentAppliedCoupon.coupon.description || `Cupom ${currentAppliedCoupon.coupon.code} aplicado.`}</span>
+                  </div>
+                  <button type="button" onClick={removeCoupon} disabled={isSubmitting}>
+                    Remover
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <input
+                    className={styles.couponInput}
+                    type="text"
+                    value={couponInput}
+                    onChange={(event) => setCouponInput(event.target.value.toUpperCase())}
+                    placeholder="Cupom de desconto"
+                    disabled={isApplyingCoupon || isSubmitting}
+                  />
+                  <button
+                    type="button"
+                    className={styles.couponButton}
+                    onClick={handleApplyCoupon}
+                    disabled={isApplyingCoupon || isSubmitting}
+                  >
+                    {isApplyingCoupon ? 'Validando...' : 'Aplicar'}
+                  </button>
+                </>
+              )}
+            </div>
+
+            <div className={styles.mobilePriceCard}>
+              <div className={styles.mobilePriceRow}>
+                <span>{selectedPlan.title}</span>
+                <span>{formatPrice(subtotalCents)}</span>
+              </div>
+              {currentAppliedCoupon && (
+                <div className={styles.mobilePriceRow}>
+                  <span>Desconto ({currentAppliedCoupon.coupon.code})</span>
+                  <span>- {formatPrice(discountCents)}</span>
+                </div>
+              )}
+              <div className={styles.mobilePriceRow}>
+                <span>Taxa de serviço ({clientFeePercent}%)</span>
+                <span>{clientFeeCents > 0 ? formatPrice(clientFeeCents) : 'Grátis'}</span>
+              </div>
+              <div className={styles.mobilePriceDivider} />
+              <div className={`${styles.mobilePriceRow} ${styles.mobilePriceTotal}`}>
+                <span>Total</span>
+                <strong>{formatPrice(totalCents)}</strong>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className={styles.mobileActionBar}>
+          <div className={styles.mobileActionTotal}>
+            <span>Total</span>
+            <strong>{formatPrice(mobileStep === 3 ? totalCents : contractCents)}</strong>
+          </div>
+          {mobileStep === 1 && (
+            <button type="button" className={styles.mobileActionBtn} onClick={goToMobileStep2}>
+              Continuar
+            </button>
+          )}
+          {mobileStep === 2 && (
+            <button type="button" className={styles.mobileActionBtn} onClick={goToMobileStep3}>
+              Continuar
+            </button>
+          )}
+          {mobileStep === 3 && (
+            <button
+              type="button"
+              className={styles.mobileActionBtn}
+              onClick={handleSubmit}
+              disabled={isSubmitting || !checkoutOptions[paymentMethodType]?.available}
+            >
+              {isSubmitting ? 'Processando...' : 'Confirmar e pagar'}
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className={styles.desktopCheckout}>
       <div className={styles.breadcrumbs}>
         <Link to="/dashboard">Dashboard</Link>
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 18l6-6-6-6"/></svg>
@@ -827,6 +1109,7 @@ function Checkout() {
             </div>
           </section>
         </aside>
+      </div>
       </div>
 
       <Toaster position="top-center" richColors />

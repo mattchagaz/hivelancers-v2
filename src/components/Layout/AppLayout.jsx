@@ -20,10 +20,13 @@ function AppLayout() {
   const { user } = useAuth();
   const location = useLocation();
 
-  // Tela de detalhe de serviço usa um layout imersivo no mobile (sem
-  // TopBar/tab bar) — mas não as rotas /services/new nem /services/:id/edit.
+  // Tela de detalhe de serviço e o checkout usam um layout imersivo no
+  // mobile (sem TopBar/tab bar) — mas não as rotas /services/new nem
+  // /services/:id/edit.
   const serviceDetailMatch = location.pathname.match(/^\/services\/([^/]+)$/);
-  const isImmersivePage = Boolean(serviceDetailMatch) && serviceDetailMatch[1] !== 'new';
+  const isServiceDetailImmersive = Boolean(serviceDetailMatch) && serviceDetailMatch[1] !== 'new';
+  const isCheckoutImmersive = /^\/checkout\/[^/]+$/.test(location.pathname);
+  const isImmersivePage = isServiceDetailImmersive || isCheckoutImmersive;
 
   const isAdmin = isAdminUser(user);
   const userRole = toRoleSlug(user?.userType) || 'freelancer';

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { FaCircleCheck, FaCopy, FaPix, FaShieldHalved } from 'react-icons/fa6';
+import { FaChevronLeft, FaCircleCheck, FaCopy, FaPix, FaShieldHalved } from 'react-icons/fa6';
 import { toast, Toaster } from 'sonner';
 import { getCheckoutSessionStatus } from '../../../services/payments';
 import styles from './Checkout.module.css';
@@ -51,6 +51,10 @@ export default function PixPaymentPanel({ initialPayment, pix, onOrderCreated, o
   return (
     <div className={styles.pixPaymentPage}>
       <section className={styles.pixPaymentCard}>
+        <button type="button" className={styles.pixMobileBack} onClick={onBack} aria-label="Voltar">
+          <FaChevronLeft /> Voltar
+        </button>
+
         <div className={styles.pixPaymentHeading}>
           <span className={styles.pixBrandIcon}><FaPix /></span>
           <div>

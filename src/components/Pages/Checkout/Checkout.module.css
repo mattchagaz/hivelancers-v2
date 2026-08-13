@@ -36,6 +36,236 @@
   font-weight: 600;
 }
 
+.desktopCheckout {
+  display: contents;
+}
+
+.mobileCheckout {
+  display: none;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.mobileStepHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.mobileStepHeader h1 {
+  margin: 0;
+  color: var(--text-primary, #1a1a2e);
+  font-size: 1.2rem;
+  font-weight: 800;
+}
+
+.mobileBackBtn {
+  display: flex;
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-color, #e8e8ef);
+  border-radius: 50%;
+  background: var(--bg-subtle, #fafbff);
+  color: var(--text-primary, #1a1a2e);
+  cursor: pointer;
+}
+
+.mobileProgressBar {
+  display: flex;
+  gap: 6px;
+}
+
+.mobileProgressSegment {
+  height: 4px;
+  flex: 1;
+  border-radius: 999px;
+  background: var(--border-color, #e8e8ef);
+}
+
+.mobileProgressSegmentActive {
+  background: var(--primary-color, #3e73e6);
+}
+
+.mobileStepContent {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.mobileStepTitle {
+  margin: 0;
+  color: var(--text-primary, #1a1a2e);
+  font-size: 1.25rem;
+  font-weight: 800;
+}
+
+.mobileStepSubtitle {
+  margin: -10px 0 0;
+  color: var(--text-secondary, #6c6d72);
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.mobilePaymentMethods {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mobilePlanCard {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border: 1.5px solid var(--border-color, #e8e8ef);
+  border-radius: 16px;
+  background: var(--bg-subtle, #fafbff);
+  text-align: left;
+  cursor: pointer;
+}
+
+.mobilePlanCard:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.mobilePlanCardActive {
+  border-color: var(--primary-color, #3e73e6);
+  background: rgba(var(--primary-color-rgb, 62, 115, 230), 0.08);
+}
+
+.mobilePlanRadio {
+  position: relative;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  border: 2px solid var(--border-color, #e8e8ef);
+  border-radius: 50%;
+}
+
+.mobilePlanRadioActive {
+  border-color: var(--primary-color, #3e73e6);
+}
+
+.mobilePlanRadioActive::after {
+  position: absolute;
+  inset: 4px;
+  border-radius: 50%;
+  background: var(--primary-color, #3e73e6);
+  content: '';
+}
+
+.mobilePaymentIcon {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary-color, #3e73e6);
+  font-size: 1.1rem;
+}
+
+.mobilePlanInfo {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.mobilePlanInfo strong {
+  color: var(--text-primary, #1a1a2e);
+  font-size: 0.92rem;
+}
+
+.mobilePlanInfo span {
+  color: var(--text-secondary, #6c6d72);
+  font-size: 0.78rem;
+  overflow-wrap: anywhere;
+}
+
+.mobileCouponRow {
+  display: flex;
+  gap: 8px;
+}
+
+.mobileCouponRow .couponInput {
+  flex: 1;
+}
+
+.mobilePriceCard {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid var(--border-color, #e8e8ef);
+  border-radius: 16px;
+  background: var(--bg-subtle, #fafbff);
+}
+
+.mobilePriceRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--text-secondary, #6c6d72);
+  font-size: 0.86rem;
+}
+
+.mobilePriceDivider {
+  height: 1px;
+  background: var(--border-color, #e8e8ef);
+}
+
+.mobilePriceTotal {
+  color: var(--text-primary, #1a1a2e);
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.mobileActionBar {
+  display: none;
+}
+
+.mobileActionTotal {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mobileActionTotal span {
+  color: var(--text-muted, #a0a0ab);
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.mobileActionTotal strong {
+  color: var(--text-primary, #1a1a2e);
+  font-size: 1.15rem;
+}
+
+.mobileActionBtn {
+  flex-shrink: 0;
+  min-height: 50px;
+  padding: 0 26px;
+  border: none;
+  border-radius: 999px;
+  background: var(--primary-color, #3e73e6);
+  color: #fff;
+  font-size: 0.92rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.mobileActionBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 /* Header Reestilizado */
 .header {
   padding: 32px;
@@ -984,11 +1214,46 @@
 .pixExpiredState { display: grid; min-height: 280px; place-items: center; align-content: center; gap: 14px; color: var(--text-secondary); text-align: center; }
 .pixExpiredState > svg { color: var(--text-muted); font-size: 2rem; }
 
+.pixMobileBack {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 16px;
+  padding: 8px 4px;
+  border: none;
+  background: none;
+  color: var(--text-secondary, #6c6d72);
+  font-size: 0.86rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
 @media (max-width: 700px) {
   .pixPaymentBody { grid-template-columns: 1fr; }
   .pixPaymentHeading { align-items: flex-start; }
   .pixCopyField > div { flex-direction: column; }
   .pixCopyField input { min-height: 46px; }
+}
+
+@media (max-width: 768px) {
+  .pixMobileBack {
+    display: flex;
+  }
+
+  .pixPaymentPage {
+    min-height: auto;
+    padding: 20px 16px 100px;
+  }
+
+  .pixPaymentCard {
+    padding: 18px;
+    border-radius: 20px;
+  }
+
+  .pixQrWrap img {
+    width: 190px;
+    height: 190px;
+  }
 }
 
 .secureNote {
@@ -1104,6 +1369,93 @@
 }
 
 /* Estados de Loading, Empty e Success */
+.desktopSuccessState {
+  display: contents;
+}
+
+.mobileSuccessState {
+  display: none;
+  width: 100%;
+  max-width: 420px;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.mobileSuccessIcon {
+  display: flex;
+  width: 72px;
+  height: 72px;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 14px;
+  border-radius: 50%;
+  background: rgba(var(--primary-color-rgb, 62, 115, 230), 0.12);
+  color: var(--primary-color, #3e73e6);
+}
+
+.mobileSuccessTitle {
+  margin: 0 0 8px;
+  color: var(--text-primary, #1a1a2e);
+  font-size: 1.35rem;
+  font-weight: 800;
+}
+
+.mobileSuccessText {
+  margin: 0 0 22px;
+  color: var(--text-secondary, #6c6d72);
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.mobileSuccessCard {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--border-color, #e8e8ef);
+  border-radius: 16px;
+  background: var(--bg-subtle, #fafbff);
+  margin-bottom: 22px;
+}
+
+.mobileSuccessRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.mobileSuccessRow span {
+  color: var(--text-secondary, #6c6d72);
+  font-size: 0.82rem;
+}
+
+.mobileSuccessRow strong {
+  color: var(--text-primary, #1a1a2e);
+  font-size: 0.88rem;
+}
+
+.mobileSuccessActions {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mobileSuccessSecondaryBtn {
+  min-height: 50px;
+  padding: 0 20px;
+  border: 1.5px solid var(--border-color, #e8e8ef);
+  border-radius: 999px;
+  background: var(--bg-primary, #fff);
+  color: var(--text-primary, #1a1a2e);
+  font-size: 0.92rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+
 .loadingState, .emptyState, .successState {
   min-height: 60vh;
   display: flex;
@@ -1220,6 +1572,45 @@
 }
 
 /* Reponsividade */
+@media (max-width: 768px) {
+  .page {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .desktopCheckout {
+    display: none;
+  }
+
+  .mobileCheckout {
+    display: flex;
+  }
+
+  .mobileActionBar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 95;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 14px 16px calc(14px + env(safe-area-inset-bottom, 0px));
+    background: var(--bg-primary, #fff);
+    border-top: 1px solid var(--border-color, #e8e8ef);
+    box-shadow: 0 -8px 24px rgba(15, 23, 42, 0.1);
+  }
+
+  .desktopSuccessState {
+    display: none;
+  }
+
+  .mobileSuccessState {
+    display: flex;
+  }
+}
+
 @media (max-width: 960px) {
   .layout {
     grid-template-columns: 1fr;
