@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
 // Smoke test da página de pedidos: monta o Orders com serviços/socket mockados
@@ -99,10 +99,28 @@ describe('Orders (smoke)', () => {
     expect(screen.getByText('freelancer')).toBeInTheDocument();
   });
 
-  it('renderiza o painel de detalhe do pedido selecionado sem quebrar', async () => {
+  it('nao abre o modal de detalhe sozinho ao montar a pagina', async () => {
+    listOrders.mockResolvedValue({ items: [buyerOrder] });
+    renderOrders();
+
+    await waitFor(() => {
+      expect(listOrders).toHaveBeenCalled();
+    });
+    // Dá tempo para qualquer efeito indevido de auto-seleção rodar.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(getOrder).not.toHaveBeenCalled();
+  });
+
+  it('abre o painel de detalhe do pedido ao clicar no card', async () => {
     listOrders.mockResolvedValue({ items: [buyerOrder] });
     getOrder.mockResolvedValue(buyerOrder);
     renderOrders();
+
+    await waitFor(() => {
+      expect(screen.getByText('Serviço X')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('Serviço X'));
 
     await waitFor(() => {
       expect(getOrder).toHaveBeenCalledWith('order-123456789');

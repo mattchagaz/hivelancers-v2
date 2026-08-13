@@ -75,17 +75,14 @@ function Orders() {
         ...(nextStatus ? { status: nextStatus } : {}),
       });
 
-      const items = result.items || [];
-      setOrders(items);
+      setOrders(result.items || []);
 
-      const nextSelectedId = preserveSelection ? currentSelectedOrderId : null;
-      const fallbackId = nextSelectedId || items[0]?.id || null;
-
-      if (!fallbackId) {
+      // Nunca abre o modal sozinho selecionando o primeiro pedido da lista —
+      // ele só deve aparecer por um clique explícito (handleOpenOrder) ou
+      // por um link que já chegue com ?id= na URL.
+      if (!preserveSelection && currentSelectedOrderId) {
         setSelectedOrder(null);
-        if (currentSelectedOrderId) setSearchParamsRef.current({}, { replace: true });
-      } else if (fallbackId !== currentSelectedOrderId) {
-        setSearchParamsRef.current({ id: fallbackId }, { replace: true });
+        setSearchParamsRef.current({}, { replace: true });
       }
     } catch (err) {
       toast.error(err.message);
