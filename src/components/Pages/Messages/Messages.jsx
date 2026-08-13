@@ -391,7 +391,12 @@ function Messages() {
     );
   };
 
-  const handleBack = () => setMobileShowChat(false);
+  const handleBack = () => {
+    setMobileShowChat(false);
+    const next = new URLSearchParams(searchParams);
+    next.delete('chat');
+    setSearchParams(next, { replace: true });
+  };
 
   const handleFileSelect = async (e) => {
     const file = e.target.files?.[0];
