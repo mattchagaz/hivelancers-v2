@@ -2,6 +2,10 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
 import { toast } from 'sonner';
 import { useAuth } from './authContextStore';
 import { updateMySettings } from '../services/users';
+import {
+  DEFAULT_CUSTOM_ACCENT,
+  limitCustomAccentLightness,
+} from '../utils/accentColor';
 
 const STORAGE_KEY = 'hivelancers:settings';
 const PREFERENCE_SYNC_DELAY = 600;
@@ -21,7 +25,7 @@ const DEFAULT_SETTINGS = {
   appearance: {
     theme: 'light',
     accent: 'blue',
-    customAccent: '#6366f1',
+    customAccent: DEFAULT_CUSTOM_ACCENT,
     density: 'comfortable',
     reducedMotion: false,
   },
@@ -62,6 +66,14 @@ function lightenRgb(rgb, amount = 0.35) {
     .join(', ');
 }
 
+function normalizeAppearance(appearance) {
+  const merged = { ...DEFAULT_SETTINGS.appearance, ...(appearance || {}) };
+  return {
+    ...merged,
+    customAccent: limitCustomAccentLightness(merged.customAccent),
+  };
+}
+
 // Campos de privacidade persistem como colunas próprias do usuário no backend
 // (não fazem parte do blob `preferences`), por isso ficam fora do merge de preferências.
 const PRIVACY_FIELDS = ['profilePublic', 'showOnline', 'showEarnings'];
@@ -73,7 +85,7 @@ function loadSettings() {
     const parsed = JSON.parse(stored);
     return {
       notifications: { ...DEFAULT_SETTINGS.notifications, ...(parsed.notifications || {}) },
-      appearance: { ...DEFAULT_SETTINGS.appearance, ...(parsed.appearance || {}) },
+      appearance: normalizeAppearance(parsed.appearance),
       privacy: { ...DEFAULT_SETTINGS.privacy, ...(parsed.privacy || {}) },
       language: { ...DEFAULT_SETTINGS.language, ...(parsed.language || {}) },
     };
@@ -93,7 +105,7 @@ const mergeUserIntoSettings = (prev, user) => ({
   ...(user.preferences && typeof user.preferences === 'object'
     ? {
       notifications: { ...DEFAULT_SETTINGS.notifications, ...(user.preferences.notifications || {}) },
-      appearance: { ...DEFAULT_SETTINGS.appearance, ...(user.preferences.appearance || {}) },
+      appearance: normalizeAppearance(user.preferences.appearance),
       language: { ...DEFAULT_SETTINGS.language, ...(user.preferences.language || {}) },
     }
     : {}),
@@ -158,7 +170,7 @@ export function SettingsProvider({ children }) {
 
   useEffect(() => {
     const customRgb = settings.appearance.accent === 'custom'
-      ? hexToRgb(settings.appearance.customAccent)
+      ? hexToRgb(limitCustomAccentLightness(settings.appearance.customAccent))
       : null;
     const palette = customRgb
       ? { primary: customRgb, secondary: lightenRgb(customRgb) }

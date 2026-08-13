@@ -94,7 +94,7 @@
 
 .primary {
   background: #fff;
-  color: #1d4ed8;
+  color: var(--primary-color);
 }
 
 .secondary {
@@ -152,7 +152,7 @@
 .commandCard a {
   width: 100%;
   background: #fff;
-  color: #1d4ed8;
+  color: var(--primary-color);
 }
 
 .statGrid {

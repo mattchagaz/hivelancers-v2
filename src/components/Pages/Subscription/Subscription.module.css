@@ -101,7 +101,7 @@
 .hero .primaryAction {
   padding: 0 16px;
   background: #fff;
-  color: #1d4ed8;
+  color: var(--primary-color);
 }
 
 .secondaryAction {
