@@ -3,11 +3,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => {
   const requestUse = vi.fn();
   const responseUse = vi.fn();
-  const client = {
-    interceptors: {
-      request: { use: requestUse },
-      response: { use: responseUse },
-    },
+  const client = vi.fn(() => Promise.resolve({ data: {} }));
+  client.interceptors = {
+    request: { use: requestUse },
+    response: { use: responseUse },
   };
 
   return {
@@ -17,6 +16,7 @@ const mocks = vi.hoisted(() => {
     getAccess: vi.fn(() => null),
     getRefresh: vi.fn(() => null),
     getUser: vi.fn(() => null),
+    getExpectedUserId: vi.fn(() => null),
     post: vi.fn(),
     requestUse,
     responseUse,
@@ -37,6 +37,7 @@ vi.mock('./tokenStorage', () => ({
     getAccess: mocks.getAccess,
     getRefresh: mocks.getRefresh,
     getUser: mocks.getUser,
+    getExpectedUserId: mocks.getExpectedUserId,
     setTokens: mocks.setTokens,
   },
 }));
@@ -85,7 +86,7 @@ describe('interceptor de autenticacao', () => {
       .replace(/=/g, '')
       .replace(/\+/g, '-')
       .replace(/\//g, '_');
-    mocks.getUser.mockReturnValue({ id: 'conta-1' });
+    mocks.getExpectedUserId.mockReturnValue('conta-1');
     mocks.post.mockResolvedValue({ data: { accessToken: `header.${payload}.signature` } });
 
     await expect(rejectResponse({
@@ -99,5 +100,36 @@ describe('interceptor de autenticacao', () => {
     expect(mocks.setTokens).not.toHaveBeenCalled();
     expect(mocks.clear).toHaveBeenCalledOnce();
     expect(unauthorizedListener).toHaveBeenCalledOnce();
+  });
+
+  it('encerra a sessao quando o token renovado nao tem um sujeito valido', async () => {
+    mocks.getExpectedUserId.mockReturnValue(null);
+    mocks.post.mockResolvedValue({ data: { accessToken: 'token-sem-payload-valido' } });
+
+    await expect(rejectResponse({
+      config: {
+        headers: {},
+        url: '/auth/me',
+      },
+      response: { status: 401 },
+    })).rejects.toThrow('não corresponde');
+
+    expect(mocks.setTokens).not.toHaveBeenCalled();
+    expect(mocks.clear).toHaveBeenCalledOnce();
+  });
+
+  it('permite a renovacao quando esta aba ainda nao tinha uma conta esperada', async () => {
+    const payload = btoa(JSON.stringify({ sub: 'conta-2' }))
+      .replace(/=/g, '')
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_');
+    mocks.getExpectedUserId.mockReturnValue(null);
+    mocks.post.mockResolvedValue({ data: { accessToken: `header.${payload}.signature` } });
+
+    const originalRequest = { headers: {}, url: '/auth/me' };
+    await rejectResponse({ config: originalRequest, response: { status: 401 } });
+
+    expect(mocks.setTokens).toHaveBeenCalledOnce();
+    expect(mocks.clear).not.toHaveBeenCalled();
   });
 });

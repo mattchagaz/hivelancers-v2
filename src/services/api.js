@@ -59,9 +59,9 @@ api.interceptors.response.use(
           refreshPromise = null;
         });
       const { data } = await refreshPromise;
-      const expectedUserId = tokenStorage.getUser()?.id;
+      const expectedUserId = tokenStorage.getExpectedUserId();
       const refreshedUserId = getTokenSubject(data.accessToken);
-      if (expectedUserId && refreshedUserId && expectedUserId !== refreshedUserId) {
+      if (!refreshedUserId || (expectedUserId && expectedUserId !== refreshedUserId)) {
         throw new Error('A sessão desta aba não corresponde à conta autenticada no navegador.');
       }
       tokenStorage.setTokens(data);
