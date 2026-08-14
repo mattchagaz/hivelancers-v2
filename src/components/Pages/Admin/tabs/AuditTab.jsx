@@ -1,5 +1,5 @@
 import styles from '../Admin.module.css';
-import { toUserName, formatDate } from '../Admin.helpers';
+import { toUserName, formatDate, humanizeAuditAction } from '../Admin.helpers';
 import { useAdmin } from '../AdminContext';
 import AdminPagination from '../AdminPagination';
 
@@ -50,24 +50,17 @@ export default function AuditTab() {
         ) : (
           auditLogs.map((log) => (
             <article key={log.id} className={styles.auditRow}>
-              <div>
-                <span className={styles.supportTicketCode}>{log.entityType}</span>
-                <strong>{log.action}</strong>
+              <span className={styles.auditDot} />
+              <div className={styles.auditRowBody}>
+                <strong>
+                  {humanizeAuditAction(log.action)}
+                  {log.entityType ? ` · ${log.entityType}` : ''}
+                  {log.entityId ? ` #${log.entityId.slice(-6)}` : ''}
+                </strong>
                 <p>
-                  {log.actor ? `${toUserName(log.actor)} · ${log.actor.email}` : 'Ação de sistema'}
+                  {formatDate(log.createdAt)} · {log.actor ? `${toUserName(log.actor)} (${log.actor.email})` : 'sistema'}
+                  {log.ipAddress ? ` · ${log.ipAddress}` : ''}
                 </p>
-              </div>
-              <div>
-                <span>Entidade</span>
-                <strong>{log.entityId || 'Sem identificador'}</strong>
-              </div>
-              <div>
-                <span>Origem</span>
-                <strong>{log.ipAddress || 'IP não informado'}</strong>
-              </div>
-              <div>
-                <span>Data</span>
-                <strong>{formatDate(log.createdAt)}</strong>
               </div>
             </article>
           ))

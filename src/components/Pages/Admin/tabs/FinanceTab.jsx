@@ -55,7 +55,7 @@ export default function FinanceTab() {
       </div>
 
       <div className={styles.financeGrid}>
-        <div className={styles.financeCard}>
+        <div className={`${styles.financeCard} ${styles.financeCardWarning}`}>
           <FaMoneyBillTransfer />
           <span>Retido para repasse</span>
           <strong>{formatCents(financeSummary.heldCents)}</strong>
@@ -79,13 +79,13 @@ export default function FinanceTab() {
           <strong>{formatCents(financeSummary.gatewayFeeCents ?? financeSummary.estimatedStripeFeeCents)}</strong>
           <p>AbacatePay real · Stripe estimada</p>
         </div>
-        <div className={styles.financeCard}>
+        <div className={`${styles.financeCard} ${styles.financeCardSuccess}`}>
           <FaArrowTrendUp />
           <span>Líquido da plataforma</span>
           <strong>{formatCents(financeSummary.platformNetCents)}</strong>
           <p>Receita de taxas menos custos dos gateways</p>
         </div>
-        <div className={styles.financeCard}>
+        <div className={`${styles.financeCard} ${styles.financeCardDanger}`}>
           <FaTriangleExclamation />
           <span>Falhas de repasse</span>
           <strong>{formatCents(financeSummary.failedTransferCents)}</strong>
@@ -106,7 +106,7 @@ export default function FinanceTab() {
             <option key={value} value={value}>{label}</option>
           ))}
         </select>
-        <span>{adminPaymentsTotal} registros encontrados</span>
+        <span className={styles.financeFiltersCount}>{adminPaymentsTotal} registros encontrados</span>
       </div>
 
       <div className={styles.ledger}>

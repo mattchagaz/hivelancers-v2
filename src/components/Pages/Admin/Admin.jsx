@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   FaArrowTrendUp,
   FaArrowUpRightFromSquare,
@@ -98,6 +98,7 @@ import {
   emptyAdminOverview,
   isTicketUnanswered,
 } from './Admin.helpers';
+import { useIsMobileViewport } from '../../../hooks/useIsMobileViewport';
 import { AdminContext } from './AdminContext';
 import OverviewTab from './tabs/OverviewTab';
 import ServicesTab from './tabs/ServicesTab';
@@ -131,6 +132,8 @@ const ADMIN_PAGE_SIZE = 10;
 
 function Admin() {
   const { user: currentUser } = useAuth();
+  const navigate = useNavigate();
+  const isMobile = useIsMobileViewport();
   const [searchParams] = useSearchParams();
   const requestedTab = searchParams.get('tab');
   const [activeTab, setActiveTab] = useState(
@@ -144,6 +147,8 @@ function Admin() {
   const [categoryDraft, setCategoryDraft] = useState(emptyCategoryDraft);
   const [adminUsers, setAdminUsers] = useState([]);
   const [usersTotal, setUsersTotal] = useState(0);
+  const [usersPage, setUsersPage] = useState(1);
+  const [usersTotalPages, setUsersTotalPages] = useState(1);
   const [usersLoading, setUsersLoading] = useState(false);
   const [userSaving, setUserSaving] = useState(false);
   const [verificationSaving, setVerificationSaving] = useState(false);
@@ -300,6 +305,10 @@ function Admin() {
   }, [loadAdminOverview]);
 
   useEffect(() => {
+    setUsersPage(1);
+  }, [search, userAccountState, userStatusFilter, userTypeFilter]);
+
+  useEffect(() => {
     if (activeTab !== 'users') return undefined;
     let cancelled = false;
     const timer = setTimeout(async () => {
@@ -310,12 +319,17 @@ function Admin() {
           accountState: userAccountState,
           status: userStatusFilter,
           userType: userTypeFilter || undefined,
-          pageSize: 100,
+          page: usersPage,
+          pageSize: ADMIN_PAGE_SIZE,
         });
         if (cancelled) return;
         const items = listItems(data, ['users']);
+        const total = listTotal(data, items);
         setAdminUsers(items);
-        setUsersTotal(listTotal(data, items));
+        setUsersTotal(total);
+        const totalPages = data.totalPages || Math.max(1, Math.ceil(total / ADMIN_PAGE_SIZE));
+        setUsersTotalPages(totalPages);
+        if (usersPage > totalPages) setUsersPage(totalPages);
         setSelectedUserId((current) => {
           if (userAccountState === 'deleted') return '';
           return items.some((item) => item.id === current) ? current : items[0]?.id || '';
@@ -331,7 +345,7 @@ function Admin() {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [activeTab, search, userAccountState, userStatusFilter, userTypeFilter]);
+  }, [activeTab, search, userAccountState, userStatusFilter, userTypeFilter, usersPage]);
 
   useEffect(() => {
     const user = adminUsers.find((item) => item.id === selectedUserId);
@@ -1283,6 +1297,9 @@ function Admin() {
     selectedUser,
     userSaving,
     usersTotal,
+    usersPage,
+    setUsersPage,
+    usersTotalPages,
     deletedUsersStats,
     usersStats,
     userStatusFilter,
@@ -1360,37 +1377,134 @@ function Admin() {
     auditTotalPages,
   };
 
+  // No mobile, o hero/statGrid/bottomGrid só aparecem na aba "Visão geral"
+  // (nas outras abas o mockup vai direto de tabs pra busca + conteúdo); no
+  // desktop eles continuam sempre visíveis, como já era.
+  const MOBILE_HIDDEN_SEARCH_TABS = ['overview', 'services'];
+  const showHeroBlocks = !isMobile || activeTab === 'overview';
+  const showSearch = !isMobile || !MOBILE_HIDDEN_SEARCH_TABS.includes(activeTab);
+
+  const tabsNav = (
+    <div className={styles.tabs}>
+      {tabs.map((tab) => {
+        const Icon = tab.icon;
+        return (
+          <button
+            key={tab.id}
+            type="button"
+            className={`${styles.tab} ${activeTab === tab.id ? styles.tabActive : ''}`}
+            onClick={() => setActiveTab(tab.id)}
+          >
+            {Icon && <Icon className={styles.tabIcon} />}
+            <span>{tab.label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+
+  const searchBox = (
+    <div className={styles.searchWrap}>
+      <FaMagnifyingGlass />
+      <input
+        type="text"
+        placeholder="Buscar usuário, serviço, cupom ou ticket..."
+        value={search}
+        onChange={(event) => setSearch(event.target.value)}
+      />
+    </div>
+  );
+
+  const tabContent = (
+    <>
+      {activeTab === 'overview' && <OverviewTab />}
+
+      {activeTab === 'services' && <ServicesTab />}
+
+      {activeTab === 'promotions' && <PromotionsTab />}
+
+      {activeTab === 'levels' && <LevelsTab />}
+
+      {activeTab === 'taxonomy' && <TaxonomyTab />}
+
+      {activeTab === 'users' && <UsersTab />}
+
+      {activeTab === 'finance' && <FinanceTab />}
+
+      {activeTab === 'pix-simulator' && <PixSimulatorTab />}
+
+      {activeTab === 'disputes' && <DisputesTab />}
+
+      {activeTab === 'support' && <SupportTab />}
+
+      {activeTab === 'health' && <SystemHealthTab />}
+
+      {activeTab === 'audit' && <AuditTab />}
+    </>
+  );
+
+  const heroSection = (
+    <section className={styles.hero}>
+      <div className={styles.heroCopy}>
+        <span className={styles.eyebrow}>Admin</span>
+        <h1>Central de operação Hivelancers</h1>
+        <p>
+          Acompanhe usuários, serviços e tickets de suporte com indicadores reais da plataforma.
+        </p>
+      </div>
+
+      <div className={styles.commandCard}>
+        <span>Fila de suporte</span>
+        <strong>{formatNumber(adminOverview.ticketsUnanswered)}</strong>
+        <p>Tickets sem resposta inicial · SLA de 24h úteis</p>
+        <button type="button" onClick={() => setActiveTab('support')}>Abrir tickets</button>
+      </div>
+    </section>
+  );
+
+  const statGridSection = (
+    <div className={styles.statGrid}>
+      {dashboardStats.map((item) => (
+        <SpotlightCard key={item.label} className={`${styles.statCard} ${styles[item.tone]}`}>
+          <div className={styles.statIcon}>{item.icon}</div>
+          <span>{item.label}</span>
+          <strong>{item.value}</strong>
+          <p>{item.detail}</p>
+        </SpotlightCard>
+      ))}
+    </div>
+  );
+
   return (
     <AdminContext.Provider value={adminContextValue}>
     <div className={styles.page}>
-      <section className={styles.hero}>
-        <div className={styles.heroCopy}>
-          <span className={styles.eyebrow}>Admin</span>
-          <h1>Central de operação Hivelancers</h1>
-          <p>
-            Acompanhe usuários, serviços e tickets de suporte com indicadores reais da plataforma.
-          </p>
+      {isMobile && (
+        <div className={styles.mobileAdminHeader}>
+          <button type="button" className={styles.mobileBackBtn} onClick={() => navigate(-1)} aria-label="Voltar">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
+          </button>
+          <div className={styles.mobileAdminTitle}>
+            <span className={styles.mobileAdminEyebrow}>Admin</span>
+            <h1>Painel administrativo</h1>
+          </div>
+          <Link to="/settings" className={styles.mobileAdminAvatar} aria-label="Configurações">
+            {currentUser?.avatarUrl ? <img src={currentUser.avatarUrl} alt="" /> : null}
+          </Link>
         </div>
+      )}
 
-        <div className={styles.commandCard}>
-          <span>Fila de suporte</span>
-          <strong>{formatNumber(adminOverview.ticketsUnanswered)}</strong>
-          <p>Tickets sem resposta inicial · SLA de 24h úteis</p>
-          <button type="button" onClick={() => setActiveTab('support')}>Abrir tickets</button>
-        </div>
-      </section>
+      {isMobile && tabsNav}
 
-      <div className={styles.statGrid}>
-        {dashboardStats.map((item) => (
-          <SpotlightCard key={item.label} className={`${styles.statCard} ${styles[item.tone]}`}>
-            <div className={styles.statIcon}>{item.icon}</div>
-            <span>{item.label}</span>
-            <strong>{item.value}</strong>
-            <p>{item.detail}</p>
-          </SpotlightCard>
-        ))}
-      </div>
+      {showHeroBlocks && heroSection}
 
+      {showHeroBlocks && statGridSection}
+
+      {isMobile ? (
+        <>
+          {showSearch && searchBox}
+          {tabContent}
+        </>
+      ) : (
       <section className={styles.workspace}>
         <div className={styles.workspaceHeader}>
           <div>
@@ -1398,60 +1512,17 @@ function Admin() {
             <h2>Gestão administrativa</h2>
           </div>
 
-          <div className={styles.searchWrap}>
-            <FaMagnifyingGlass />
-            <input
-              type="text"
-              placeholder="Buscar usuário, serviço, cupom ou ticket..."
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-            />
-          </div>
+          {searchBox}
         </div>
 
-        <div className={styles.tabs}>
-          {tabs.map((tab) => {
-            const Icon = tab.icon;
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                className={`${styles.tab} ${activeTab === tab.id ? styles.tabActive : ''}`}
-                onClick={() => setActiveTab(tab.id)}
-              >
-                {Icon && <Icon className={styles.tabIcon} />}
-                <span>{tab.label}</span>
-              </button>
-            );
-          })}
-        </div>
+        {tabsNav}
 
-        {activeTab === 'overview' && <OverviewTab />}
-
-        {activeTab === 'services' && <ServicesTab />}
-
-        {activeTab === 'promotions' && <PromotionsTab />}
-
-        {activeTab === 'levels' && <LevelsTab />}
-
-        {activeTab === 'taxonomy' && <TaxonomyTab />}
-
-        {activeTab === 'users' && <UsersTab />}
-
-        {activeTab === 'finance' && <FinanceTab />}
-
-        {activeTab === 'pix-simulator' && <PixSimulatorTab />}
-
-        {activeTab === 'disputes' && <DisputesTab />}
-
-        {activeTab === 'support' && <SupportTab />}
-
-        {activeTab === 'health' && <SystemHealthTab />}
-
-        {activeTab === 'audit' && <AuditTab />}
+        {tabContent}
 
       </section>
+      )}
 
+      {showHeroBlocks && (
       <section className={styles.bottomGrid}>
         <SpotlightCard className={styles.securityCard}>
           <FaShieldHalved />
@@ -1480,6 +1551,7 @@ function Admin() {
           </div>
         </SpotlightCard>
       </section>
+      )}
 
       {identityModalUser && (
         <div className={styles.reviewModalOverlay} onClick={closeIdentityModal}>

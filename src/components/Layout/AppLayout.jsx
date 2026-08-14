@@ -40,8 +40,12 @@ function AppLayout() {
   // das configurações a qualquer momento.
   const isSettingsRoute = location.pathname === '/settings';
 
+  // Admin: mesma ideia — o painel tem seu próprio cabeçalho mobile, só a
+  // TopBar some, a tab bar continua visível em todas as abas.
+  const isAdminRoute = location.pathname === '/admin';
+
   const isImmersivePage = isServiceDetailImmersive || isCheckoutImmersive || isMessagesChatImmersive;
-  const isTopBarImmersive = isImmersivePage || isMessagesListImmersive || isSettingsRoute;
+  const isTopBarImmersive = isImmersivePage || isMessagesListImmersive || isSettingsRoute || isAdminRoute;
 
   const isAdmin = isAdminUser(user);
   const userRole = toRoleSlug(user?.userType) || 'freelancer';

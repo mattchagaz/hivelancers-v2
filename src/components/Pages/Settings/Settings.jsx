@@ -35,24 +35,7 @@ import PrivacyPanel from './panels/PrivacyPanel';
 import BillingPanel from './panels/BillingPanel';
 import LanguagePanel from './panels/LanguagePanel';
 import DangerPanel from './panels/DangerPanel';
-
-function useIsMobileViewport(breakpoint = 768) {
-  const supportsMatchMedia = typeof window !== 'undefined' && typeof window.matchMedia === 'function';
-  const [isMobile, setIsMobile] = useState(() =>
-    supportsMatchMedia ? window.matchMedia(`(max-width: ${breakpoint}px)`).matches : false
-  );
-
-  useEffect(() => {
-    if (!supportsMatchMedia) return undefined;
-    const mq = window.matchMedia(`(max-width: ${breakpoint}px)`);
-    const listener = (event) => setIsMobile(event.matches);
-    setIsMobile(mq.matches);
-    mq.addEventListener('change', listener);
-    return () => mq.removeEventListener('change', listener);
-  }, [breakpoint, supportsMatchMedia]);
-
-  return isMobile;
-}
+import { useIsMobileViewport } from '../../../hooks/useIsMobileViewport';
 
 function Settings() {
   const navigate = useNavigate();

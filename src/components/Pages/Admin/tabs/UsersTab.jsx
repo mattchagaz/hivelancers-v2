@@ -23,6 +23,7 @@ import {
 } from '../Admin.helpers';
 import { useAdmin } from '../AdminContext';
 import AdminModal from '../AdminModal';
+import AdminPagination from '../AdminPagination';
 
 export default function UsersTab() {
   const [editorOpen, setEditorOpen] = useState(false);
@@ -36,6 +37,9 @@ export default function UsersTab() {
     selectedUser,
     userSaving,
     usersTotal,
+    usersPage,
+    setUsersPage,
+    usersTotalPages,
     deletedUsersStats,
     usersStats,
     userStatusFilter,
@@ -293,6 +297,13 @@ export default function UsersTab() {
             </tbody>
           </table>
       </div>
+
+      <AdminPagination
+        currentPage={usersPage}
+        totalPages={usersTotalPages}
+        totalItems={usersTotal}
+        onPageChange={setUsersPage}
+      />
 
       <AdminModal
         open={editorOpen && userAccountState === 'active' && Boolean(selectedUser)}

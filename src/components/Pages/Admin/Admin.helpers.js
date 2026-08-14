@@ -391,3 +391,13 @@ export const isTicketUnanswered = (ticket) => {
   const status = normalizeSupportTicketStatus(ticket?.status);
   return !ticket?.publicReply && !['ANSWERED', 'RESOLVED', 'CLOSED'].includes(status);
 };
+
+// Os códigos de ação de auditoria vêm em SCREAMING_SNAKE_CASE do backend
+// (ex.: "ACCOUNT_ANONYMIZED") — deixa a linha do timeline mais legível
+// sem precisar de um dicionário de tradução por ação.
+export const humanizeAuditAction = (action) => {
+  if (!action) return 'Ação registrada';
+  const words = String(action).toLowerCase().split('_').filter(Boolean);
+  if (!words.length) return 'Ação registrada';
+  return words[0].charAt(0).toUpperCase() + words[0].slice(1) + (words.length > 1 ? ` ${words.slice(1).join(' ')}` : '');
+};
