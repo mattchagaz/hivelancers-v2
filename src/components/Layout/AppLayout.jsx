@@ -54,6 +54,9 @@ function AppLayout() {
   // Meus serviços: cabeçalho próprio no mobile, só esconde a TopBar.
   const isMyServicesRoute = location.pathname === '/services';
 
+  // Notificações: cabeçalho próprio no mobile, só esconde a TopBar.
+  const isNotificationsRoute = location.pathname === '/notifications';
+
   // Página de mensagens: no mobile, a lista de conversas esconde só a
   // TopBar (mantém a tab bar para navegação); ao abrir uma conversa
   // (?chat=) o chat vira tela cheia, escondendo TopBar e tab bar.
@@ -75,7 +78,7 @@ function AppLayout() {
   const isAdminModalImmersive = isAdminRoute && isAdminModalOpen;
 
   const isImmersivePage = isServiceDetailImmersive || isCheckoutImmersive || isMessagesChatImmersive || isAdminModalImmersive || isProfileImmersive;
-  const isTopBarImmersive = isImmersivePage || isMessagesListImmersive || isSettingsRoute || isAdminRoute || isCreateProjectRoute || isMyServicesRoute;
+  const isTopBarImmersive = isImmersivePage || isMessagesListImmersive || isSettingsRoute || isAdminRoute || isCreateProjectRoute || isMyServicesRoute || isNotificationsRoute;
 
   const isAdmin = isAdminUser(user);
   const userRole = toRoleSlug(user?.userType) || 'freelancer';

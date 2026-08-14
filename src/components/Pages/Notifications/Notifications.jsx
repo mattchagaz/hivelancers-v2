@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   FaBell,
   FaCalendarDays,
@@ -60,12 +60,12 @@ const getRelativeTime = (value) => {
   const diff = Date.now() - new Date(value).getTime();
   const minutes = Math.max(0, Math.floor(diff / 60000));
   if (minutes < 1) return 'Agora';
-  if (minutes < 60) return `${minutes} min atrás`;
+  if (minutes < 60) return `há ${minutes} min`;
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} h atrás`;
+  if (hours < 24) return `há ${hours} h`;
   const days = Math.floor(hours / 24);
-  if (days === 1) return 'Ontem';
-  return `${days} dias atrás`;
+  if (days === 1) return 'ontem';
+  return `há ${days} dias`;
 };
 
 const isInsideDateRange = (value, startDate, endDate) => {
@@ -87,6 +87,7 @@ const isInsideDateRange = (value, startDate, endDate) => {
 };
 
 function Notifications() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [notifications, setNotifications] = useState([]);
   const [readIds, setReadIds] = useState([]);
@@ -184,6 +185,13 @@ function Notifications() {
 
   return (
     <div className={styles.page}>
+      <div className={styles.mobileHeader}>
+        <button type="button" className={styles.mobileBackBtn} onClick={() => navigate(-1)} aria-label="Voltar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
+        </button>
+        <h1>Notificações</h1>
+      </div>
+
       <section className={styles.hero}>
         <div>
           <span className={styles.eyebrow}>Notificações</span>
@@ -306,7 +314,8 @@ function Notifications() {
                   <span className={styles.itemContent}>
                     <span className={styles.itemMeta}>
                       <strong>{typeCopy.label}</strong>
-                      <small>{formatDateTime(notification.createdAt)}</small>
+                      <small className={styles.metaAbsolute}>{formatDateTime(notification.createdAt)}</small>
+                      <small className={styles.metaRelative}>{getRelativeTime(notification.createdAt)}</small>
                     </span>
                     <span className={styles.itemTitle}>{notification.title}</span>
                     <span className={styles.itemDescription}>{notification.description}</span>
