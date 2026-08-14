@@ -99,6 +99,7 @@ import {
   isTicketUnanswered,
 } from './Admin.helpers';
 import { useIsMobileViewport } from '../../../hooks/useIsMobileViewport';
+import { useLockBodyScroll } from '../../../hooks/useLockBodyScroll';
 import { AdminContext } from './AdminContext';
 import OverviewTab from './tabs/OverviewTab';
 import ServicesTab from './tabs/ServicesTab';
@@ -578,6 +579,7 @@ function Admin() {
   const selectedCategory = categories.find((item) => item.id === selectedCategoryId);
   const selectedUser = adminUsers.find((item) => item.id === selectedUserId);
   const identityModalUser = adminUsers.find((item) => item.id === identityModalUserId);
+  useLockBodyScroll(Boolean(identityModalUser));
   const selectedService = adminServices.find((item) => item.id === selectedServiceId);
   const selectedCoupon = coupons.find((item) => item.id === selectedCouponId);
   const selectedLevel = freelancerLevels.find((item) => item.id === selectedLevelId);

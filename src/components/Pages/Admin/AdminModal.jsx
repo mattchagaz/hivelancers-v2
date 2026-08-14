@@ -1,6 +1,7 @@
 import { useEffect, useId } from 'react';
 import { FaXmark } from 'react-icons/fa6';
 import styles from './Admin.module.css';
+import { useLockBodyScroll } from '../../../hooks/useLockBodyScroll';
 
 export default function AdminModal({
   open,
@@ -14,21 +15,17 @@ export default function AdminModal({
 }) {
   const titleId = useId();
 
+  useLockBodyScroll(open);
+
   useEffect(() => {
     if (!open) return undefined;
 
-    const previousOverflow = document.body.style.overflow;
     const handleKeyDown = (event) => {
       if (event.key === 'Escape' && !busy) onClose();
     };
 
-    document.body.style.overflow = 'hidden';
     window.addEventListener('keydown', handleKeyDown);
-
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      window.removeEventListener('keydown', handleKeyDown);
-    };
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, [busy, onClose, open]);
 
   if (!open) return null;
