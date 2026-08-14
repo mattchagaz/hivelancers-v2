@@ -35,15 +35,13 @@ function AppLayout() {
   const isMessagesChatImmersive = isMessagesRoute && hasActiveChat;
   const isMessagesListImmersive = isMessagesRoute && !hasActiveChat;
 
-  // Mesma lógica para configurações: o menu principal esconde só a TopBar,
-  // e abrir uma seção (?tab=) vira tela cheia, escondendo TopBar e tab bar.
+  // Configurações: tanto o menu principal quanto uma seção aberta (?tab=)
+  // escondem só a TopBar — a tab bar continua visível pra facilitar sair
+  // das configurações a qualquer momento.
   const isSettingsRoute = location.pathname === '/settings';
-  const hasSettingsPanelOpen = new URLSearchParams(location.search).has('tab');
-  const isSettingsPanelImmersive = isSettingsRoute && hasSettingsPanelOpen;
-  const isSettingsMenuImmersive = isSettingsRoute && !hasSettingsPanelOpen;
 
-  const isImmersivePage = isServiceDetailImmersive || isCheckoutImmersive || isMessagesChatImmersive || isSettingsPanelImmersive;
-  const isTopBarImmersive = isImmersivePage || isMessagesListImmersive || isSettingsMenuImmersive;
+  const isImmersivePage = isServiceDetailImmersive || isCheckoutImmersive || isMessagesChatImmersive;
+  const isTopBarImmersive = isImmersivePage || isMessagesListImmersive || isSettingsRoute;
 
   const isAdmin = isAdminUser(user);
   const userRole = toRoleSlug(user?.userType) || 'freelancer';
