@@ -2,6 +2,7 @@ import { useEffect, useId } from 'react';
 import { FaXmark } from 'react-icons/fa6';
 import styles from './Admin.module.css';
 import { useLockBodyScroll } from '../../../hooks/useLockBodyScroll';
+import { useAdminModalSignal } from '../../../hooks/useAdminModalSignal';
 
 export default function AdminModal({
   open,
@@ -16,6 +17,7 @@ export default function AdminModal({
   const titleId = useId();
 
   useLockBodyScroll(open);
+  useAdminModalSignal(open);
 
   useEffect(() => {
     if (!open) return undefined;

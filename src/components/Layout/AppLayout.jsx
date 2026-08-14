@@ -6,6 +6,7 @@ import TopBar from '../TopBar/TopBar';
 import BottomTabBar from './BottomTabBar/BottomTabBar';
 import { useAuth } from '../../contexts/authContextStore';
 import { isAdminUser, toRoleSlug } from '../../utils/authFlow';
+import { ADMIN_MODAL_VISIBILITY_EVENT } from '../../hooks/useAdminModalSignal';
 import styles from './AppLayout.module.css';
 
 function AppLayout() {
@@ -17,8 +18,22 @@ function AppLayout() {
     }
   });
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
   const { user } = useAuth();
   const location = useLocation();
+
+  // Escuta o sinal disparado pelos modais do admin (AdminModal + revisão de
+  // identidade) pra esconder a tab bar enquanto um deles estiver aberto —
+  // senão ela fica sobreposta ao modal em tela cheia no mobile.
+  useEffect(() => {
+    const handleVisibility = (event) => setIsAdminModalOpen(Boolean(event.detail?.open));
+    window.addEventListener(ADMIN_MODAL_VISIBILITY_EVENT, handleVisibility);
+    return () => window.removeEventListener(ADMIN_MODAL_VISIBILITY_EVENT, handleVisibility);
+  }, []);
+
+  useEffect(() => {
+    setIsAdminModalOpen(false);
+  }, [location.pathname]);
 
   // Tela de detalhe de serviço e o checkout usam um layout imersivo no
   // mobile (sem TopBar/tab bar) — mas não as rotas /services/new nem
@@ -41,10 +56,13 @@ function AppLayout() {
   const isSettingsRoute = location.pathname === '/settings';
 
   // Admin: mesma ideia — o painel tem seu próprio cabeçalho mobile, só a
-  // TopBar some, a tab bar continua visível em todas as abas.
+  // TopBar some, a tab bar continua visível nas abas; mas com um modal
+  // aberto (editor de serviço/cupom/nível/ticket/usuário, ou revisão de
+  // identidade) a tab bar também some, já que fica atrás do modal mesmo.
   const isAdminRoute = location.pathname === '/admin';
+  const isAdminModalImmersive = isAdminRoute && isAdminModalOpen;
 
-  const isImmersivePage = isServiceDetailImmersive || isCheckoutImmersive || isMessagesChatImmersive;
+  const isImmersivePage = isServiceDetailImmersive || isCheckoutImmersive || isMessagesChatImmersive || isAdminModalImmersive;
   const isTopBarImmersive = isImmersivePage || isMessagesListImmersive || isSettingsRoute || isAdminRoute;
 
   const isAdmin = isAdminUser(user);
