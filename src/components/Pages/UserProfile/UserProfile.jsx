@@ -22,6 +22,7 @@ import {
 } from '../../../utils/profileEnhancements';
 import styles from './UserProfile.module.css';
 import { recordRecentActivity } from '../../../utils/clientRecentActivity';
+import { useIsMobileViewport } from '../../../hooks/useIsMobileViewport';
 
 const formatPrice = (cents) =>
   new Intl.NumberFormat('pt-BR', {
@@ -55,6 +56,7 @@ function UserProfile() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
+  const isMobile = useIsMobileViewport();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -342,9 +344,332 @@ function UserProfile() {
     }
   };
 
+  const contactActions = isOwner ? (
+    <>
+      <Link to="/profile/customize" className={styles.primaryAction}>Personalizar meu perfil</Link>
+      <Link to="/settings" className={styles.secondaryAction}>Configurações da conta</Link>
+    </>
+  ) : (
+    <>
+      <button className={styles.primaryAction} onClick={handleProposalRequest} disabled={startingChat}>
+        {startingChat ? 'Iniciando...' : 'Solicitar proposta'}
+      </button>
+      <button className={styles.secondaryAction} onClick={handleStartChat} disabled={startingChat}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+        Enviar mensagem
+      </button>
+      <button className={`${styles.iconAction} ${isFavoriteFreelancer ? styles.isFavorite : ''}`} onClick={handleFavoriteFreelancer} title={isFavoriteFreelancer ? 'Remover favorito' : 'Favoritar'}>
+        {isFavoriteFreelancer ? <FaHeart /> : <FaRegHeart />}
+      </button>
+    </>
+  );
+
+  const portfolioSection = (
+    <section className={styles.card}>
+      <div className={styles.sectionHead}>
+        <h2 className={styles.sectionTitle}>Portfólio em destaque</h2>
+        {isOwner && <Link to="/profile/customize" className={styles.inlineAction}>Editar projetos</Link>}
+      </div>
+
+      {projects.length === 0 ? (
+        <div className={styles.emptyBox}>
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+          <strong>Nenhum projeto em destaque.</strong>
+          <p>{isOwner ? 'Suba capas e links dos seus melhores trabalhos na personalização.' : 'Este perfil ainda não publicou projetos no portfólio.'}</p>
+        </div>
+      ) : (
+        <div className={styles.projectGrid}>
+          {projects.map((project) => (
+            <article key={project.id} className={styles.projectCard}>
+              <div className={styles.projectMedia} role="button" tabIndex={0} onClick={() => navigate(`/profile/${handle}/projects/${project.id}`)}>
+                {project.coverImageUrl || project.imageUrl ? (
+                  <img src={project.coverImageUrl || project.imageUrl} alt="" className={styles.projectImage} />
+                ) : (
+                  <div className={styles.projectFallback}>Case de Estudo</div>
+                )}
+              </div>
+              <div className={styles.projectBody}>
+                <div className={styles.projectTitleRow}>
+                  <Link to={`/profile/${handle}/projects/${project.id}`} className={styles.projectTitleLink}>
+                    {project.title || 'Projeto sem título'}
+                  </Link>
+                  {project.analytics?.views > 0 && (
+                    <span className={styles.projectStat}>{project.analytics.views} views</span>
+                  )}
+                </div>
+
+                {project.description && <p className={styles.projectDesc}>{project.description}</p>}
+
+                {project.tags?.length > 0 && (
+                  <div className={styles.projectTags}>
+                    {project.tags.map((tag) => <span key={tag} className={styles.tag}>{tag}</span>)}
+                  </div>
+                )}
+
+                <div className={styles.projectActions}>
+                  <Link to={`/profile/${handle}/projects/${project.id}`} className={styles.projectLink}>Ver projeto</Link>
+                  {project.projectUrl && (
+                    <button type="button" className={styles.projectLinkOutline} onClick={() => handleTrackedProjectClick(project)}>
+                      Abrir link <FaArrowUpRightFromSquare />
+                    </button>
+                  )}
+                </div>
+
+                {project.images?.length > 1 && (
+                  <div className={styles.projectGalleryStrip}>
+                    {project.images.slice(0, 4).map((image, index) => (
+                      <button key={image.id || `${project.id}_image_${index}`} type="button" className={styles.projectGalleryThumb} onClick={() => openProjectGallery(project, index)}>
+                        <img src={image.url} alt="" className={styles.projectGalleryThumbImg} />
+                      </button>
+                    ))}
+                    {project.images.length > 4 && (
+                      <button type="button" className={`${styles.projectGalleryThumb} ${styles.projectGalleryMore}`} onClick={() => openProjectGallery(project, 4)}>
+                        +{project.images.length - 4}
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+
+  const servicesSection = (
+    <section className={styles.card}>
+      <div className={styles.sectionHead}>
+        <h2 className={styles.sectionTitle}>Serviços disponíveis ({services.length})</h2>
+      </div>
+
+      {services.length === 0 ? (
+        <div className={styles.emptyContent}>Este perfil ainda não publicou serviços para contratação.</div>
+      ) : (
+        <div className={styles.grid}>
+          {services.map((svc) => {
+            const cover = svc.images?.[0]?.url || svc.coverUrl;
+            const minPrice = svc.minPriceCents ?? svc.plans?.[0]?.priceCents ?? 0;
+            return (
+              <Link key={svc.id} to={`/services/${svc.id}`} className={styles.serviceCard}>
+                <div className={styles.serviceCover} style={cover ? { backgroundImage: `url(${cover})` } : undefined}>
+                  {!cover && (
+                    <span className={styles.coverFallback}>
+                      <CategoryIcon category={svc.category} />
+                    </span>
+                  )}
+                </div>
+                <div className={styles.serviceBody}>
+                  <span className={styles.serviceCategory}>
+                    <CategoryIcon category={svc.category} /> {svc.category?.name}
+                  </span>
+                  <h3 className={styles.serviceTitle}>{svc.title}</h3>
+                  <div className={styles.serviceFooter}>
+                    <span className={styles.serviceFrom}>A partir de</span>
+                    <strong className={styles.servicePrice}>{formatPrice(minPrice)}</strong>
+                  </div>
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+      )}
+    </section>
+  );
+
+  const trustSection = (
+    <section className={styles.card}>
+      <div className={styles.sectionHead}>
+        <h2 className={styles.sectionTitle}>Sinais de confiança</h2>
+      </div>
+      <div className={styles.trustList}>
+        {trustList.map((item) => (
+          <div key={`${item.label}_${item.helper}`} className={styles.trustItem}>
+            <span className={styles.trustIcon}><FaCircleCheck /></span>
+            <div>
+              <strong>{item.label}</strong>
+              <span>{item.helper}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+
+  const featuredSection = featuredProject && (
+    <section className={`${styles.card} ${styles.featuredCard}`}>
+      <div className={styles.sectionHead}>
+        <h2 className={styles.sectionTitle}>Projeto em destaque</h2>
+      </div>
+      <div className={styles.featuredProjectCard}>
+        {featuredProject.coverImageUrl || featuredProject.imageUrl ? (
+          <Link to={`/profile/${handle}/projects/${featuredProject.id}`} className={styles.featuredProjectMedia}>
+            <img src={featuredProject.coverImageUrl || featuredProject.imageUrl} alt="" className={styles.featuredProjectImage} />
+          </Link>
+        ) : (
+          <div className={styles.featuredProjectFallback}>Case Principal</div>
+        )}
+        <div className={styles.featuredProjectBody}>
+          <strong>{featuredProject.title || 'Sem título'}</strong>
+          <p>{featuredProject.description || 'Projeto selecionado como principal vitrine do perfil.'}</p>
+
+          <div className={styles.projectActions}>
+            <Link to={`/profile/${handle}/projects/${featuredProject.id}`} className={styles.projectLink}>Ver detalhes</Link>
+            {featuredProject.projectUrl && (
+              <button type="button" className={styles.projectLinkOutline} onClick={() => handleTrackedProjectClick(featuredProject)}>
+                Abrir link <FaArrowUpRightFromSquare />
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+
+  const linksSection = (
+    <section className={styles.card}>
+      <div className={styles.sectionHead}>
+        <h2 className={styles.sectionTitle}>Links profissionais</h2>
+      </div>
+      {links.length === 0 ? (
+        <div className={styles.emptyContent}>
+          {isOwner ? 'Adicione suas redes e links para passar mais confiança.' : 'Nenhum link profissional adicionado.'}
+        </div>
+      ) : (
+        <div className={styles.profileLinkList}>
+          {links.map((link) => {
+            const meta = getProfileLinkMeta(link.key);
+            const Icon = meta.icon;
+            return (
+              <a key={link.key} href={link.href} target="_blank" rel="noopener noreferrer" className={styles.profileLinkItem} onClick={() => handleTrackedProfileLink(link)}>
+                <span className={styles.profileLinkLabel}><Icon /> {meta.label || link.label}</span>
+                <FaArrowUpRightFromSquare className={styles.externalIcon} />
+              </a>
+            );
+          })}
+        </div>
+      )}
+    </section>
+  );
+
+  const skillsSection = (
+    <section className={styles.card}>
+      <div className={styles.sectionHead}>
+        <h2 className={styles.sectionTitle}>Habilidades</h2>
+      </div>
+      {skills.length === 0 ? (
+        <div className={styles.emptyContent}>
+          {isOwner ? 'Adicione habilidades para mostrar suas ferramentas e especialidades.' : 'Este perfil não listou habilidades.'}
+        </div>
+      ) : (
+        <div className={styles.skillList}>
+          {skills.map((skill) => <span key={skill} className={styles.skillChip}>{skill}</span>)}
+        </div>
+      )}
+    </section>
+  );
+
+  const checklistSection = isOwner && (
+    <section className={styles.card}>
+      <div className={styles.sectionHead}>
+        <h2 className={styles.sectionTitle}>Checklist do Perfil</h2>
+      </div>
+      <div className={styles.completionList}>
+        {completion.items.map((item) => (
+          <div key={item.id} className={styles.completionItem}>
+            <div className={`${styles.completionDot} ${item.done ? styles.completionDotDone : ''}`}>
+              {item.done && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><polyline points="20 6 9 17 4 12"></polyline></svg>}
+            </div>
+            <div className={styles.completionText}>
+              <strong>{item.label}</strong>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+
   return (
     <div className={styles.page}>
-      
+
+      {isMobile && (
+        <div className={styles.mobilePage}>
+          <div className={styles.mobileCover}>
+            <button type="button" className={styles.mobileBackBtn} onClick={() => navigate(-1)} aria-label="Voltar">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
+            </button>
+          </div>
+
+          <div className={styles.mobileHeaderCard}>
+            <div className={styles.mobileAvatarWrap}>
+              <div className={styles.avatar}>
+                {profile.avatarUrl ? (
+                  <img src={profile.avatarUrl} alt={fullName} className={styles.avatarImg} />
+                ) : (
+                  <span>{initials || 'U'}</span>
+                )}
+                <span className={`${styles.presenceDot} ${presence.online ? styles.presenceOn : ''}`} title={presence.label} />
+              </div>
+            </div>
+
+            <h1 className={styles.mobileName}>{fullName}</h1>
+            <p className={styles.mobileSubline}>
+              {[profile.headline || primaryCategory, profile.location].filter(Boolean).join(' · ')}
+            </p>
+
+            <div className={styles.mobileStatsRow}>
+              <div className={styles.mobileStatChip}>
+                <strong>{completion.percent}%</strong>
+                <span>perfil</span>
+              </div>
+              <div className={styles.mobileStatChip}>
+                <strong>{services.length}</strong>
+                <span>serviços</span>
+              </div>
+              <div className={styles.mobileStatChip}>
+                <strong>{projects.length}</strong>
+                <span>portfólio</span>
+              </div>
+            </div>
+
+            {profile.bio && <p className={styles.mobileBio}>{profile.bio}</p>}
+
+            {skills.length > 0 && (
+              <div className={styles.skillList}>
+                {skills.map((skill) => <span key={skill} className={styles.skillChip}>{skill}</span>)}
+              </div>
+            )}
+          </div>
+
+          <div className={styles.mobileContactBar}>
+            {contactActions}
+          </div>
+
+          {links.length > 0 && (
+            <div className={styles.mobileLinkRow}>
+              {links.map((link) => {
+                const meta = getProfileLinkMeta(link.key);
+                const Icon = meta.icon;
+                return (
+                  <a key={link.key} href={link.href} target="_blank" rel="noopener noreferrer" className={styles.mobileLinkChip} onClick={() => handleTrackedProfileLink(link)}>
+                    <Icon /> {meta.shortLabel || link.label}
+                  </a>
+                );
+              })}
+            </div>
+          )}
+
+          {servicesSection}
+          {portfolioSection}
+          {trustSection}
+          {featuredSection}
+          {links.length > 0 && linksSection}
+          {checklistSection}
+        </div>
+      )}
+
+      {!isMobile && (
+      <>
       <header className={styles.hero}>
         <div className={styles.heroMain}>
           <div className={styles.heroTop}>
@@ -508,114 +833,8 @@ function UserProfile() {
             </div>
           </section>
 
-          <section className={styles.card}>
-            <div className={styles.sectionHead}>
-              <h2 className={styles.sectionTitle}>Portfólio em destaque</h2>
-              {isOwner && <Link to="/profile/customize" className={styles.inlineAction}>Editar projetos</Link>}
-            </div>
-
-            {projects.length === 0 ? (
-              <div className={styles.emptyBox}>
-                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
-                <strong>Nenhum projeto em destaque.</strong>
-                <p>{isOwner ? 'Suba capas e links dos seus melhores trabalhos na personalização.' : 'Este perfil ainda não publicou projetos no portfólio.'}</p>
-              </div>
-            ) : (
-              <div className={styles.projectGrid}>
-                {projects.map((project) => (
-                  <article key={project.id} className={styles.projectCard}>
-                    <div className={styles.projectMedia} role="button" tabIndex={0} onClick={() => navigate(`/profile/${handle}/projects/${project.id}`)}>
-                      {project.coverImageUrl || project.imageUrl ? (
-                        <img src={project.coverImageUrl || project.imageUrl} alt="" className={styles.projectImage} />
-                      ) : (
-                        <div className={styles.projectFallback}>Case de Estudo</div>
-                      )}
-                    </div>
-                    <div className={styles.projectBody}>
-                      <div className={styles.projectTitleRow}>
-                        <Link to={`/profile/${handle}/projects/${project.id}`} className={styles.projectTitleLink}>
-                          {project.title || 'Projeto sem título'}
-                        </Link>
-                        {project.analytics?.views > 0 && (
-                          <span className={styles.projectStat}>{project.analytics.views} views</span>
-                        )}
-                      </div>
-                      
-                      {project.description && <p className={styles.projectDesc}>{project.description}</p>}
-                      
-                      {project.tags?.length > 0 && (
-                        <div className={styles.projectTags}>
-                          {project.tags.map((tag) => <span key={tag} className={styles.tag}>{tag}</span>)}
-                        </div>
-                      )}
-
-                      <div className={styles.projectActions}>
-                        <Link to={`/profile/${handle}/projects/${project.id}`} className={styles.projectLink}>Ver projeto</Link>
-                        {project.projectUrl && (
-                          <button type="button" className={styles.projectLinkOutline} onClick={() => handleTrackedProjectClick(project)}>
-                            Abrir link <FaArrowUpRightFromSquare />
-                          </button>
-                        )}
-                      </div>
-
-                      {project.images?.length > 1 && (
-                        <div className={styles.projectGalleryStrip}>
-                          {project.images.slice(0, 4).map((image, index) => (
-                            <button key={image.id || `${project.id}_image_${index}`} type="button" className={styles.projectGalleryThumb} onClick={() => openProjectGallery(project, index)}>
-                              <img src={image.url} alt="" className={styles.projectGalleryThumbImg} />
-                            </button>
-                          ))}
-                          {project.images.length > 4 && (
-                            <button type="button" className={`${styles.projectGalleryThumb} ${styles.projectGalleryMore}`} onClick={() => openProjectGallery(project, 4)}>
-                              +{project.images.length - 4}
-                            </button>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </article>
-                ))}
-              </div>
-            )}
-          </section>
-
-          <section className={styles.card}>
-            <div className={styles.sectionHead}>
-              <h2 className={styles.sectionTitle}>Serviços disponíveis ({services.length})</h2>
-            </div>
-
-            {services.length === 0 ? (
-              <div className={styles.emptyContent}>Este perfil ainda não publicou serviços para contratação.</div>
-            ) : (
-              <div className={styles.grid}>
-                {services.map((svc) => {
-                  const cover = svc.images?.[0]?.url || svc.coverUrl;
-                  const minPrice = svc.minPriceCents ?? svc.plans?.[0]?.priceCents ?? 0;
-                  return (
-                    <Link key={svc.id} to={`/services/${svc.id}`} className={styles.serviceCard}>
-                      <div className={styles.serviceCover} style={cover ? { backgroundImage: `url(${cover})` } : undefined}>
-                        {!cover && (
-                          <span className={styles.coverFallback}>
-                            <CategoryIcon category={svc.category} />
-                          </span>
-                        )}
-                      </div>
-                      <div className={styles.serviceBody}>
-                        <span className={styles.serviceCategory}>
-                          <CategoryIcon category={svc.category} /> {svc.category?.name}
-                        </span>
-                        <h3 className={styles.serviceTitle}>{svc.title}</h3>
-                        <div className={styles.serviceFooter}>
-                          <span className={styles.serviceFrom}>A partir de</span>
-                          <strong className={styles.servicePrice}>{formatPrice(minPrice)}</strong>
-                        </div>
-                      </div>
-                    </Link>
-                  );
-                })}
-              </div>
-            )}
-          </section>
+          {portfolioSection}
+          {servicesSection}
         </div>
 
         <aside className={styles.aside}>
@@ -645,113 +864,15 @@ function UserProfile() {
             </div>
           </section>
 
-          <section className={styles.card}>
-            <div className={styles.sectionHead}>
-              <h2 className={styles.sectionTitle}>Sinais de confiança</h2>
-            </div>
-            <div className={styles.trustList}>
-              {trustList.map((item) => (
-                <div key={`${item.label}_${item.helper}`} className={styles.trustItem}>
-                  <span className={styles.trustIcon}><FaCircleCheck /></span>
-                  <div>
-                    <strong>{item.label}</strong>
-                    <span>{item.helper}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-          
-          {featuredProject && (
-            <section className={`${styles.card} ${styles.featuredCard}`}>
-              <div className={styles.sectionHead}>
-                <h2 className={styles.sectionTitle}>Projeto em destaque</h2>
-              </div>
-              <div className={styles.featuredProjectCard}>
-                {featuredProject.coverImageUrl || featuredProject.imageUrl ? (
-                  <Link to={`/profile/${handle}/projects/${featuredProject.id}`} className={styles.featuredProjectMedia}>
-                    <img src={featuredProject.coverImageUrl || featuredProject.imageUrl} alt="" className={styles.featuredProjectImage} />
-                  </Link>
-                ) : (
-                  <div className={styles.featuredProjectFallback}>Case Principal</div>
-                )}
-                <div className={styles.featuredProjectBody}>
-                  <strong>{featuredProject.title || 'Sem título'}</strong>
-                  <p>{featuredProject.description || 'Projeto selecionado como principal vitrine do perfil.'}</p>
-                  
-                  <div className={styles.projectActions}>
-                    <Link to={`/profile/${handle}/projects/${featuredProject.id}`} className={styles.projectLink}>Ver detalhes</Link>
-                    {featuredProject.projectUrl && (
-                      <button type="button" className={styles.projectLinkOutline} onClick={() => handleTrackedProjectClick(featuredProject)}>
-                        Abrir link <FaArrowUpRightFromSquare />
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </section>
-          )}
-
-          <section className={styles.card}>
-            <div className={styles.sectionHead}>
-              <h2 className={styles.sectionTitle}>Links profissionais</h2>
-            </div>
-            {links.length === 0 ? (
-              <div className={styles.emptyContent}>
-                {isOwner ? 'Adicione suas redes e links para passar mais confiança.' : 'Nenhum link profissional adicionado.'}
-              </div>
-            ) : (
-              <div className={styles.profileLinkList}>
-                {links.map((link) => {
-                  const meta = getProfileLinkMeta(link.key);
-                  const Icon = meta.icon;
-                  return (
-                    <a key={link.key} href={link.href} target="_blank" rel="noopener noreferrer" className={styles.profileLinkItem} onClick={() => handleTrackedProfileLink(link)}>
-                      <span className={styles.profileLinkLabel}><Icon /> {meta.label || link.label}</span>
-                      <FaArrowUpRightFromSquare className={styles.externalIcon} />
-                    </a>
-                  );
-                })}
-              </div>
-            )}
-          </section>
-
-          <section className={styles.card}>
-            <div className={styles.sectionHead}>
-              <h2 className={styles.sectionTitle}>Habilidades</h2>
-            </div>
-            {skills.length === 0 ? (
-              <div className={styles.emptyContent}>
-                {isOwner ? 'Adicione habilidades para mostrar suas ferramentas e especialidades.' : 'Este perfil não listou habilidades.'}
-              </div>
-            ) : (
-              <div className={styles.skillList}>
-                {skills.map((skill) => <span key={skill} className={styles.skillChip}>{skill}</span>)}
-              </div>
-            )}
-          </section>
-
-          {isOwner && (
-            <section className={styles.card}>
-              <div className={styles.sectionHead}>
-                <h2 className={styles.sectionTitle}>Checklist do Perfil</h2>
-              </div>
-              <div className={styles.completionList}>
-                {completion.items.map((item) => (
-                  <div key={item.id} className={styles.completionItem}>
-                    <div className={`${styles.completionDot} ${item.done ? styles.completionDotDone : ''}`}>
-                      {item.done && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><polyline points="20 6 9 17 4 12"></polyline></svg>}
-                    </div>
-                    <div className={styles.completionText}>
-                      <strong>{item.label}</strong>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
+          {trustSection}
+          {featuredSection}
+          {linksSection}
+          {skillsSection}
+          {checklistSection}
         </aside>
       </div>
+      </>
+      )}
 
       <Toaster position="top-center" richColors />
 

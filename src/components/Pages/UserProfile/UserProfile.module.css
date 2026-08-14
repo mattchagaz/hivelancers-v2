@@ -707,3 +707,179 @@
   .name { font-size: 2rem; }
   .primaryAction, .secondaryAction { width: 100%; }
 }
+
+/* ===== Perfil público no mobile: capa + avatar sobreposto =====
+   Tela própria (não é a mesma UI do desktop encolhida) — reaproveita os
+   cards de conteúdo (portfólio, serviços, confiança, links, habilidades)
+   já extraídos como blocos JSX, só com margem lateral em vez do grid de
+   duas colunas do desktop. */
+@media (max-width: 768px) {
+  .page {
+    padding: 0;
+    gap: 0;
+  }
+
+  .mobilePage {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .mobileCover {
+    position: relative;
+    height: 132px;
+    background: linear-gradient(135deg, var(--primary-color, #3e73e6), #0d9488);
+  }
+
+  .mobileBackBtn {
+    position: absolute;
+    top: calc(14px + env(safe-area-inset-top, 0px));
+    left: 14px;
+    display: flex;
+    width: 40px;
+    height: 40px;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: 12px;
+    background: rgba(0, 0, 0, 0.32);
+    color: #fff;
+    backdrop-filter: blur(6px);
+  }
+
+  .mobileHeaderCard {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin: -48px 16px 0;
+  }
+
+  .mobileAvatarWrap {
+    margin-bottom: 4px;
+  }
+
+  .mobileHeaderCard .avatar {
+    width: 88px;
+    height: 88px;
+    border-radius: 22px;
+    border: 4px solid var(--bg-secondary, #f5f6fa);
+    background: var(--bg-tertiary, #eef0f6);
+    color: var(--text-primary, #1a1a2e);
+    font-size: 1.6rem;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.16);
+  }
+
+  .mobileHeaderCard .presenceDot {
+    border-color: var(--bg-secondary, #f5f6fa);
+  }
+
+  .mobileName {
+    margin: 0;
+    color: var(--text-primary, #1a1a2e);
+    font-size: 1.5rem;
+    font-weight: 900;
+  }
+
+  .mobileSubline {
+    margin: 0;
+    color: var(--text-secondary, #6c6d72);
+    font-size: 0.88rem;
+  }
+
+  .mobileStatsRow {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 4px;
+  }
+
+  .mobileStatChip {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 10px;
+    border: 1px solid var(--border-color, #e8e8ef);
+    border-radius: 14px;
+    background: var(--bg-primary, #fff);
+  }
+
+  .mobileStatChip strong {
+    color: var(--text-primary, #1a1a2e);
+    font-size: 1.05rem;
+    font-weight: 850;
+  }
+
+  .mobileStatChip span {
+    color: var(--text-muted, #a0a0ab);
+    font-size: 0.7rem;
+    font-weight: 750;
+    text-transform: uppercase;
+  }
+
+  .mobileBio {
+    margin: 4px 0 0;
+    overflow-wrap: anywhere;
+    color: var(--text-secondary, #6c6d72);
+    font-size: 0.9rem;
+    line-height: 1.6;
+    white-space: pre-line;
+  }
+
+  .mobileContactBar {
+    display: flex;
+    gap: 10px;
+    margin: 0 16px;
+  }
+
+  .mobileContactBar .primaryAction,
+  .mobileContactBar .secondaryAction {
+    flex: 1;
+    min-height: 46px;
+    box-shadow: none;
+  }
+
+  .mobileContactBar .primaryAction {
+    background: var(--primary-color, #3e73e6);
+    color: #fff;
+  }
+
+  .mobileContactBar .secondaryAction,
+  .mobileContactBar .iconAction {
+    border: 1px solid var(--border-color, #e8e8ef);
+    background: var(--bg-tertiary, #eef0f6);
+    color: var(--text-primary, #1a1a2e);
+  }
+
+  .mobileContactBar .isFavorite {
+    border-color: rgba(239, 68, 68, 0.4);
+    background: rgba(239, 68, 68, 0.08);
+    color: #ef4444;
+  }
+
+  .mobileLinkRow {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 0 16px;
+  }
+
+  .mobileLinkChip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border: 1px solid var(--border-color, #e8e8ef);
+    border-radius: 999px;
+    background: var(--bg-primary, #fff);
+    color: var(--text-primary, #1a1a2e);
+    font-size: 0.82rem;
+    font-weight: 700;
+    text-decoration: none;
+  }
+
+  .mobilePage .card {
+    margin: 0 16px;
+  }
+}
