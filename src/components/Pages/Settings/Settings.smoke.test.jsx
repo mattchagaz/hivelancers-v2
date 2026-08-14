@@ -18,7 +18,7 @@ vi.mock('../../../contexts/SettingsContext', () => ({
   useSettings: () => ({
     settings: {
       notifications: { orderUpdates: true, messages: true, reviews: false, supportUpdates: true, securityUpdates: true, pushMessages: false, pushOrders: false, pushPayments: false, pushSupport: false },
-      appearance: { theme: 'light', accent: 'blue', density: 'comfortable' },
+      appearance: { theme: 'light', accent: 'blue' },
       privacy: { profilePublic: true, showOnline: true, showEarnings: false },
       language: { region: 'BR', currency: 'BRL' },
     },

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { toast, Toaster } from 'sonner';
 import { FaBell, FaPalette, FaShieldHalved, FaUserCheck, FaArrowUpRightFromSquare } from 'react-icons/fa6';
 import { useAuth } from '../../../contexts/authContextStore';
@@ -18,7 +18,8 @@ import {
   PROFILE_FIELDS,
   ACCOUNT_FIELDS,
   THEME_LABEL,
-  DENSITY_LABEL,
+  REGION_LABEL,
+  APP_VERSION,
   IN_APP_NOTIFICATION_OPTIONS,
   PUSH_NOTIFICATION_OPTIONS,
   profileFromUser,
@@ -35,10 +36,30 @@ import BillingPanel from './panels/BillingPanel';
 import LanguagePanel from './panels/LanguagePanel';
 import DangerPanel from './panels/DangerPanel';
 
+function useIsMobileViewport(breakpoint = 768) {
+  const supportsMatchMedia = typeof window !== 'undefined' && typeof window.matchMedia === 'function';
+  const [isMobile, setIsMobile] = useState(() =>
+    supportsMatchMedia ? window.matchMedia(`(max-width: ${breakpoint}px)`).matches : false
+  );
+
+  useEffect(() => {
+    if (!supportsMatchMedia) return undefined;
+    const mq = window.matchMedia(`(max-width: ${breakpoint}px)`);
+    const listener = (event) => setIsMobile(event.matches);
+    setIsMobile(mq.matches);
+    mq.addEventListener('change', listener);
+    return () => mq.removeEventListener('change', listener);
+  }, [breakpoint, supportsMatchMedia]);
+
+  return isMobile;
+}
+
 function Settings() {
-  const [searchParams] = useSearchParams();
-  const { user, setUser } = useAuth();
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { user, setUser, logout } = useAuth();
   const { settings, toggleField, updateSection } = useSettings();
+  const isMobile = useIsMobileViewport();
 
   const userRole = toRoleSlug(user?.userType) || 'freelancer';
   const isFreelancer = userRole === 'freelancer';
@@ -107,7 +128,7 @@ function Settings() {
       { id: 'profile', label: 'Perfil Público', icon: 'user', description: 'Apresentação e vitrine' },
       { id: 'account', label: 'Conta e Acesso', icon: 'shield', description: 'Login, telefone e segurança' },
       { id: 'notifications', label: 'Notificações', icon: 'bell', description: 'Preferências de alertas' },
-      { id: 'appearance', label: 'Aparência', icon: 'palette', description: 'Tema, cores e espaçamento' },
+      { id: 'appearance', label: 'Aparência', icon: 'palette', description: 'Tema e cores' },
       { id: 'privacy', label: 'Privacidade', icon: 'lock', description: 'Visibilidade e mensagens' },
       { id: 'billing', label: 'Pagamentos', icon: 'card', description: isFreelancer ? 'Planos, verificação e repasses' : 'Planos, cartões e histórico' },
       { id: 'language', label: 'Localização', icon: 'globe', description: 'Idioma, fuso e moeda' },
@@ -126,6 +147,28 @@ function Settings() {
   }, [searchParams, tabs]);
 
   const activeTabData = tabs.find((tab) => tab.id === activeTab) || tabs[0];
+
+  // No mobile, o menu principal e as seções vivem na mesma página, alternando
+  // via ?tab= — mesmo padrão usado em Messages para o modo imersivo (o
+  // AppLayout lê essa URL para decidir se esconde TopBar/tab bar).
+  const mobileDrilldown = Boolean(searchParams.get('tab'));
+
+  const openMobilePanel = (id) => {
+    setActiveTab(id);
+    setSearchParams({ tab: id });
+  };
+
+  const closeMobilePanel = () => setSearchParams({}, { replace: true });
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      toast.success('Sessão encerrada.');
+      navigate('/login', { replace: true });
+    } catch {
+      navigate('/login', { replace: true });
+    }
+  };
 
   const updateProfileField = (field, value) => {
     const nextValue = field === 'firstName' || field === 'lastName'
@@ -236,7 +279,7 @@ function Settings() {
 
   const heroStats = [
     { label: 'Perfil público', value: `${profileCompletion}%`, helper: profileCompletion >= 80 ? 'Excelente' : 'Complete mais itens', icon: <FaUserCheck />, tone: 'blue' },
-    { label: 'Tema ativo', value: THEME_LABEL[appearance.theme] || 'Claro', helper: `Espaçamento ${DENSITY_LABEL[appearance.density] || 'Confortável'}`, icon: <FaPalette />, tone: 'purple' },
+    { label: 'Tema ativo', value: THEME_LABEL[appearance.theme] || 'Claro', helper: 'Personalize em Aparência', icon: <FaPalette />, tone: 'purple' },
     { label: 'Privacidade', value: privacy.profilePublic ? 'Público' : 'Privado', helper: privacy.allowDm === 'everyone' ? 'DM aberto' : 'Filtro ativo', icon: <FaShieldHalved />, tone: 'green' },
     { label: 'Alertas', value: `${inAppEnabledCount + pushEnabledCount} ativos`, helper: 'Histórico sempre disponível', icon: <FaBell />, tone: 'orange' },
   ];
@@ -248,9 +291,161 @@ function Settings() {
     { label: 'Website ou Link', done: Boolean(profile.website) },
   ];
 
+  const completedChecklistLabels = checklist.filter((item) => item.done).map((item) => item.label).join(', ');
+  const checklistCaption = completedChecklistLabels
+    ? `${completedChecklistLabels} concluídos.`
+    : 'Complete seu perfil para aumentar sua visibilidade.';
+
+  const mobileRowValue = {
+    notifications: `${inAppEnabledCount + pushEnabledCount} ativos`,
+    appearance: THEME_LABEL[appearance.theme] || 'Claro',
+    language: REGION_LABEL[language.region] || language.region,
+  };
+
+  const mobileGroups = [
+    { label: 'CONTA', ids: ['profile', 'account', 'billing'] },
+    { label: 'PREFERÊNCIAS', ids: ['notifications', 'appearance', 'privacy', 'language'] },
+    { label: 'DADOS', ids: ['danger'] },
+  ];
+
+  const panelContent = (
+    <>
+      {activeTab === 'profile' && (
+        <ProfilePanel profile={profile} updateProfile={updateProfileField} updateLocation={updateProfileLocation} onLocationValidityChange={setLocationValid} locationValid={locationValid} isFreelancer={isFreelancer} isSaving={isSavingProfile} dirty={profileDirty} profileCompletion={profileCompletion} onSave={() => saveProfile(PROFILE_FIELDS)} onCancel={() => resetProfileFields(PROFILE_FIELDS)} />
+      )}
+      {activeTab === 'account' && (
+        <AccountPanel profile={profile} updateProfile={updateProfileField} userRole={userRole} isSaving={isSavingProfile} dirty={accountDirty} onSave={() => saveProfile(ACCOUNT_FIELDS)} onCancel={() => resetProfileFields(ACCOUNT_FIELDS)} />
+      )}
+      {activeTab === 'notifications' && (
+        <NotificationsPanel notifications={notifications} toggleNotification={toggleNotificationPreference} />
+      )}
+      {activeTab === 'appearance' && (
+        <AppearancePanel appearance={appearance} setAppearance={(updater) => updateSection('appearance', typeof updater === 'function' ? updater(appearance) : updater)} />
+      )}
+      {activeTab === 'privacy' && (
+        <PrivacyPanel privacy={privacy} togglePrivacy={(field) => toggleField('privacy', field)} setPrivacy={(updater) => updateSection('privacy', typeof updater === 'function' ? updater(privacy) : updater)} />
+      )}
+      {activeTab === 'billing' && <BillingPanel isFreelancer={isFreelancer} />}
+      {activeTab === 'language' && (
+        <LanguagePanel language={language} setLanguage={(updater) => updateSection('language', typeof updater === 'function' ? updater(language) : updater)} />
+      )}
+      {activeTab === 'danger' && <DangerPanel />}
+    </>
+  );
+
   return (
     <div className={styles.page}>
-      
+
+      {/* ===== Mobile: menu principal ===== */}
+      {isMobile && !mobileDrilldown && (
+        <div className={styles.mobileMenuScreen}>
+          <div className={styles.mobileTopHeader}>
+            <button type="button" className={styles.mobileBackBtn} onClick={() => navigate(-1)} aria-label="Voltar">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
+            </button>
+            <h1>Configurações</h1>
+          </div>
+
+          <div className={styles.mobileIdentityCard}>
+            <div className={styles.mobileIdentityHeader}>
+              <div className={styles.avatar}>
+                {profile.avatarUrl ? <img src={profile.avatarUrl} alt="" className={styles.avatarImg} /> : initials}
+              </div>
+              <div className={styles.identityInfo}>
+                <strong>{fullName}</strong>
+                <span>{profile.username ? `@${profile.username}` : profile.email} · desde {formatDate(user?.createdAt)}</span>
+              </div>
+              <span className={styles.roleBadge}>{isFreelancer ? 'Freelancer' : 'Cliente'}</span>
+            </div>
+
+            <div className={styles.completionHead}>
+              <span>Progresso do perfil</span>
+              <strong>{profileCompletion}%</strong>
+            </div>
+            <div className={styles.progressTrack}>
+              <div className={styles.progressFill} style={{ width: `${clamp(profileCompletion, 6, 100)}%` }} />
+            </div>
+            <p className={styles.mobileChecklistCaption}>{checklistCaption}</p>
+
+            <div className={styles.mobileIdentityActions}>
+              {publicProfileHref ? (
+                <Link to={publicProfileHref} className={styles.mobilePrimaryBtn}>Ver perfil público</Link>
+              ) : (
+                <button type="button" className={styles.mobilePrimaryBtn} onClick={() => openMobilePanel('profile')}>Completar perfil</button>
+              )}
+              <button type="button" className={styles.mobileSecondaryBtn} onClick={() => openMobilePanel('profile')}>Editar perfil</button>
+            </div>
+          </div>
+
+          <div className={styles.mobileChipsRow}>
+            <div className={styles.mobileChip}>
+              <span>Tema</span>
+              <strong>{THEME_LABEL[appearance.theme] || 'Claro'}</strong>
+            </div>
+            <div className={styles.mobileChip}>
+              <span>Privacidade</span>
+              <strong>{privacy.profilePublic ? 'Público' : 'Privado'}</strong>
+            </div>
+            <div className={styles.mobileChip}>
+              <span>Alertas</span>
+              <strong>{inAppEnabledCount + pushEnabledCount} ativos</strong>
+            </div>
+          </div>
+
+          {mobileGroups.map((group) => (
+            <div key={group.label} className={styles.mobileGroup}>
+              <span className={styles.mobileGroupLabel}>{group.label}</span>
+              <div className={styles.mobileGroupCard}>
+                {group.ids.map((id) => {
+                  const tab = tabs.find((item) => item.id === id);
+                  if (!tab) return null;
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      className={`${styles.mobileMenuRow} ${id === 'danger' ? styles.mobileMenuRowDanger : ''}`}
+                      onClick={() => openMobilePanel(id)}
+                    >
+                      <span className={styles.mobileMenuIcon}>{renderTabIcon(tab.icon)}</span>
+                      <span className={styles.mobileMenuCopy}>
+                        <strong>{tab.label}</strong>
+                        <small>{tab.description}</small>
+                      </span>
+                      {mobileRowValue[id] && <span className={styles.mobileMenuValue}>{mobileRowValue[id]}</span>}
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6" /></svg>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+
+          <button type="button" className={styles.mobileLogoutBtn} onClick={handleLogout}>Sair da conta</button>
+          <p className={styles.mobileVersion}>Hivelancers · versão {APP_VERSION}</p>
+        </div>
+      )}
+
+      {/* ===== Mobile: seção aberta (drilldown) ===== */}
+      {isMobile && mobileDrilldown && (
+        <div className={styles.mobilePanelScreen}>
+          <div className={styles.mobilePanelHeader}>
+            <button type="button" className={styles.mobileBackBtn} onClick={closeMobilePanel} aria-label="Voltar para configurações">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
+            </button>
+            <div>
+              <span className={styles.mobilePanelEyebrow}>{activeTabData.label}</span>
+              <h1>{activeTabData.description}</h1>
+            </div>
+          </div>
+          <div className={styles.mobilePanelBody}>
+            {panelContent}
+          </div>
+        </div>
+      )}
+
+      {/* ===== Desktop (inalterado) ===== */}
+      {!isMobile && (
+      <>
       {/* Hero Section */}
       <section className={styles.hero}>
         <div className={styles.heroGlow} />
@@ -375,35 +570,11 @@ function Settings() {
             <div className={styles.panelBadge}>Em edição</div>
           </section>
 
-          {activeTab === 'profile' && (
-            <ProfilePanel profile={profile} updateProfile={updateProfileField} updateLocation={updateProfileLocation} onLocationValidityChange={setLocationValid} locationValid={locationValid} isFreelancer={isFreelancer} isSaving={isSavingProfile} dirty={profileDirty} profileCompletion={profileCompletion} onSave={() => saveProfile(PROFILE_FIELDS)} onCancel={() => resetProfileFields(PROFILE_FIELDS)} />
-          )}
-
-          {activeTab === 'account' && (
-            <AccountPanel profile={profile} updateProfile={updateProfileField} userRole={userRole} isSaving={isSavingProfile} dirty={accountDirty} onSave={() => saveProfile(ACCOUNT_FIELDS)} onCancel={() => resetProfileFields(ACCOUNT_FIELDS)} />
-          )}
-
-          {activeTab === 'notifications' && (
-            <NotificationsPanel notifications={notifications} toggleNotification={toggleNotificationPreference} />
-          )}
-
-          {activeTab === 'appearance' && (
-            <AppearancePanel appearance={appearance} setAppearance={(updater) => updateSection('appearance', typeof updater === 'function' ? updater(appearance) : updater)} />
-          )}
-
-          {activeTab === 'privacy' && (
-            <PrivacyPanel privacy={privacy} togglePrivacy={(field) => toggleField('privacy', field)} setPrivacy={(updater) => updateSection('privacy', typeof updater === 'function' ? updater(privacy) : updater)} />
-          )}
-
-          {activeTab === 'billing' && <BillingPanel isFreelancer={isFreelancer} />}
-
-          {activeTab === 'language' && (
-            <LanguagePanel language={language} setLanguage={(updater) => updateSection('language', typeof updater === 'function' ? updater(language) : updater)} />
-          )}
-
-          {activeTab === 'danger' && <DangerPanel />}
+          {panelContent}
         </main>
       </div>
+      </>
+      )}
 
       <ConfirmDialog
         isOpen={showRemoveAvatarConfirm}

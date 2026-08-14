@@ -25,11 +25,11 @@ export const THEME_LABEL = {
   system: 'Sistema',
 };
 
-export const DENSITY_LABEL = {
-  compact: 'Compacta',
-  comfortable: 'Confortável',
-  spacious: 'Espaçosa',
+export const REGION_LABEL = {
+  BR: 'Brasil',
 };
+
+export const APP_VERSION = '1.0.0';
 
 export const IN_APP_NOTIFICATION_OPTIONS = [
   {

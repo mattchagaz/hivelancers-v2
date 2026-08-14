@@ -22,7 +22,6 @@ const DEFAULT_SETTINGS = {
     theme: 'light',
     accent: 'blue',
     customAccent: '#6366f1',
-    density: 'comfortable',
     reducedMotion: false,
   },
   privacy: {
