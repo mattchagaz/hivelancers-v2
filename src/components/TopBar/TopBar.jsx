@@ -15,6 +15,7 @@ import {
 } from '../../services/notifications';
 import { connectSocket, getSocket } from '../../services/socket';
 import { getPublicProfilePath } from '../../utils/profileEnhancements';
+import ConfirmDialog from '../UI/ConfirmDialog/ConfirmDialog';
 import styles from './TopBar.module.css';
 
 const formatRelativeTime = (value) => {
@@ -92,6 +93,8 @@ function TopBar({ userName = '', userRole = 'freelancer', avatarUrl = '', onMenu
   const [readNotificationIds, setReadNotificationIds] = useState([]);
   const [clearedNotificationIds, setClearedNotificationIds] = useState([]);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const menuRef = useRef(null);
   const notificationRef = useRef(null);
   const knownNotificationIdsRef = useRef(null);
@@ -293,12 +296,16 @@ function TopBar({ userName = '', userRole = 'freelancer', avatarUrl = '', onMenu
   const panelLabel = userRole === 'admin' ? 'Painel Administrativo' : userRole === 'freelancer' ? 'Painel do Freelancer' : 'Painel do Cliente';
 
   const handleLogout = async () => {
+    setIsLoggingOut(true);
     try {
       await logout();
       toast.success('Sessão encerrada.');
       navigate('/login', { replace: true });
     } catch {
       navigate('/login', { replace: true });
+    } finally {
+      setIsLoggingOut(false);
+      setShowLogoutConfirm(false);
     }
   };
 
@@ -463,7 +470,7 @@ function TopBar({ userName = '', userRole = 'freelancer', avatarUrl = '', onMenu
                 </svg>
                 Configurações
               </Link>
-              <button className={styles.menuItemDanger} onClick={handleLogout}>
+              <button className={styles.menuItemDanger} onClick={() => { setMenuOpen(false); setShowLogoutConfirm(true); }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
                   <polyline points="16 17 21 12 16 7" />
@@ -475,6 +482,17 @@ function TopBar({ userName = '', userRole = 'freelancer', avatarUrl = '', onMenu
           )}
         </div>
       </div>
+
+      <ConfirmDialog
+        isOpen={showLogoutConfirm}
+        variant="danger"
+        title="Sair da conta?"
+        description="Você precisará entrar novamente para acessar sua conta."
+        confirmLabel="Sim, sair"
+        isLoading={isLoggingOut}
+        onCancel={() => setShowLogoutConfirm(false)}
+        onConfirm={handleLogout}
+      />
     </header>
   );
 }

@@ -53,6 +53,8 @@ function Settings() {
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [showRemoveAvatarConfirm, setShowRemoveAvatarConfirm] = useState(false);
+const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+const [isLoggingOut, setIsLoggingOut] = useState(false);
   const avatarInputRef = useRef(null);
   const profilePanelRef = useRef(null);
 
@@ -144,12 +146,16 @@ function Settings() {
   const closeMobilePanel = () => setSearchParams({}, { replace: true });
 
   const handleLogout = async () => {
+    setIsLoggingOut(true);
     try {
       await logout();
       toast.success('Sessão encerrada.');
       navigate('/login', { replace: true });
     } catch {
       navigate('/login', { replace: true });
+    } finally {
+      setIsLoggingOut(false);
+      setShowLogoutConfirm(false);
     }
   };
 
@@ -403,7 +409,7 @@ function Settings() {
             </div>
           ))}
 
-          <button type="button" className={styles.mobileLogoutBtn} onClick={handleLogout}>Sair da conta</button>
+          <button type="button" className={styles.mobileLogoutBtn} onClick={() => setShowLogoutConfirm(true)}>Sair da conta</button>
           <p className={styles.mobileVersion}>Hivelancers · versão {APP_VERSION}</p>
         </div>
       )}
@@ -567,6 +573,16 @@ function Settings() {
         isLoading={isUploadingAvatar}
         onCancel={() => setShowRemoveAvatarConfirm(false)}
         onConfirm={handleAvatarRemove}
+      />
+      <ConfirmDialog
+        isOpen={showLogoutConfirm}
+        variant="danger"
+        title="Sair da conta?"
+        description="Você precisará entrar novamente para acessar sua conta."
+        confirmLabel="Sim, sair"
+        isLoading={isLoggingOut}
+        onCancel={() => setShowLogoutConfirm(false)}
+        onConfirm={handleLogout}
       />
       <Toaster position="top-center" richColors />
     </div>
