@@ -47,8 +47,14 @@
 @media (max-width: 860px) { .layout { grid-template-columns: 1fr; } .side { position: static; } }
 @media (max-width: 620px) { .formCard section { padding: 22px 17px; } .twoColumns, .budgetType { grid-template-columns: 1fr; } }
 
-/* ===== Publicar projeto no mobile: folha em tela cheia ===== */
+/* ===== Publicar projeto no mobile: folha em tela cheia =====
+   Escapa do padding lateral do .content do AppLayout (mesma técnica do
+   banner de capa do perfil) pra preencher a largura toda da tela. */
 .mobileSheet {
+  position: relative;
+  left: 50%;
+  width: 100vw;
+  margin-left: -50vw;
   display: flex;
   flex-direction: column;
   min-height: 100vh;
