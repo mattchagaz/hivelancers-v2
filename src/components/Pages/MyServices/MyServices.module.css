@@ -6,6 +6,10 @@
   animation: fadeIn 0.28s ease;
 }
 
+.mobileHeader {
+  display: none;
+}
+
 .hero {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 300px;
@@ -585,10 +589,6 @@
 }
 
 @media (max-width: 560px) {
-  .statGrid {
-    grid-template-columns: 1fr;
-  }
-
   .heroAction,
   .editAction,
   .viewAction,
@@ -599,5 +599,44 @@
 
   .serviceTitleRow {
     flex-direction: column;
+  }
+}
+
+/* ===== Mobile: cabeçalho próprio (sem avatar) + stat grid 2x2 ===== */
+@media (max-width: 768px) {
+  .mobileHeader {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding-top: calc(4px + env(safe-area-inset-top, 0px));
+  }
+
+  .mobileBackBtn {
+    display: flex;
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: 12px;
+    background: var(--bg-tertiary, #eef0f6);
+    color: var(--text-primary, #1a1a2e);
+  }
+
+  .mobileHeader h1 {
+    margin: 0;
+    color: var(--text-primary, #1a1a2e);
+    font-size: 1.32rem;
+    font-weight: 900;
+  }
+
+  .statGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .statCard {
+    min-height: 0;
+    padding: 16px;
   }
 }
