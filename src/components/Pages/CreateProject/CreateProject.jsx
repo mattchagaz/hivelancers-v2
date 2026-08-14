@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FaArrowLeft, FaCircleCheck, FaLightbulb } from 'react-icons/fa6';
+import { FaArrowLeft, FaCircleCheck, FaLightbulb, FaXmark } from 'react-icons/fa6';
 import { toast } from 'sonner';
 import { useAuth } from '../../../contexts/authContextStore';
 import { createProject } from '../../../services/projects';
 import { listCategories } from '../../../services/services';
+import { useIsMobileViewport } from '../../../hooks/useIsMobileViewport';
 import styles from './CreateProject.module.css';
 
 const initialForm = {
@@ -24,6 +25,7 @@ const toCents = (value) => Math.round(Number(String(value).replace(',', '.')) * 
 function CreateProject() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const isMobile = useIsMobileViewport();
   const [form, setForm] = useState(initialForm);
   const [categories, setCategories] = useState([]);
   const [submitting, setSubmitting] = useState(false);
@@ -97,6 +99,186 @@ function CreateProject() {
         <h1>Publicação disponível para clientes</h1>
         <p>Troque o tipo da conta ou entre com uma conta de cliente para publicar um projeto.</p>
         <Link to="/projects">Explorar projetos</Link>
+      </div>
+    );
+  }
+
+  if (isMobile) {
+    return (
+      <div className={styles.mobileSheet}>
+        <div className={styles.mobileHeader}>
+          <button type="button" className={styles.mobileCloseBtn} onClick={() => navigate('/projects/mine')} aria-label="Fechar">
+            <FaXmark />
+          </button>
+          <h1>Publicar projeto</h1>
+        </div>
+
+        <form className={`${styles.mobileForm} ${styles.formCard}`} onSubmit={(event) => submit(event, 'OPEN')}>
+          <label>
+            Título
+            <input
+              value={form.title}
+              onChange={(event) => update('title', event.target.value)}
+              placeholder="Ex: Preciso de uma landing page em 7 dias"
+              minLength={5}
+              maxLength={140}
+              required
+            />
+            <small>{form.title.length}/140</small>
+          </label>
+
+          <div className={styles.mobileFieldGroup}>
+            <span className={styles.mobileFieldLabel}>Categoria</span>
+            <div className={styles.mobileCategoryPills}>
+              <button
+                type="button"
+                className={!form.categoryId ? styles.mobilePillActive : styles.mobilePill}
+                onClick={() => update('categoryId', '')}
+              >
+                Todos
+              </button>
+              {categories.map((category) => (
+                <button
+                  key={category.id}
+                  type="button"
+                  className={form.categoryId === category.id ? styles.mobilePillActive : styles.mobilePill}
+                  onClick={() => update('categoryId', category.id)}
+                >
+                  {category.name}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <label>
+            Habilidades desejadas
+            <input
+              value={form.skills}
+              onChange={(event) => update('skills', event.target.value)}
+              placeholder="Ex: Figma, React, Copywriting"
+            />
+            <small>Separe por vírgulas. Até 15 habilidades.</small>
+          </label>
+
+          {skills.length > 0 && (
+            <div className={styles.chips}>
+              {skills.slice(0, 15).map((skill) => <span key={skill}>{skill}</span>)}
+            </div>
+          )}
+
+          <div className={styles.budgetType}>
+            <button
+              type="button"
+              className={form.budgetType === 'RANGE' ? styles.selected : ''}
+              onClick={() => update('budgetType', 'RANGE')}
+            >
+              Faixa de orçamento
+            </button>
+            <button
+              type="button"
+              className={form.budgetType === 'FIXED' ? styles.selected : ''}
+              onClick={() => update('budgetType', 'FIXED')}
+            >
+              Valor fixo
+            </button>
+          </div>
+
+          <div className={styles.twoColumns}>
+            <label>
+              {form.budgetType === 'FIXED' ? 'Valor do projeto' : 'Orçamento mínimo'}
+              <div className={styles.moneyInput}>
+                <span>R$</span>
+                <input
+                  type="number"
+                  min="10"
+                  step="0.01"
+                  value={form.budgetMin}
+                  onChange={(event) => update('budgetMin', event.target.value)}
+                  placeholder="1.000,00"
+                  required
+                />
+              </div>
+            </label>
+
+            {form.budgetType === 'RANGE' && (
+              <label>
+                Orçamento máximo
+                <div className={styles.moneyInput}>
+                  <span>R$</span>
+                  <input
+                    type="number"
+                    min="10"
+                    step="0.01"
+                    value={form.budgetMax}
+                    onChange={(event) => update('budgetMax', event.target.value)}
+                    placeholder="3.000,00"
+                    required
+                  />
+                </div>
+              </label>
+            )}
+
+            <label>
+              Prazo desejado
+              <input
+                type="date"
+                min={new Date().toISOString().slice(0, 10)}
+                value={form.deadline}
+                onChange={(event) => update('deadline', event.target.value)}
+              />
+            </label>
+          </div>
+
+          <label>
+            Descrição e entregáveis
+            <textarea
+              value={form.description}
+              onChange={(event) => update('description', event.target.value)}
+              placeholder="Contexto do negócio, objetivo, público, entregáveis esperados, referências e critérios de aprovação."
+              minLength={40}
+              maxLength={8000}
+              rows={7}
+              required
+            />
+            <small>{form.description.length}/8000</small>
+          </label>
+
+          <label>
+            Links de referência
+            <textarea
+              value={form.referenceUrls}
+              onChange={(event) => update('referenceUrls', event.target.value)}
+              placeholder={'https://exemplo.com/referencia\nhttps://figma.com/...'}
+              rows={4}
+            />
+            <small>Um link completo por linha. Até 10 links.</small>
+            <small>Não publique dados pessoais, senhas ou materiais confidenciais.</small>
+          </label>
+
+          <div className={styles.mobileBriefing}>
+            <span>Um bom briefing contém:</span>
+            <ul>
+              <li><FaCircleCheck /> Objetivo e contexto</li>
+              <li><FaCircleCheck /> Entregáveis esperados</li>
+              <li><FaCircleCheck /> Orçamento realista</li>
+              <li><FaCircleCheck /> Prazo ou prioridade</li>
+              <li><FaCircleCheck /> Referências de qualidade</li>
+            </ul>
+          </div>
+
+          <button type="submit" className={styles.publish} disabled={submitting}>
+            {submitting ? 'Salvando…' : 'Publicar'}
+          </button>
+          <button
+            type="button"
+            className={styles.draft}
+            disabled={submitting}
+            onClick={(event) => submit(event, 'DRAFT')}
+          >
+            Salvar como rascunho
+          </button>
+          <p className={styles.notice}>Você poderá editar ou encerrar o projeto depois.</p>
+        </form>
       </div>
     );
   }

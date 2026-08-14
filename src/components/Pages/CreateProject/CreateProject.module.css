@@ -46,3 +46,136 @@
 .restricted a { display: inline-flex; padding: 11px 16px; border-radius: 10px; color: #fff; background: var(--primary-color); font-weight: 800; }
 @media (max-width: 860px) { .layout { grid-template-columns: 1fr; } .side { position: static; } }
 @media (max-width: 620px) { .formCard section { padding: 22px 17px; } .twoColumns, .budgetType { grid-template-columns: 1fr; } }
+
+/* ===== Publicar projeto no mobile: folha em tela cheia ===== */
+.mobileSheet {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: var(--bg-secondary, #f5f6fa);
+}
+
+.mobileHeader {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: calc(16px + env(safe-area-inset-top, 0px)) 18px 14px;
+  background: var(--bg-primary, #fff);
+  border-bottom: 1px solid var(--border-color, #e8e8ef);
+}
+
+.mobileCloseBtn {
+  display: flex;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 12px;
+  background: var(--bg-tertiary, #eef0f6);
+  color: var(--text-primary, #1a1a2e);
+}
+
+.mobileHeader h1 {
+  margin: 0;
+  color: var(--text-primary, #1a1a2e);
+  font-size: 1.2rem;
+  font-weight: 850;
+}
+
+.mobileForm {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 16px;
+  padding: 18px;
+  border-radius: 20px;
+}
+
+.mobileForm .publish,
+.mobileForm .draft {
+  width: 100%;
+  margin-top: 18px;
+}
+
+.mobileForm .notice {
+  margin-top: 4px;
+}
+
+.mobileFieldGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.mobileFieldLabel {
+  color: var(--text-secondary, #6c6d72);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.mobileCategoryPills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.mobilePill,
+.mobilePillActive {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  padding: 0 16px;
+  border-radius: 12px;
+  border: 1px solid var(--border-color, #e8e8ef);
+  background: var(--bg-subtle, #fbfcfe);
+  color: var(--text-secondary, #6c6d72);
+  font-size: 0.84rem;
+  font-weight: 750;
+}
+
+.mobilePillActive {
+  border-color: rgba(var(--primary-color-rgb, 62, 115, 230), 0.42);
+  background: var(--info-bg, rgba(62, 115, 230, 0.1));
+  color: var(--primary-color, #3e73e6);
+}
+
+.mobileBriefing {
+  margin-top: 20px;
+  padding: 16px;
+  border: 1px solid var(--border-color, #e8e8ef);
+  border-radius: 14px;
+  background: linear-gradient(145deg, var(--bg-primary, #fff), var(--bg-accent-soft, #f2f6ff));
+}
+
+.mobileBriefing > span {
+  display: block;
+  margin-bottom: 10px;
+  color: var(--text-primary, #1a1a2e);
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.mobileBriefing ul {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mobileBriefing li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-secondary, #6c6d72);
+  font-size: 0.8rem;
+}
+
+.mobileBriefing li svg {
+  color: var(--success-color, #16a34a);
+  flex-shrink: 0;
+}

@@ -47,6 +47,10 @@ function AppLayout() {
   const profileMatch = location.pathname.match(/^\/profile\/([^/]+)$/);
   const isProfileImmersive = Boolean(profileMatch) && profileMatch[1] !== 'customize';
 
+  // Publicar projeto usa o mesmo layout imersivo (vira uma folha em tela
+  // cheia com botão de fechar, em vez do formulário de página normal).
+  const isCreateProjectImmersive = location.pathname === '/projects/new';
+
   // Página de mensagens: no mobile, a lista de conversas esconde só a
   // TopBar (mantém a tab bar para navegação); ao abrir uma conversa
   // (?chat=) o chat vira tela cheia, escondendo TopBar e tab bar.
@@ -67,7 +71,7 @@ function AppLayout() {
   const isAdminRoute = location.pathname === '/admin';
   const isAdminModalImmersive = isAdminRoute && isAdminModalOpen;
 
-  const isImmersivePage = isServiceDetailImmersive || isCheckoutImmersive || isMessagesChatImmersive || isAdminModalImmersive || isProfileImmersive;
+  const isImmersivePage = isServiceDetailImmersive || isCheckoutImmersive || isMessagesChatImmersive || isAdminModalImmersive || isProfileImmersive || isCreateProjectImmersive;
   const isTopBarImmersive = isImmersivePage || isMessagesListImmersive || isSettingsRoute || isAdminRoute;
 
   const isAdmin = isAdminUser(user);
