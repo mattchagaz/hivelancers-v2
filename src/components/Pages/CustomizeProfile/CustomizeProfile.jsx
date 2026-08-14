@@ -93,6 +93,7 @@ function CustomizeProfile() {
   const [projects, setProjects] = useState([]);
   const [featuredProjectId, setFeaturedProjectId] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [hasAttemptedSave, setHasAttemptedSave] = useState(false);
   const [loadingCustomization, setLoadingCustomization] = useState(true);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [uploadingProjectId, setUploadingProjectId] = useState('');
@@ -190,10 +191,17 @@ function CustomizeProfile() {
   const previewSkills = useMemo(() => skills.slice(0, 4), [skills]);
   const featuredProject = useMemo(() => getFeaturedProject(previewProfile), [previewProfile]);
   const bioPreview = profile.bio.trim() || 'Adicione uma bio curta para explicar sua especialidade, seu estilo de trabalho e o tipo de projeto que você mais resolve.';
-  const validation = useMemo(
+  const rawValidation = useMemo(
     () => buildCustomizeProfileErrors({ profile, socialLinks, projects }),
     [profile, socialLinks, projects]
   );
+
+  // Só mostra os campos em vermelho depois de uma tentativa de salvar —
+  // senão o formulário já entra com erro pra quem tinha dados incompletos
+  // antes mesmo de mexer em algo.
+  const validation = hasAttemptedSave
+    ? rawValidation
+    : { hasErrors: rawValidation.hasErrors, profile: {}, socialLinks: {}, projects: {} };
   
   const inputClassName = (hasError) => `${styles.input} ${hasError ? styles.inputError : ''}`;
   
@@ -465,6 +473,7 @@ function CustomizeProfile() {
       return;
     }
     if (validation.hasErrors) {
+      setHasAttemptedSave(true);
       toast.error('Revise os campos destacados (em vermelho) antes de salvar.');
       return;
     }
