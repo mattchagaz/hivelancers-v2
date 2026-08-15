@@ -7,7 +7,6 @@ import { useSettings } from '../../../contexts/SettingsContext';
 import {
   updateProfile as apiUpdateProfile,
 } from '../../../services/users';
-import { uploadImageToCloudinary } from '../../../services/cloudinary';
 import CityAutocomplete from '../../CityAutocomplete/CityAutocomplete';
 import { toRoleSlug } from '../../../utils/authFlow';
 import { formatPersonName } from '../../../utils/formatters';
@@ -51,11 +50,8 @@ function Settings() {
   const [profile, setProfile] = useState(() => profileFromUser(user));
   const [locationValid, setLocationValid] = useState(true);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
-  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
-  const [showRemoveAvatarConfirm, setShowRemoveAvatarConfirm] = useState(false);
 const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const avatarInputRef = useRef(null);
   const profilePanelRef = useRef(null);
 
   const serverProfile = useMemo(() => profileFromUser(user), [user]);
@@ -207,38 +203,6 @@ const [isLoggingOut, setIsLoggingOut] = useState(false);
       return next;
     });
     if (fields.includes('location')) setLocationValid(true);
-  };
-
-  const handleAvatarFile = async (file) => {
-    if (!file || isUploadingAvatar) return;
-    if (!file.type.startsWith('image/')) { toast.error('Selecione uma imagem válida.'); return; }
-
-    setIsUploadingAvatar(true);
-    try {
-      const { url } = await uploadImageToCloudinary(file);
-      const updated = await apiUpdateProfile({ avatarUrl: url });
-      setUser(updated);
-      toast.success('Foto de perfil atualizada.');
-    } catch (err) {
-      toast.error(err.message);
-    } finally {
-      setIsUploadingAvatar(false);
-    }
-  };
-
-  const handleAvatarRemove = async () => {
-    if (isUploadingAvatar || !profile.avatarUrl) return;
-    setIsUploadingAvatar(true);
-    try {
-      const updated = await apiUpdateProfile({ avatarUrl: '' });
-      setUser(updated);
-      setShowRemoveAvatarConfirm(false);
-      toast.success('Foto removida com sucesso.');
-    } catch (err) {
-      toast.error(err.message);
-    } finally {
-      setIsUploadingAvatar(false);
-    }
   };
 
   const saveProfile = async (fields) => {
@@ -489,20 +453,6 @@ const [isLoggingOut, setIsLoggingOut] = useState(false);
                 ))}
               </div>
             </div>
-
-            <input
-              ref={avatarInputRef} type="file" accept="image/*" className={styles.hiddenInput}
-              onChange={(e) => { const file = e.target.files?.[0]; if (file) handleAvatarFile(file); e.target.value = ''; }}
-            />
-
-            <div className={styles.identityActions}>
-              <button type="button" className={styles.identityButton} onClick={() => avatarInputRef.current?.click()} disabled={isUploadingAvatar}>
-                {isUploadingAvatar ? 'Enviando...' : profile.avatarUrl ? 'Alterar Foto' : 'Adicionar Foto'}
-              </button>
-              {profile.avatarUrl && (
-                <button type="button" className={styles.identityGhost} onClick={() => setShowRemoveAvatarConfirm(true)} disabled={isUploadingAvatar}>Remover</button>
-              )}
-            </div>
           </div>
         </aside>
       </section>
@@ -565,15 +515,6 @@ const [isLoggingOut, setIsLoggingOut] = useState(false);
       </>
       )}
 
-      <ConfirmDialog
-        isOpen={showRemoveAvatarConfirm}
-        title="Remover foto?"
-        description="Sua foto atual será removida permanentemente. O avatar voltará a mostrar suas iniciais."
-        confirmLabel="Sim, remover"
-        isLoading={isUploadingAvatar}
-        onCancel={() => setShowRemoveAvatarConfirm(false)}
-        onConfirm={handleAvatarRemove}
-      />
       <ConfirmDialog
         isOpen={showLogoutConfirm}
         variant="danger"
