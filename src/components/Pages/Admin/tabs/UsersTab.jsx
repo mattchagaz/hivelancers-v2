@@ -24,6 +24,7 @@ import {
 import { useAdmin } from '../AdminContext';
 import AdminModal from '../AdminModal';
 import AdminPagination from '../AdminPagination';
+import { getPublicProfilePath } from '../../../../utils/profileEnhancements';
 
 export default function UsersTab() {
   const [editorOpen, setEditorOpen] = useState(false);
@@ -282,6 +283,12 @@ export default function UsersTab() {
                     </td>
                     <td>
                       <div className={styles.rowActions}>
+                        <button
+                          type="button"
+                          onClick={() => window.open(getPublicProfilePath(user), '_blank', 'noopener,noreferrer')}
+                        >
+                          Perfil
+                        </button>
                         <button type="button" onClick={() => {
                           setSelectedUserId(user.id);
                           setEditorOpen(true);
