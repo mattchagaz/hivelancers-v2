@@ -217,6 +217,12 @@
   text-align: center;
 }
 
+.footerLink {
+  color: var(--primary-color, #3e73e6);
+  font-weight: 700;
+  text-decoration: underline;
+}
+
 @media (max-width: 840px) {
   .wrap {
     padding: 22px 18px 28px;

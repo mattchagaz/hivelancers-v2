@@ -46,7 +46,9 @@ function NotFound() {
         </div>
       </main>
 
-      <p className={styles.footer}>Ainda perdido? A Central de Ajuda pode orientar seu próximo passo.</p>
+      <p className={styles.footer}>
+        Ainda perdido? A <Link to="/support" className={styles.footerLink}>Central de Ajuda</Link> pode orientar seu próximo passo.
+      </p>
     </div>
   );
 }
