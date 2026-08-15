@@ -99,6 +99,7 @@ function CustomizeProfile() {
   const [uploadingProjectId, setUploadingProjectId] = useState('');
   const [draggingProjectId, setDraggingProjectId] = useState('');
   const [projectRemoveConfirm, setProjectRemoveConfirm] = useState(null);
+  const [removingProjectId, setRemovingProjectId] = useState('');
   const [galleryImageRemoveConfirm, setGalleryImageRemoveConfirm] = useState(null);
   const [removingGalleryImage, setRemovingGalleryImage] = useState(false);
 
@@ -322,17 +323,30 @@ function CustomizeProfile() {
     });
   };
 
-  const removeProject = (projectId) => {
-    setProjects((prev) => {
-      const next = prev
-        .filter((project) => project.id !== projectId)
-        .map((project, position) => ({ ...project, position }));
-      if (featuredProjectId === projectId) {
-        setFeaturedProjectId(next[0]?.id || null);
-      }
-      return next;
-    });
-    setProjectRemoveConfirm(null);
+  const removeProject = async (projectId) => {
+    if (removingProjectId) return;
+    const next = projects
+      .filter((project) => project.id !== projectId)
+      .map((project, position) => ({ ...project, position }));
+    const nextFeaturedProjectId = featuredProjectId === projectId ? (next[0]?.id || null) : featuredProjectId;
+
+    setRemovingProjectId(projectId);
+    try {
+      const customization = await saveMyProfileCustomization(buildCustomizationPayload({
+        skills,
+        socialLinks,
+        featuredProjectId: nextFeaturedProjectId,
+        projects: next,
+      }));
+      setProjects(customization.portfolioProjects || next);
+      setFeaturedProjectId(customization.featuredProjectId || nextFeaturedProjectId);
+      setProjectRemoveConfirm(null);
+      toast.success('Projeto removido do portfólio.');
+    } catch (err) {
+      toast.error(err.message || 'Não foi possível remover o projeto agora.');
+    } finally {
+      setRemovingProjectId('');
+    }
   };
 
   const handleAvatarUpload = async (file) => {
@@ -981,6 +995,7 @@ function CustomizeProfile() {
         title="Remover Projeto"
         description={`Tem certeza que deseja remover "${projectRemoveConfirm?.title || 'este projeto'}"?`}
         confirmLabel="Remover"
+        isLoading={Boolean(removingProjectId) && removingProjectId === projectRemoveConfirm?.id}
         onCancel={() => setProjectRemoveConfirm(null)}
         onConfirm={() => { if (projectRemoveConfirm) removeProject(projectRemoveConfirm.id); }}
       />
