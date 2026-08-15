@@ -16,7 +16,7 @@ export default function ProfilePanel({ profile, updateProfile, updateLocation, o
         </Field>
         <Field label="Nome de Usuário (URL)" hint="Use letras e números, sem espaços." full>
           <div className={styles.inputWithPrefix}>
-            <span className={styles.inputPrefix}>hivelancers.com/</span>
+            <span className={styles.inputPrefix}>app.hivelancers.com/profile/</span>
             <input type="text" className={styles.input} value={profile.username} placeholder="seuusuario" onChange={(e) => updateProfile('username', e.target.value.toLowerCase())} />
           </div>
         </Field>

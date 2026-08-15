@@ -719,7 +719,7 @@ function CustomizeProfile() {
               </Field>
               <Field label="Usuário público (URL)" error={validation.profile.username}>
                 <div className={`${styles.inputWithPrefix} ${validation.profile.username ? styles.inputWithPrefixError : ''}`}>
-                  <span className={styles.inputPrefix}>hivelancers.com/</span>
+                  <span className={styles.inputPrefix}>app.hivelancers.com/profile/</span>
                   <input
                     className={styles.input}
                     value={profile.username}
