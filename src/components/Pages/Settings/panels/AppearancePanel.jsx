@@ -1,5 +1,6 @@
 import styles from '../Settings.module.css';
 import { SectionHeader } from '../Settings.ui';
+import { limitCustomAccentLightness } from '../../../../utils/accentColor';
 
 export default function AppearancePanel({ appearance, setAppearance }) {
   return (
@@ -30,8 +31,12 @@ export default function AppearancePanel({ appearance, setAppearance }) {
           <input
             type="color"
             className={styles.accentCustomInput}
-            value={appearance.customAccent || '#6366f1'}
-            onChange={(e) => setAppearance(p => ({ ...p, accent: 'custom', customAccent: e.target.value }))}
+            value={limitCustomAccentLightness(appearance.customAccent)}
+            onChange={(e) => setAppearance(p => ({
+              ...p,
+              accent: 'custom',
+              customAccent: limitCustomAccentLightness(e.target.value),
+            }))}
           />
         </label>
       </div>

@@ -80,7 +80,7 @@
 }
 
 .primaryAction {
-  color: #1d4ed8;
+  color: var(--primary-color);
   background: #fff;
 }
 
