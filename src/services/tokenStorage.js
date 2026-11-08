@@ -34,6 +34,7 @@ const getLastUidCookie = () => {
 // redirecionamento para provedores externos (como a Stripe), mas não é
 // compartilhado entre abas nem persiste após o fechamento da aba.
 let accessToken = null;
+let sessionGeneration = 0;
 
 const safeLocalStorage = (fn, fallback = null) => {
   try {
@@ -75,6 +76,7 @@ safeLocalStorage((ls) => {
 });
 
 export const tokenStorage = {
+  getGeneration: () => sessionGeneration,
   getAccess: () => accessToken,
   getRefresh: () => safeLocalStorage((ls) => ls.getItem(REFRESH_KEY)),
   getUser: () => {
@@ -98,6 +100,7 @@ export const tokenStorage = {
   },
   setTokens: ({ accessToken: newAccess, refreshToken } = {}) => {
     if (newAccess) {
+      sessionGeneration += 1;
       accessToken = newAccess;
       safeSessionStorage((storage) => storage.setItem(ACCESS_KEY, newAccess));
     }
@@ -112,6 +115,7 @@ export const tokenStorage = {
     setLastUidCookie(user?.id);
   },
   clear: () => {
+    sessionGeneration += 1;
     accessToken = null;
     safeSessionStorage((storage) => {
       storage.removeItem(ACCESS_KEY);
@@ -123,5 +127,8 @@ export const tokenStorage = {
       ls.removeItem(USER_KEY);
     });
     setLastUidCookie(null);
+  },
+  invalidatePendingRefreshes: () => {
+    sessionGeneration += 1;
   },
 };

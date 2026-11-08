@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => {
     getRefresh: vi.fn(() => null),
     getUser: vi.fn(() => null),
     getExpectedUserId: vi.fn(() => null),
+    getGeneration: vi.fn(() => 0),
     post: vi.fn(),
     requestUse,
     responseUse,
@@ -38,6 +39,7 @@ vi.mock('./tokenStorage', () => ({
     getRefresh: mocks.getRefresh,
     getUser: mocks.getUser,
     getExpectedUserId: mocks.getExpectedUserId,
+    getGeneration: mocks.getGeneration,
     setTokens: mocks.setTokens,
   },
 }));
@@ -52,6 +54,7 @@ describe('interceptor de autenticacao', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.getGeneration.mockReturnValue(0);
     unauthorizedListener = vi.fn();
     window.addEventListener(AUTH_UNAUTHORIZED_EVENT, unauthorizedListener);
   });
@@ -73,7 +76,7 @@ describe('interceptor de autenticacao', () => {
     })).rejects.toBe(refreshError);
 
     expect(mocks.post).toHaveBeenCalledWith(
-      'https://hivelancers-backend.fly.dev/auth/refresh',
+      expect.stringMatching(/\/auth\/refresh$/),
       {},
       { withCredentials: true }
     );
@@ -131,5 +134,25 @@ describe('interceptor de autenticacao', () => {
 
     expect(mocks.setTokens).toHaveBeenCalledOnce();
     expect(mocks.clear).not.toHaveBeenCalled();
+  });
+
+  it('descarta uma resposta de refresh que chega depois da sessao mudar', async () => {
+    let resolveRefresh;
+    const refreshResponse = new Promise((resolve) => { resolveRefresh = resolve; });
+    mocks.post.mockReturnValue(refreshResponse);
+
+    const pending = rejectResponse({
+      config: { headers: {}, url: '/auth/me' },
+      response: { status: 401 },
+    });
+
+    mocks.getGeneration.mockReturnValue(1);
+    const payload = btoa(JSON.stringify({ sub: 'conta-antiga' }));
+    resolveRefresh({ data: { accessToken: `header.${payload}.signature` } });
+
+    await expect(pending).rejects.toThrow('sessão mudou');
+    expect(mocks.setTokens).not.toHaveBeenCalled();
+    expect(mocks.clear).not.toHaveBeenCalled();
+    expect(unauthorizedListener).not.toHaveBeenCalled();
   });
 });

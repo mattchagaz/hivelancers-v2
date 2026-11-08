@@ -1,25 +1,36 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
+  clear: vi.fn(),
+  get: vi.fn(),
   post: vi.fn(),
+  resetSocket: vi.fn(),
   setTokens: vi.fn(),
   setUser: vi.fn(),
+  invalidatePendingRefreshes: vi.fn(),
 }));
 
 vi.mock('./api', () => ({
   api: {
+    get: mocks.get,
     post: mocks.post,
   },
 }));
 
 vi.mock('./tokenStorage', () => ({
   tokenStorage: {
+    clear: mocks.clear,
+    invalidatePendingRefreshes: mocks.invalidatePendingRefreshes,
     setTokens: mocks.setTokens,
     setUser: mocks.setUser,
   },
 }));
 
-import { forgotPassword, loginUser } from './auth';
+vi.mock('./socket', () => ({
+  resetSocket: mocks.resetSocket,
+}));
+
+import { completeGoogleLogin, forgotPassword, loginUser, logoutUser } from './auth';
 
 describe('loginUser', () => {
   beforeEach(() => {
@@ -81,5 +92,37 @@ describe('forgotPassword', () => {
       { email: 'user@example.com' },
       { withCredentials: false }
     );
+  });
+});
+
+describe('Google OAuth', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('troca o cookie HttpOnly por access token sem aceitar bearer na URL', async () => {
+    mocks.post.mockResolvedValueOnce({ data: { accessToken: 'access-token' } });
+    mocks.get.mockResolvedValueOnce({ data: { user: { id: 'user-1' } } });
+
+    await expect(completeGoogleLogin('?oauth=success')).resolves.toMatchObject({
+      accessToken: 'access-token',
+      user: { id: 'user-1' },
+    });
+    expect(mocks.post).toHaveBeenNthCalledWith(1, '/auth/refresh', {});
+    expect(mocks.setTokens).toHaveBeenCalledWith(expect.objectContaining({ accessToken: 'access-token' }));
+  });
+
+  it('ignora tokens fornecidos diretamente na query string', async () => {
+    await expect(completeGoogleLogin('?accessToken=attacker-token')).resolves.toBeNull();
+    expect(mocks.setTokens).not.toHaveBeenCalled();
+  });
+});
+
+describe('logoutUser', () => {
+  it('invalida refresh pendente e destroi o socket antes de limpar a sessao', async () => {
+    mocks.post.mockResolvedValue({ data: {} });
+    await logoutUser();
+    expect(mocks.resetSocket).toHaveBeenCalledOnce();
+    expect(mocks.invalidatePendingRefreshes).toHaveBeenCalledOnce();
   });
 });

@@ -29,7 +29,36 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-let refreshPromise = null;
+let refreshRequest = null;
+
+const createRefreshRequest = () => {
+  const legacyRefreshToken = tokenStorage.getRefresh();
+  const generation = tokenStorage.getGeneration();
+  const expectedUserId = tokenStorage.getExpectedUserId();
+  const request = { generation, promise: null };
+
+  request.promise = axios.post(
+    `${baseURL}/auth/refresh`,
+    legacyRefreshToken ? { refreshToken: legacyRefreshToken } : {},
+    { withCredentials: true }
+  ).then(({ data }) => {
+    if (tokenStorage.getGeneration() !== generation) {
+      throw new Error('A sessão mudou enquanto a renovação estava em andamento.');
+    }
+
+    const refreshedUserId = getTokenSubject(data.accessToken);
+    if (!refreshedUserId || (expectedUserId && expectedUserId !== refreshedUserId)) {
+      throw new Error('A sessão desta aba não corresponde à conta autenticada no navegador.');
+    }
+
+    tokenStorage.setTokens(data);
+    return data;
+  }).finally(() => {
+    if (refreshRequest === request) refreshRequest = null;
+  });
+
+  return request;
+};
 
 api.interceptors.response.use(
   (res) => res,
@@ -40,36 +69,28 @@ api.interceptors.response.use(
     const isAuthEndpoint = original?.url?.includes('/auth/login') ||
       original?.url?.includes('/auth/register') ||
       original?.url?.includes('/auth/refresh') ||
+      original?.url?.includes('/auth/logout') ||
       original?.url?.includes('/auth/verify-otp');
 
     if (status !== 401 || original._retry || isAuthEndpoint) {
       return Promise.reject(error);
     }
 
-    const legacyRefreshToken = tokenStorage.getRefresh();
-
     original._retry = true;
+    let request;
     try {
-      refreshPromise = refreshPromise ||
-        axios.post(
-          `${baseURL}/auth/refresh`,
-          legacyRefreshToken ? { refreshToken: legacyRefreshToken } : {},
-          { withCredentials: true }
-        ).finally(() => {
-          refreshPromise = null;
-        });
-      const { data } = await refreshPromise;
-      const expectedUserId = tokenStorage.getExpectedUserId();
-      const refreshedUserId = getTokenSubject(data.accessToken);
-      if (!refreshedUserId || (expectedUserId && expectedUserId !== refreshedUserId)) {
-        throw new Error('A sessão desta aba não corresponde à conta autenticada no navegador.');
+      if (!refreshRequest || refreshRequest.generation !== tokenStorage.getGeneration()) {
+        refreshRequest = createRefreshRequest();
       }
-      tokenStorage.setTokens(data);
+      request = refreshRequest;
+      const data = await request.promise;
       original.headers.Authorization = `Bearer ${data.accessToken}`;
       return api(original);
     } catch (refreshErr) {
-      tokenStorage.clear();
-      emitAuthUnauthorized();
+      if (request && tokenStorage.getGeneration() === request.generation) {
+        tokenStorage.clear();
+        emitAuthUnauthorized();
+      }
       return Promise.reject(refreshErr);
     }
   }

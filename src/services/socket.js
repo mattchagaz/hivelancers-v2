@@ -4,6 +4,7 @@ import { tokenStorage } from './tokenStorage';
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || import.meta.env.VITE_API_URL || 'http://localhost:3333';
 
 let socket;
+let socketToken = null;
 
 const getAuth = () => {
   const token = tokenStorage.getAccess();
@@ -12,6 +13,7 @@ const getAuth = () => {
 
 export const getSocket = () => {
   if (!socket) {
+    socketToken = tokenStorage.getAccess();
     socket = io(SOCKET_URL, {
       autoConnect: false,
       auth: getAuth(),
@@ -24,6 +26,13 @@ export const getSocket = () => {
 
 export const connectSocket = () => {
   const current = getSocket();
+  const nextToken = tokenStorage.getAccess();
+
+  if (socketToken !== nextToken && current.connected) {
+    current.disconnect();
+  }
+
+  socketToken = nextToken;
   current.auth = getAuth();
 
   if (!current.connected) {
@@ -37,6 +46,14 @@ export const disconnectSocket = () => {
   if (socket) {
     socket.disconnect();
   }
+};
+
+export const resetSocket = () => {
+  if (!socket) return;
+  socket.disconnect();
+  socket.removeAllListeners();
+  socket = undefined;
+  socketToken = null;
 };
 
 export const emitSocket = (event, payload, ack) => {

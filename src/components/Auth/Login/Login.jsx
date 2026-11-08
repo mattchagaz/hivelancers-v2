@@ -31,11 +31,7 @@ function Login() {
 
     const finishGoogleLogin = async () => {
       const params = new URLSearchParams(location.search);
-      const hasGoogleAuthParams = params.has('accessToken') ||
-        params.has('access_token') ||
-        params.has('token') ||
-        params.has('refreshToken') ||
-        params.has('refresh_token') ||
+      const hasGoogleAuthParams = params.has('oauth') ||
         params.has('code') ||
         params.has('error') ||
         params.has('error_description');

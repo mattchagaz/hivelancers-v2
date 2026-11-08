@@ -1,5 +1,6 @@
 import { api } from './api';
 import { tokenStorage } from './tokenStorage';
+import { resetSocket } from './socket';
 
 const apiBaseURL = import.meta.env.VITE_API_URL || 'http://localhost:3333';
 
@@ -27,22 +28,6 @@ const persistAuthData = (data = {}) => {
   tokenStorage.setTokens(data);
   if (data.user) tokenStorage.setUser(data.user);
   return data;
-};
-
-const parseGoogleUser = (rawUser) => {
-  if (!rawUser) return null;
-
-  try {
-    return JSON.parse(rawUser);
-  } catch {
-    try {
-      const base64 = rawUser.replace(/-/g, '+').replace(/_/g, '/');
-      const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, '=');
-      return JSON.parse(atob(padded));
-    } catch {
-      return null;
-    }
-  }
 };
 
 export const registerUser = async (payload) => {
@@ -113,7 +98,7 @@ export const getGoogleLoginUrl = (redirectPath = '/login', legalAccepted = false
   return url.toString();
 };
 
-export const completeGoogleLogin = async (search, redirectPath = '/login') => {
+export const completeGoogleLogin = async (search) => {
   const params = new URLSearchParams(search);
   const error = params.get('error') || params.get('error_description');
   if (error) {
@@ -122,32 +107,10 @@ export const completeGoogleLogin = async (search, redirectPath = '/login') => {
     throw err;
   }
 
-  const accessToken = params.get('accessToken') || params.get('access_token') || params.get('token');
-  const refreshToken = params.get('refreshToken') || params.get('refresh_token');
-
-  if (accessToken || refreshToken) {
-    const data = {
-      accessToken,
-      refreshToken,
-      user: parseGoogleUser(params.get('user')),
-    };
-
-    persistAuthData(data);
-    if (!data.user) {
-      data.user = await getMe();
-    }
-
-    return data;
-  }
-
-  const code = params.get('code');
-  if (!code) return null;
+  if (params.get('oauth') !== 'success') return null;
 
   try {
-    const response = await api.post('/auth/google/callback', {
-      code,
-      redirectTo: `${window.location.origin}${redirectPath}`,
-    });
+    const response = await api.post('/auth/refresh', {});
     const data = persistAuthData(response.data);
     if (!data.user) {
       data.user = await getMe();
@@ -160,6 +123,8 @@ export const completeGoogleLogin = async (search, redirectPath = '/login') => {
 };
 
 export const logoutUser = async () => {
+  resetSocket();
+  tokenStorage.invalidatePendingRefreshes();
   try {
     await api.post('/auth/logout');
   } catch {

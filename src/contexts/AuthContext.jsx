@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { AUTH_UNAUTHORIZED_EVENT } from '../services/authEvents';
 import { tokenStorage } from '../services/tokenStorage';
 import { getMe, loginUser, logoutUser } from '../services/auth';
+import { resetSocket } from '../services/socket';
 import { AuthContext } from './authContextStore';
 
 export function AuthProvider({ children }) {
@@ -25,6 +26,7 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     const handleUnauthorized = () => {
+      resetSocket();
       tokenStorage.clear();
       setUser(null);
       setIsInitializing(false);

@@ -57,10 +57,12 @@ send_telegram() {
   local text="$1"
 
   curl --silent --show-error --fail \
-    "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
     --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
     --data-urlencode "text=${text}" \
-    >/dev/null
+    --config - \
+    >/dev/null <<EOF
+url = "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage"
+EOF
 }
 
 trim_file() {
