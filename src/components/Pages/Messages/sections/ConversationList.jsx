@@ -1,7 +1,6 @@
 import { FaCircle, FaComments, FaInbox } from 'react-icons/fa';
 import styles from '../Messages.module.css';
 import EmptyState from '../../../UI/EmptyState/EmptyState';
-import SpotlightCard from '../../../UI/SpotlightCard/SpotlightCard';
 import {
   formatTime,
   getOtherParticipant,
@@ -115,31 +114,36 @@ export default function ConversationList() {
                 : lastMsg?.content || 'Sem mensagens';
 
             return (
-              <SpotlightCard
+              <button
                 key={conv.id}
-                className={`${styles.convSurface} ${isActive ? styles.convSurfaceActive : ''} ${unread ? styles.convSurfaceUnread : ''}`}
-                spotlightColor="rgba(62, 115, 230, 0.12)"
+                type="button"
+                className={`${styles.convItem} ${isActive ? styles.convItemActive : ''} ${unread ? styles.convItemUnread : ''}`}
+                aria-current={isActive ? 'true' : undefined}
+                onClick={() => selectConversation(conv.id)}
               >
-                <button
-                  className={styles.convItem}
-                  onClick={() => selectConversation(conv.id)}
-                >
-                  <div className={styles.convAvatar}>
-                    {other?.avatarUrl ? <img src={other.avatarUrl} alt="" className={styles.convAvatarImg} /> : initials || 'U'}
-                    {(conv.online || other?.online) && <span className={styles.onlineDot} />}
+                <div className={styles.convAvatar}>
+                  <span className={styles.convAvatarFallback}>{initials || 'U'}</span>
+                  {other?.avatarUrl ? (
+                    <img
+                      src={other.avatarUrl}
+                      alt=""
+                      className={styles.convAvatarImg}
+                      onError={(event) => { event.currentTarget.style.display = 'none'; }}
+                    />
+                  ) : null}
+                  {(conv.online || other?.online) && <span className={styles.onlineDot} />}
+                </div>
+                <div className={styles.convBody}>
+                  <div className={styles.convTop}>
+                    <span className={styles.convName}>{name}</span>
+                    {lastMsg && <span className={styles.convTime}>{formatTime(lastMsg.createdAt)}</span>}
                   </div>
-                  <div className={styles.convBody}>
-                    <div className={styles.convTop}>
-                      <span className={styles.convName}>{name}</span>
-                      {lastMsg && <span className={styles.convTime}>{formatTime(lastMsg.createdAt)}</span>}
-                    </div>
-                    <div className={styles.convBottom}>
-                      <span className={styles.convPreview}>{isOwn && 'Você: '}{previewText}</span>
-                      {unread && <span className={styles.unreadBadge}>{conv.unreadCount}</span>}
-                    </div>
+                  <div className={styles.convBottom}>
+                    <span className={styles.convPreview}>{isOwn && 'Você: '}{previewText}</span>
+                    {unread && <span className={styles.unreadBadge}>{conv.unreadCount}</span>}
                   </div>
-                </button>
-              </SpotlightCard>
+                </div>
+              </button>
             );
           })
         )}

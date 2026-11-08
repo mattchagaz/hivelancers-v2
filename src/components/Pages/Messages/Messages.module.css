@@ -200,27 +200,6 @@
   padding: 0 14px 16px;
 }
 
-.convSurface {
-  border: 1px solid transparent;
-  border-radius: 18px;
-  background: transparent;
-  transition: border-color 0.18s ease, background 0.18s ease, transform 0.18s ease;
-}
-
-.convSurface:hover {
-  border-color: var(--border-color, #e8e8ef);
-  background: var(--surface-floating, rgba(255, 255, 255, 0.92));
-}
-
-.convSurfaceActive {
-  border-color: rgba(var(--primary-color-rgb, 62, 115, 230), 0.28);
-  background: rgba(var(--primary-color-rgb, 62, 115, 230), 0.09);
-}
-
-.convSurfaceUnread {
-  border-color: rgba(var(--primary-color-rgb, 62, 115, 230), 0.2);
-}
-
 .convItem {
   display: flex;
   width: 100%;
@@ -228,8 +207,31 @@
   align-items: center;
   gap: 12px;
   padding: 12px;
+  border: 1px solid transparent;
   border-radius: 18px;
+  background: transparent;
   text-align: left;
+  transition: border-color 0.18s ease, background 0.18s ease, transform 0.18s ease;
+}
+
+.convItem:hover,
+.convItem:focus-visible {
+  border-color: var(--border-color, #e8e8ef);
+  background: var(--surface-floating, rgba(255, 255, 255, 0.92));
+  outline: none;
+}
+
+.convItem:focus-visible {
+  box-shadow: 0 0 0 3px rgba(var(--primary-color-rgb, 62, 115, 230), 0.16);
+}
+
+.convItemActive {
+  border-color: rgba(var(--primary-color-rgb, 62, 115, 230), 0.34);
+  background: rgba(var(--primary-color-rgb, 62, 115, 230), 0.09);
+}
+
+.convItemUnread {
+  border-color: rgba(var(--primary-color-rgb, 62, 115, 230), 0.2);
 }
 
 .convAvatar {
@@ -256,6 +258,16 @@
   object-fit: cover;
 }
 
+.convAvatarImg {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+.convAvatarFallback {
+  line-height: 1;
+}
+
 .onlineDot {
   position: absolute;
   right: 0;
@@ -265,6 +277,7 @@
   border: 2.5px solid var(--bg-primary, #fff);
   border-radius: 50%;
   background: #16a34a;
+  z-index: 2;
 }
 
 .convBody {
@@ -315,8 +328,8 @@
   white-space: nowrap;
 }
 
-.convSurfaceUnread .convPreview,
-.convSurfaceUnread .convName {
+.convItemUnread .convPreview,
+.convItemUnread .convName {
   color: var(--text-primary, #1a1a2e);
 }
 
@@ -1068,17 +1081,17 @@
     -webkit-overflow-scrolling: touch;
   }
 
-  .convSurface {
+  .convItem {
     border-color: transparent;
     background: var(--bg-secondary, #f5f6fa);
   }
 
-  [data-theme="dark"] .convSurface {
+  [data-theme="dark"] .convItem {
     background: var(--bg-tertiary, #1c1f29);
   }
 
-  .convSurface:hover,
-  .convSurfaceActive {
+  .convItem:hover,
+  .convItemActive {
     background: rgba(var(--primary-color-rgb, 62, 115, 230), 0.1);
   }
 
