@@ -405,8 +405,8 @@ function Messages() {
       toast.error('Apenas imagens são suportadas.');
       return;
     }
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error('Imagem muito grande (máx 10MB).');
+    if (file.size > 4 * 1024 * 1024) {
+      toast.error('Imagem muito grande (máx 4MB).');
       return;
     }
     setUploading(true);

@@ -354,24 +354,14 @@ function SupportTicket() {
   const prepareAttachment = async () => {
     if (!attachment?.file) return null;
 
-    try {
-      const uploaded = await uploadImageToCloudinary(attachment.file);
-      return {
-        url: uploaded.url,
-        publicId: uploaded.publicId,
-        type: attachment.type,
-        name: attachment.name,
-        size: attachment.size,
-      };
-    } catch {
-      return {
-        url: attachment.previewUrl,
-        type: attachment.type,
-        name: attachment.name,
-        size: attachment.size,
-        localPreview: true,
-      };
-    }
+    const uploaded = await uploadImageToCloudinary(attachment.file);
+    return {
+      url: uploaded.url,
+      publicId: uploaded.publicId,
+      type: attachment.type,
+      name: attachment.name,
+      size: attachment.size,
+    };
   };
 
   const submitTicket = async (event) => {
