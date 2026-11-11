@@ -54,7 +54,11 @@ function ProjectCheckout() {
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
   const [paymentMethodType, setPaymentMethodType] = useState('card');
-  const [checkoutOptions, setCheckoutOptions] = useState({ card: { available: true }, pix: { available: false } });
+  const [checkoutOptions, setCheckoutOptions] = useState({
+    paymentsEnabled: null,
+    card: { available: false, reason: 'Consultando disponibilidade...' },
+    pix: { available: false, reason: 'Consultando disponibilidade...' },
+  });
   const [pixCheckout, setPixCheckout] = useState(null);
 
   const loadContext = useCallback(async () => {
@@ -147,6 +151,7 @@ function ProjectCheckout() {
       })
       .catch((error) => {
         setCheckoutOptions({
+          paymentsEnabled: false,
           card: { available: false, reason: error.message },
           pix: { available: false, reason: error.message },
         });
@@ -260,6 +265,10 @@ function ProjectCheckout() {
   const profileHandle = proposal.freelancer.username || proposal.freelancer.id;
   const profileUrl = `/profile/${profileHandle}`;
   const canCheckout = project.status === 'OPEN' && proposal.status === 'PENDING';
+  const paymentsUnavailable = checkoutOptions.paymentsEnabled === false;
+  const paymentsUnavailableReason = checkoutOptions.card?.reason
+    || checkoutOptions.pix?.reason
+    || 'As contratações com pagamento estão temporariamente indisponíveis.';
 
   return (
     <div className={styles.page}>
@@ -273,6 +282,13 @@ function ProjectCheckout() {
           <p className={styles.subtitle}>A proposta só será aceita depois que o pagamento for confirmado.</p>
         </div>
       </header>
+
+      {paymentsUnavailable && (
+        <div className={styles.paymentsUnavailableNotice} role="status">
+          <strong>Contratações temporariamente pausadas</strong>
+          <span>{paymentsUnavailableReason}</span>
+        </div>
+      )}
 
       <div className={styles.layout}>
         <div className={styles.mainColumn}>
@@ -414,7 +430,15 @@ function ProjectCheckout() {
                 })}
               </div>
             </div>
-            <button type="button" className={styles.primaryButton} onClick={startCheckout} disabled={!canCheckout || submitting || !checkoutOptions[paymentMethodType]?.available}>{submitting ? 'Abrindo pagamento...' : canCheckout ? 'Pagar e contratar' : 'Proposta indisponível'}</button>
+            <button type="button" className={styles.primaryButton} onClick={startCheckout} disabled={!canCheckout || submitting || !checkoutOptions[paymentMethodType]?.available}>
+              {submitting
+                ? 'Abrindo pagamento...'
+                : paymentsUnavailable
+                  ? 'Contratações temporariamente pausadas'
+                  : canCheckout
+                    ? 'Pagar e contratar'
+                    : 'Proposta indisponível'}
+            </button>
             <p className={styles.secureNote}>{paymentMethodType === 'pix' ? 'O QR Code será gerado pela AbacatePay.' : 'Você será redirecionado para o ambiente seguro da Stripe.'}</p>
           </section>
         </aside>

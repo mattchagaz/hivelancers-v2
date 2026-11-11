@@ -68,7 +68,8 @@ function Checkout() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [checkoutOptions, setCheckoutOptions] = useState({
-    card: { available: true, reason: '' },
+    paymentsEnabled: null,
+    card: { available: false, reason: 'Consultando disponibilidade...' },
     pix: { available: false, reason: 'Consultando disponibilidade...' },
   });
   const [paymentMethodType, setPaymentMethodType] = useState('card');
@@ -114,6 +115,7 @@ function Checkout() {
       })
       .catch((error) => {
         setCheckoutOptions({
+          paymentsEnabled: false,
           card: { available: false, reason: error.message },
           pix: { available: false, reason: error.message },
         });
@@ -270,6 +272,10 @@ function Checkout() {
   const discountCents = currentAppliedCoupon?.discountCents || 0;
   const contractCents = Math.max(0, subtotalCents - discountCents);
   const { clientFeePercent, clientFeeCents, totalCents } = getClientCheckoutFees(contractCents, subscription);
+  const paymentsUnavailable = checkoutOptions.paymentsEnabled === false;
+  const paymentsUnavailableReason = checkoutOptions.card?.reason
+    || checkoutOptions.pix?.reason
+    || 'As contratações com pagamento estão temporariamente indisponíveis.';
 
   const orderSteps = [
     {
@@ -575,6 +581,12 @@ function Checkout() {
 
   return (
     <div className={styles.page}>
+      {paymentsUnavailable && (
+        <div className={styles.paymentsUnavailableNotice} role="status">
+          <strong>Contratações temporariamente pausadas</strong>
+          <span>{paymentsUnavailableReason}</span>
+        </div>
+      )}
       <div className={styles.mobileCheckout}>
         <div className={styles.mobileStepHeader}>
           <button type="button" className={styles.mobileBackBtn} onClick={goToPrevMobileStep} aria-label="Voltar">
@@ -788,7 +800,11 @@ function Checkout() {
               onClick={handleSubmit}
               disabled={isSubmitting || !checkoutOptions[paymentMethodType]?.available}
             >
-              {isSubmitting ? 'Processando...' : 'Confirmar e pagar'}
+              {isSubmitting
+                ? 'Processando...'
+                : paymentsUnavailable
+                  ? 'Contratações pausadas'
+                  : 'Confirmar e pagar'}
             </button>
           )}
         </div>
@@ -1084,7 +1100,7 @@ function Checkout() {
                   Processando...
                 </>
               ) : (
-                'Ir para Pagamento Seguro'
+                paymentsUnavailable ? 'Contratações temporariamente pausadas' : 'Ir para Pagamento Seguro'
               )}
             </button>
             <p className={styles.secureNote}>

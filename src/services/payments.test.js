@@ -18,6 +18,7 @@ import {
   cancelCheckoutPayment,
   resumeCheckoutPayment,
   getCheckoutSessionStatus,
+  getCheckoutOptions,
   previewCheckoutCoupon,
 } from './payments';
 
@@ -89,6 +90,26 @@ describe('project checkout', () => {
       checkoutUrl: 'https://stripe.example/resume',
     });
     expect(mocks.post).toHaveBeenCalledWith('/payments/checkout-sessions/payment-1/resume');
+  });
+});
+
+describe('getCheckoutOptions', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('preserva o estado global de pagamentos retornado pelo backend', async () => {
+    const response = {
+      paymentsEnabled: false,
+      card: { available: false, reason: 'Contratações pausadas.' },
+      pix: { available: false, reason: 'Contratações pausadas.' },
+    };
+    mocks.get.mockResolvedValue({ data: response });
+
+    await expect(getCheckoutOptions({ serviceId: 'service-1' })).resolves.toEqual(response);
+    expect(mocks.get).toHaveBeenCalledWith('/payments/checkout-options', {
+      params: { serviceId: 'service-1' },
+    });
   });
 });
 

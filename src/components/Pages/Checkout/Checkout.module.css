@@ -12,6 +12,26 @@
   width: 100%;
 }
 
+.paymentsUnavailableNotice {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px;
+  border: 1px solid #f2c66d;
+  border-radius: 14px;
+  background: #fff8e8;
+  color: #6f4b08;
+}
+
+.paymentsUnavailableNotice strong {
+  font-size: 0.95rem;
+}
+
+.paymentsUnavailableNotice span {
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
 .breadcrumbs {
   display: flex;
   align-items: center;
