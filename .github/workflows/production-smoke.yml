@@ -1,0 +1,42 @@
+name: Production smoke check
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-smoke
+  cancel-in-progress: true
+
+jobs:
+  verify-production:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verify frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --retry 3 --retry-delay 2 \
+            https://app.hivelancers.com \
+            | grep -q '<div id="root"></div>'
+
+      - name: Verify API health
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --retry 3 --retry-delay 2 \
+            https://api.hivelancers.com/health \
+            | jq -e '.status == "ok"'
+
+      - name: Verify API readiness
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --retry 3 --retry-delay 2 \
+            https://api.hivelancers.com/ready \
+            | jq -e '.status == "ready"'
